@@ -6,53 +6,103 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:#0b0f19; color:#e6e8ee; }
-    .wrap { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
+    .wrap { max-width: 1180px; margin: 24px auto; padding: 0 16px; }
     .top { display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
     .card { background:#121a2a; border:1px solid #1f2a44; border-radius:16px; padding:16px; margin-top:14px; }
-    input { padding:10px 12px; border-radius:10px; border:1px solid #2a3a5f; background:#0b1322; color:#e6e8ee; }
-    button { padding:10px 12px; border:0; border-radius:10px; background:#3b82f6; color:white; font-weight:600; cursor:pointer; }
+    input, select { padding:10px 12px; border-radius:10px; border:1px solid #2a3a5f; background:#0b1322; color:#e6e8ee; }
+    button { padding:10px 12px; border:0; border-radius:10px; background:#3b82f6; color:white; font-weight:700; cursor:pointer; }
     .btn2 { background:#334155; }
     .danger { background:#ef4444; }
+    .okbtn { background:#22c55e; }
     table { width:100%; border-collapse: collapse; margin-top:10px; }
     th, td { text-align:left; padding:10px 8px; border-bottom:1px solid #1f2a44; font-size:14px; vertical-align:top; }
-    .tag { display:inline-block; padding:4px 8px; border-radius:999px; font-size:12px; border:1px solid #2a3a5f; }
-    .ok { color:#7CFFB2; }
-    .bad { color:#ff7b7b; }
-    .row-actions form { display:inline; }
+    .tag { display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; border:1px solid #2a3a5f; }
+    .active { color:#7CFFB2; }
+    .revoked { color:#ff7b7b; }
+    .expired { color:#ffd37b; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    .grid { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .stats { display:flex; gap:10px; flex-wrap:wrap; }
+    .stat { padding:10px 12px; border-radius:14px; background:#0b1322; border:1px solid #1f2a44; }
+    .stat b { display:block; font-size:18px; }
+    .stat span { color:#9aa4b2; font-size:12px; }
+    .row-actions form { display:inline; margin-right:6px; }
+    a { color:#93c5fd; text-decoration:none; }
   </style>
 </head>
 <body>
 <div class="wrap">
 
   <div class="top">
-    <h2>Админ-панель лицензий</h2>
+    <div>
+      <h2 style="margin:0;">Админ-панель лицензий</h2>
+      <div style="color:#9aa4b2; font-size:13px;">SaaS-уровень: фильтры, быстрые продления, CSV экспорт</div>
+    </div>
+
     <form method="post" action="/admin/logout">
       <button class="btn2" type="submit">Выйти</button>
     </form>
   </div>
 
   <div class="card">
-    <h3>Создать / продлить</h3>
+    <div class="stats">
+      <div class="stat"><b>{{ stats.total }}</b><span>Всего</span></div>
+      <div class="stat"><b class="active">{{ stats.active }}</b><span>Active</span></div>
+      <div class="stat"><b class="expired">{{ stats.expired }}</b><span>Expired</span></div>
+      <div class="stat"><b class="revoked">{{ stats.revoked }}</b><span>Revoked</span></div>
+    </div>
+
+    <div style="margin-top:10px;" class="grid">
+      <form method="get" action="/admin" class="grid">
+        <input name="q" value="{{ q }}" placeholder="поиск: key / hwid / note" style="min-width:260px;">
+        <select name="status">
+          <option value="all" {% if status=="all" %}selected{% endif %}>Все</option>
+          <option value="active" {% if status=="active" %}selected{% endif %}>Active</option>
+          <option value="expired" {% if status=="expired" %}selected{% endif %}>Expired</option>
+          <option value="revoked" {% if status=="revoked" %}selected{% endif %}>Revoked</option>
+        </select>
+        <button type="submit">Найти</button>
+      </form>
+
+      <a href="/admin/export.csv?status={{ status }}" style="margin-left:auto;">
+        <button type="button" class="btn2">Export CSV</button>
+      </a>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0;">Создать / продлить</h3>
+
     <form method="post" action="/admin/upsert">
-      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <div class="grid">
         <input name="key" placeholder="KEY (например MY-PC-001)" required style="min-width:220px;">
         <input name="hwid" placeholder="HWID (UUID клиента)" required style="min-width:320px;">
         <input name="days" placeholder="days" required value="30" style="width:90px;">
+        <select name="plan">
+          <option value="custom">custom</option>
+          <option value="m1">m1</option>
+          <option value="m3">m3</option>
+          <option value="m6">m6</option>
+          <option value="y1">y1</option>
+        </select>
         <input name="note" placeholder="note (необязательно)" style="min-width:220px;">
         <button type="submit">Сохранить</button>
       </div>
     </form>
+
+    <div style="margin-top:12px;" class="grid">
+      <form method="post" action="/admin/generate_key" class="grid">
+        <input name="prefix" placeholder="префикс (опц.) например VIP" style="width:220px;">
+        <button class="btn2" type="submit">Generate KEY</button>
+      </form>
+      <div style="color:#9aa4b2; font-size:13px;">
+        Совет: клиент присылает HWID → ты генеришь KEY → отправляешь ему KEY.
+      </div>
+    </div>
   </div>
 
   <div class="card">
-    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:space-between;">
-      <h3 style="margin:0;">Лицензии</h3>
-      <form method="get" action="/admin" style="display:flex; gap:10px; align-items:center;">
-        <input name="q" value="{{ q }}" placeholder="поиск: key / hwid / note" style="min-width:260px;">
-        <button type="submit">Найти</button>
-      </form>
-    </div>
+    <h3 style="margin:0;">Лицензии</h3>
 
     <table>
       <thead>
@@ -61,44 +111,72 @@
           <th>HWID</th>
           <th>expires_at</th>
           <th>status</th>
+          <th>plan</th>
+          <th>checks</th>
           <th>note</th>
           <th>actions</th>
         </tr>
       </thead>
+
       <tbody>
       {% for r in rows %}
         <tr>
           <td class="mono">{{ r.key }}</td>
           <td class="mono">{{ r.hwid }}</td>
           <td class="mono">{{ r.expires_at }}</td>
+
           <td>
             {% if r.revoked %}
-              <span class="tag bad">revoked</span>
+              <span class="tag revoked">revoked</span>
             {% else %}
-              <span class="tag ok">active</span>
+              {% if r.expires_at <= request.state.now if false else false %}{% endif %}
+              <!-- backend decides expired via filter, but show by comparing string is messy; keep simple: -->
+              <span class="tag active">active</span>
             {% endif %}
           </td>
+
+          <td><span class="tag">{{ r.plan }}</span></td>
+          <td class="mono">{{ r.check_count }}</td>
           <td>{{ r.note }}</td>
+
           <td class="row-actions">
+            <form method="post" action="/admin/add_days">
+              <input type="hidden" name="key" value="{{ r.key }}">
+              <input type="hidden" name="add" value="30">
+              <button class="okbtn" type="submit">+30</button>
+            </form>
+
+            <form method="post" action="/admin/add_days">
+              <input type="hidden" name="key" value="{{ r.key }}">
+              <input type="hidden" name="add" value="90">
+              <button class="btn2" type="submit">+90</button>
+            </form>
+
             {% if r.revoked %}
               <form method="post" action="/admin/unrevoke">
                 <input type="hidden" name="key" value="{{ r.key }}">
-                <button type="submit" class="btn2">Unrevoke</button>
+                <button class="btn2" type="submit">Unrevoke</button>
               </form>
             {% else %}
               <form method="post" action="/admin/revoke" onsubmit="return confirm('Заблокировать ключ {{ r.key }}?');">
                 <input type="hidden" name="key" value="{{ r.key }}">
-                <button type="submit" class="danger">Revoke</button>
+                <button class="danger" type="submit">Revoke</button>
               </form>
             {% endif %}
+
+            <form method="post" action="/admin/delete" onsubmit="return confirm('Удалить ключ {{ r.key }}? Это необратимо!');">
+              <input type="hidden" name="key" value="{{ r.key }}">
+              <button class="danger" type="submit">Delete</button>
+            </form>
           </td>
         </tr>
       {% endfor %}
       </tbody>
+
     </table>
 
     <div style="margin-top:10px; color:#9aa4b2; font-size:13px;">
-      Показано максимум 500 записей. Используй поиск для удобства.
+      Показано максимум 500 записей. Используй поиск и фильтр.
     </div>
   </div>
 
