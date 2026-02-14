@@ -1,0 +1,107 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Licenses Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:#0b0f19; color:#e6e8ee; }
+    .wrap { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
+    .top { display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+    .card { background:#121a2a; border:1px solid #1f2a44; border-radius:16px; padding:16px; margin-top:14px; }
+    input { padding:10px 12px; border-radius:10px; border:1px solid #2a3a5f; background:#0b1322; color:#e6e8ee; }
+    button { padding:10px 12px; border:0; border-radius:10px; background:#3b82f6; color:white; font-weight:600; cursor:pointer; }
+    .btn2 { background:#334155; }
+    .danger { background:#ef4444; }
+    table { width:100%; border-collapse: collapse; margin-top:10px; }
+    th, td { text-align:left; padding:10px 8px; border-bottom:1px solid #1f2a44; font-size:14px; vertical-align:top; }
+    .tag { display:inline-block; padding:4px 8px; border-radius:999px; font-size:12px; border:1px solid #2a3a5f; }
+    .ok { color:#7CFFB2; }
+    .bad { color:#ff7b7b; }
+    .row-actions form { display:inline; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <h2>Админ-панель лицензий</h2>
+    <form method="post" action="/admin/logout">
+      <button class="btn2" type="submit">Выйти</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h3>Создать / продлить</h3>
+    <form method="post" action="/admin/upsert">
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <input name="key" placeholder="KEY (например MY-PC-001)" required style="min-width:220px;">
+        <input name="hwid" placeholder="HWID (UUID клиента)" required style="min-width:320px;">
+        <input name="days" placeholder="days" required value="30" style="width:90px;">
+        <input name="note" placeholder="note (необязательно)" style="min-width:220px;">
+        <button type="submit">Сохранить</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:space-between;">
+      <h3 style="margin:0;">Лицензии</h3>
+      <form method="get" action="/admin" style="display:flex; gap:10px; align-items:center;">
+        <input name="q" value="{{ q }}" placeholder="поиск: key / hwid / note" style="min-width:260px;">
+        <button type="submit">Найти</button>
+      </form>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>KEY</th>
+          <th>HWID</th>
+          <th>expires_at</th>
+          <th>status</th>
+          <th>note</th>
+          <th>actions</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in rows %}
+        <tr>
+          <td class="mono">{{ r.key }}</td>
+          <td class="mono">{{ r.hwid }}</td>
+          <td class="mono">{{ r.expires_at }}</td>
+          <td>
+            {% if r.revoked %}
+              <span class="tag bad">revoked</span>
+            {% else %}
+              <span class="tag ok">active</span>
+            {% endif %}
+          </td>
+          <td>{{ r.note }}</td>
+          <td class="row-actions">
+            {% if r.revoked %}
+              <form method="post" action="/admin/unrevoke">
+                <input type="hidden" name="key" value="{{ r.key }}">
+                <button type="submit" class="btn2">Unrevoke</button>
+              </form>
+            {% else %}
+              <form method="post" action="/admin/revoke" onsubmit="return confirm('Заблокировать ключ {{ r.key }}?');">
+                <input type="hidden" name="key" value="{{ r.key }}">
+                <button type="submit" class="danger">Revoke</button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+
+    <div style="margin-top:10px; color:#9aa4b2; font-size:13px;">
+      Показано максимум 500 записей. Используй поиск для удобства.
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
