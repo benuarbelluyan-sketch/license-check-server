@@ -9,11 +9,10 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 
 from fastapi import FastAPI, HTTPException, Request, Form
-from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse, PlainTextResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
-
 
 app = FastAPI()
 
@@ -21,14 +20,30 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "")
 ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
 ADMIN_PANEL_SECRET = os.environ.get("ADMIN_PANEL_SECRET", "change-me-please")
 
+# --- Sessions for web panel ---
 app.add_middleware(
     SessionMiddleware,
     secret_key=ADMIN_PANEL_SECRET,
-    https_only=True,
+    https_only=True,  # Render uses HTTPS
     same_site="lax",
 )
 
 templates = Jinja2Templates(directory="templates")
+
+
+# -------------------- Health / Render port checks --------------------
+
+@app.get("/", response_class=PlainTextResponse)
+def root():
+    return "OK"
+
+@app.head("/")
+def root_head():
+    return
+
+@app.head("/admin")
+def admin_head():
+    return
 
 
 # -------------------- DB --------------------
@@ -43,7 +58,7 @@ def init_db():
     con = db()
     cur = con.cursor()
 
-    # Main table
+    # Main table (licenses)
     cur.execute("""
     CREATE TABLE IF NOT EXISTS licenses (
         key TEXT PRIMARY KEY,
@@ -59,7 +74,7 @@ def init_db():
     );
     """)
 
-    # Lightweight audit table (admin actions)
+    # Admin audit log (optional but very useful)
     cur.execute("""
     CREATE TABLE IF NOT EXISTS admin_audit (
         id BIGSERIAL PRIMARY KEY,
@@ -85,16 +100,8 @@ def _now_utc():
     return datetime.now(timezone.utc)
 
 
-def _is_admin(request: Request) -> bool:
-    return bool(request.session.get("is_admin"))
-
-
-def _require_admin(request: Request):
-    if not _is_admin(request):
-        raise HTTPException(status_code=401, detail="not_logged_in")
-
-
 def _audit(action: str, key: str | None = None, hwid: str | None = None, info: str = ""):
+    # Audit should never break core flow
     try:
         con = db()
         cur = con.cursor()
@@ -106,8 +113,16 @@ def _audit(action: str, key: str | None = None, hwid: str | None = None, info: s
         cur.close()
         con.close()
     except Exception:
-        # Audit should never break core flow
         pass
+
+
+def _is_admin(request: Request) -> bool:
+    return bool(request.session.get("is_admin"))
+
+
+def _require_admin(request: Request):
+    if not _is_admin(request):
+        raise HTTPException(status_code=401, detail="not_logged_in")
 
 
 def _gen_key(prefix: str = "", groups: int = 3, group_len: int = 4) -> str:
@@ -115,10 +130,10 @@ def _gen_key(prefix: str = "", groups: int = 3, group_len: int = 4) -> str:
     parts = ["".join(secrets.choice(alphabet) for _ in range(group_len)) for _ in range(groups)]
     key = "-".join(parts)
     if prefix:
-        prefix = prefix.strip()
-        if not prefix.endswith("-"):
-            prefix += "-"
-        return prefix + key
+        p = prefix.strip()
+        if p and not p.endswith("-"):
+            p += "-"
+        return p + key
     return key
 
 
@@ -144,7 +159,7 @@ def check(req: CheckReq):
 
     _key, _hwid, expires_at, revoked = row
 
-    # Update stats (even if fail by HWID/expired/revoked we still count checks)
+    # Update stats
     cur.execute("""
         UPDATE licenses
         SET last_check_at = NOW(), check_count = check_count + 1
@@ -253,10 +268,18 @@ def admin_login_page(request: Request):
 @app.post("/admin/login")
 def admin_login(request: Request, token: str = Form(...)):
     token = token.strip()
+
     if not ADMIN_TOKEN:
-        return templates.TemplateResponse("login.html", {"request": request, "error": "ADMIN_TOKEN не задан в Render."})
+        return templates.TemplateResponse(
+            "login.html",
+            {"request": request, "error": "ADMIN_TOKEN не задан в Render."}
+        )
+
     if token != ADMIN_TOKEN:
-        return templates.TemplateResponse("login.html", {"request": request, "error": "Неверный токен."})
+        return templates.TemplateResponse(
+            "login.html",
+            {"request": request, "error": "Неверный токен."}
+        )
 
     request.session["is_admin"] = True
     return RedirectResponse("/admin", status_code=303)
@@ -271,6 +294,7 @@ def admin_logout(request: Request):
 def _fetch_stats():
     con = db()
     cur = con.cursor()
+
     cur.execute("SELECT COUNT(*) FROM licenses")
     total = cur.fetchone()[0]
 
@@ -344,8 +368,10 @@ def admin_home(request: Request, q: str = "", status: str = "all"):
 def admin_generate_key(request: Request, prefix: str = Form("")):
     _require_admin(request)
     k = _gen_key(prefix=prefix or "")
-    # redirect with key in query for convenience
-    return RedirectResponse(f"/admin?gen={k}", status_code=303)
+    _audit("generate_key_web", k, None, f"prefix={prefix}")
+    # Возвращаемся в /admin — ключ можно просто скопировать из логов/формы,
+    # или ты можешь вставить его руками в поле KEY.
+    return RedirectResponse("/admin", status_code=303)
 
 
 @app.post("/admin/upsert")
@@ -478,11 +504,14 @@ def admin_export_csv(request: Request, status: str = "all"):
 
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["key","hwid","expires_at","revoked","note","plan","created_at","updated_at","last_check_at","check_count"])
+    writer.writerow([
+        "key","hwid","expires_at","revoked","note","plan",
+        "created_at","updated_at","last_check_at","check_count"
+    ])
     for r in rows:
         writer.writerow([
-            r["key"], r["hwid"], r["expires_at"], r["revoked"], r["note"],
-            r["plan"], r["created_at"], r["updated_at"], r["last_check_at"], r["check_count"]
+            r["key"], r["hwid"], r["expires_at"], r["revoked"], r["note"], r["plan"],
+            r["created_at"], r["updated_at"], r["last_check_at"], r["check_count"]
         ])
 
     output.seek(0)
