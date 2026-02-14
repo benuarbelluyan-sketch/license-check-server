@@ -2,8 +2,6 @@ import os
 import csv
 import io
 import json
-import secrets
-import string
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any
 
@@ -27,13 +25,13 @@ from openai import OpenAI
 app = FastAPI()
 
 # =========================
-# GLOBAL ERROR HANDLER (чтобы вместо "Internal Server Error" отдавал причину)
+# GLOBAL ERROR HANDLER (чтобы не было "Internal Server Error" без причины)
 # =========================
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=500,
-        content={"error": type(exc).__name__, "message": str(exc)}
+        content={"error": type(exc).__name__, "message": str(exc)},
     )
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
@@ -50,7 +48,6 @@ def get_openai_client():
     if _openai_client is None:
         key = os.environ.get("OPENAI_API_KEY", "").strip()
         if not key:
-            # важно: так ты сразу увидишь причину в ответе
             raise RuntimeError("OPENAI_API_KEY not set in Render Environment")
         _openai_client = OpenAI(api_key=key)
     return _openai_client
@@ -196,7 +193,7 @@ def check(req: CheckReq):
 
 
 # =========================
-# AI DIAGNOSTIC (проверка ключа и версии openai)
+# AI DIAGNOSTIC
 # =========================
 
 @app.get("/api/ai/ping")
@@ -421,7 +418,7 @@ def export_csv(request: Request):
 
 
 # =========================
-# AI API (score)
+# AI API (Structured Outputs)
 # =========================
 
 class AIItem(BaseModel):
@@ -440,51 +437,67 @@ def ai_score(req: AIScoreReq) -> Dict[str, Any]:
 
     items = [{"id": it.id, "text": (it.text or "")[:1200]} for it in req.items]
 
+    schema = {
+        "type": "object",
+        "properties": {
+            "results": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "string"},
+                        "score": {"type": "integer", "minimum": 0, "maximum": 100},
+                        "pass": {"type": "boolean"},
+                        "reason": {"type": "string"},
+                        "flags": {
+                            "type": "array",
+                            "items": {"type": "string"}
+                        }
+                    },
+                    "required": ["id", "score", "pass", "reason", "flags"],
+                    "additionalProperties": False
+                }
+            }
+        },
+        "required": ["results"],
+        "additionalProperties": False
+    }
+
     system_prompt = (
-        "Ты анализируешь сообщения Telegram пользователей. "
-        "Оцени соответствие текста заданному промту. "
-        "Верни строго валидный JSON без пояснений и без markdown. "
-        "Язык reason — русский."
+        "Ты анализируешь сообщения пользователей Telegram. "
+        "Оцени соответствие текста промту (кого ищем). "
+        "Верни результат строго по JSON-схеме. "
+        "Reason на русском, коротко 5-12 слов. "
+        "Flags только из: bot_like, spam_like, toxic, low_quality."
     )
 
-    payload = {
+    user_payload = {
         "prompt": req.prompt,
         "min_score": req.min_score,
         "items": items,
-        "rules": [
-            "score 0..100",
-            "pass=true если score>=min_score и нет bot_like/spam_like/toxic",
-            "flags возможные: bot_like, spam_like, toxic, low_quality",
-            "reason коротко 5-12 слов"
-        ],
-        "output_format": {
-            "results": [
-                {"id": "string", "score": 0, "pass": True, "reason": "string", "flags": []}
-            ]
-        }
+        "rule_pass": "pass=true если score>=min_score и нет bot_like/spam_like/toxic"
     }
 
     resp = client.responses.create(
         model="gpt-4.1-mini",
         input=[
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": json.dumps(payload, ensure_ascii=False)}
+            {"role": "user", "content": json.dumps(user_payload, ensure_ascii=False)}
         ],
+        # Structured Outputs
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+                "name": "lead_scoring",
+                "schema": schema,
+                "strict": True
+            }
+        },
     )
 
-    # Самый надёжный вариант в новом SDK
+    # В новом SDK это самый стабильный способ получить текст JSON:
     out_text = getattr(resp, "output_text", None)
     if not out_text:
-        out_text = ""
-        for o in resp.output:
-            if o.type == "message":
-                for c in o.content:
-                    if getattr(c, "type", None) == "output_text":
-                        out_text += c.text
+        raise RuntimeError("No output_text from OpenAI response")
 
-    data = json.loads(out_text)
-
-    if not isinstance(data, dict) or "results" not in data:
-        raise RuntimeError(f"bad_ai_response: {out_text[:200]}")
-
-    return data
+    return json.loads(out_text)
