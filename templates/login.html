@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Admin Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:#0b0f19; color:#e6e8ee; }
+    .card { max-width: 420px; margin: 10vh auto; padding: 22px; background:#121a2a; border:1px solid #1f2a44; border-radius:16px; }
+    input { width:100%; padding:12px 14px; border-radius:10px; border:1px solid #2a3a5f; background:#0b1322; color:#e6e8ee; }
+    button { width:100%; margin-top:12px; padding:12px 14px; border:0; border-radius:10px; background:#3b82f6; color:white; font-weight:600; cursor:pointer; }
+    .err { margin-top:12px; color:#ff7b7b; }
+    .hint { margin-top:10px; color:#9aa4b2; font-size:14px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Вход в админ-панель</h2>
+    <form method="post" action="/admin/login">
+      <label>ADMIN_TOKEN</label><br/><br/>
+      <input type="password" name="token" placeholder="вставь токен из Render" required />
+      <button type="submit">Войти</button>
+    </form>
+    {% if error %}
+      <div class="err">{{ error }}</div>
+    {% endif %}
+    <div class="hint">Токен хранится в Render → Service → Environment → ADMIN_TOKEN</div>
+  </div>
+</body>
+</html>
