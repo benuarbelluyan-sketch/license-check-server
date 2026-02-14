@@ -2,6 +2,7 @@ import os
 import csv
 import io
 import json
+import re
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any
 
@@ -25,13 +26,14 @@ from openai import OpenAI
 app = FastAPI()
 
 # =========================
-# GLOBAL ERROR HANDLER (чтобы не было "Internal Server Error" без причины)
+# GLOBAL ERROR HANDLER
+# (чтобы вместо "Internal Server Error" всегда было {error,message})
 # =========================
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=500,
-        content={"error": type(exc).__name__, "message": str(exc)},
+        content={"error": type(exc).__name__, "message": str(exc)}
     )
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
@@ -67,7 +69,6 @@ templates = Jinja2Templates(directory="templates")
 # =========================
 # ROOT (Render health)
 # =========================
-
 @app.get("/", response_class=PlainTextResponse)
 def root():
     return "OK"
@@ -86,7 +87,6 @@ def head_admin():
 # =========================
 # DATABASE
 # =========================
-
 def db():
     if not DATABASE_URL:
         raise RuntimeError("DATABASE_URL not set")
@@ -97,7 +97,6 @@ def init_db():
     con = db()
     cur = con.cursor()
 
-    # базовая таблица
     cur.execute("""
     CREATE TABLE IF NOT EXISTS licenses (
         key TEXT PRIMARY KEY,
@@ -108,14 +107,12 @@ def init_db():
     );
     """)
 
-    # миграции
     cur.execute("ALTER TABLE licenses ADD COLUMN IF NOT EXISTS plan TEXT DEFAULT 'custom';")
     cur.execute("ALTER TABLE licenses ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();")
     cur.execute("ALTER TABLE licenses ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();")
     cur.execute("ALTER TABLE licenses ADD COLUMN IF NOT EXISTS last_check_at TIMESTAMPTZ;")
     cur.execute("ALTER TABLE licenses ADD COLUMN IF NOT EXISTS check_count BIGINT DEFAULT 0;")
 
-    # аудит
     cur.execute("""
     CREATE TABLE IF NOT EXISTS admin_audit (
         id BIGSERIAL PRIMARY KEY,
@@ -148,7 +145,6 @@ def is_admin(request: Request):
 # =========================
 # CLIENT API (LICENSE CHECK)
 # =========================
-
 class CheckReq(BaseModel):
     key: str
     hwid: str
@@ -169,7 +165,6 @@ def check(req: CheckReq):
 
     hwid, expires_at, revoked = row
 
-    # статистика
     cur.execute("""
         UPDATE licenses
         SET last_check_at=NOW(), check_count=check_count+1
@@ -195,7 +190,6 @@ def check(req: CheckReq):
 # =========================
 # AI DIAGNOSTIC
 # =========================
-
 @app.get("/api/ai/ping")
 def ai_ping():
     key_ok = bool(os.environ.get("OPENAI_API_KEY", "").strip())
@@ -210,7 +204,6 @@ def ai_ping():
 # =========================
 # ADMIN LOGIN
 # =========================
-
 @app.get("/admin/login", response_class=HTMLResponse)
 def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request, "error": ""})
@@ -237,7 +230,6 @@ def logout(request: Request):
 # =========================
 # ADMIN PANEL
 # =========================
-
 @app.get("/admin", response_class=HTMLResponse)
 def admin_panel(request: Request):
     if not is_admin(request):
@@ -274,7 +266,6 @@ def admin_panel(request: Request):
 # =========================
 # CREATE / UPDATE LICENSE
 # =========================
-
 @app.post("/admin/upsert")
 def upsert_license(
     request: Request,
@@ -310,7 +301,6 @@ def upsert_license(
 # =========================
 # ADD DAYS
 # =========================
-
 @app.post("/admin/add_days")
 def add_days(request: Request, key: str = Form(...), add: int = Form(...)):
     if not is_admin(request):
@@ -335,7 +325,6 @@ def add_days(request: Request, key: str = Form(...), add: int = Form(...)):
 # =========================
 # REVOKE / UNREVOKE
 # =========================
-
 @app.post("/admin/revoke")
 def revoke(request: Request, key: str = Form(...)):
     if not is_admin(request):
@@ -369,7 +358,6 @@ def unrevoke(request: Request, key: str = Form(...)):
 # =========================
 # DELETE
 # =========================
-
 @app.post("/admin/delete")
 def delete(request: Request, key: str = Form(...)):
     if not is_admin(request):
@@ -388,7 +376,6 @@ def delete(request: Request, key: str = Form(...)):
 # =========================
 # EXPORT CSV
 # =========================
-
 @app.get("/admin/export")
 def export_csv(request: Request):
     if not is_admin(request):
@@ -418,9 +405,8 @@ def export_csv(request: Request):
 
 
 # =========================
-# AI API (Structured Outputs)
+# AI API (совместимо со всеми версиями SDK)
 # =========================
-
 class AIItem(BaseModel):
     id: str
     text: str
@@ -431,73 +417,75 @@ class AIScoreReq(BaseModel):
     min_score: int = 70
     lang: str = "ru"
 
+
+def _extract_json(text: str) -> Dict[str, Any]:
+    """
+    Пытается вытащить JSON-объект из текста (на случай если модель добавила лишнее).
+    """
+    text = (text or "").strip()
+
+    # 1) прямой parse
+    try:
+        return json.loads(text)
+    except Exception:
+        pass
+
+    # 2) вырезаем первый {...} блок
+    m = re.search(r"\{.*\}", text, flags=re.S)
+    if not m:
+        raise ValueError("No JSON object found in model output")
+
+    return json.loads(m.group(0))
+
+
 @app.post("/api/ai/score")
 def ai_score(req: AIScoreReq) -> Dict[str, Any]:
-    client = get_openai_client()
+    try:
+        client = get_openai_client()
 
-    items = [{"id": it.id, "text": (it.text or "")[:1200]} for it in req.items]
+        items = [{"id": it.id, "text": (it.text or "")[:1200]} for it in req.items]
 
-    schema = {
-        "type": "object",
-        "properties": {
-            "results": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "id": {"type": "string"},
-                        "score": {"type": "integer", "minimum": 0, "maximum": 100},
-                        "pass": {"type": "boolean"},
-                        "reason": {"type": "string"},
-                        "flags": {
-                            "type": "array",
-                            "items": {"type": "string"}
-                        }
-                    },
-                    "required": ["id", "score", "pass", "reason", "flags"],
-                    "additionalProperties": False
-                }
-            }
-        },
-        "required": ["results"],
-        "additionalProperties": False
-    }
+        system_prompt = (
+            "Ты анализируешь сообщения пользователей Telegram на русском языке.\n"
+            "Я дам промт (кого ищем) и тексты сообщений людей.\n"
+            "Верни СТРОГО валидный JSON (без markdown, без пояснений) строго в формате:\n"
+            "{ \"results\": [ {\"id\":\"...\",\"score\":0-100,\"pass\":true/false,\"reason\":\"коротко 5-12 слов\",\"flags\":[\"bot_like|spam_like|toxic|low_quality\"...]}, ... ] }\n"
+            "Правило pass: true если score >= min_score и нет flags bot_like/spam_like/toxic.\n"
+            "Reason на русском."
+        )
 
-    system_prompt = (
-        "Ты анализируешь сообщения пользователей Telegram. "
-        "Оцени соответствие текста промту (кого ищем). "
-        "Верни результат строго по JSON-схеме. "
-        "Reason на русском, коротко 5-12 слов. "
-        "Flags только из: bot_like, spam_like, toxic, low_quality."
-    )
+        payload = {
+            "prompt": req.prompt,
+            "min_score": req.min_score,
+            "items": items
+        }
 
-    user_payload = {
-        "prompt": req.prompt,
-        "min_score": req.min_score,
-        "items": items,
-        "rule_pass": "pass=true если score>=min_score и нет bot_like/spam_like/toxic"
-    }
+        resp = client.responses.create(
+            model="gpt-4.1-mini",
+            input=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": json.dumps(payload, ensure_ascii=False)}
+            ],
+        )
 
-    resp = client.responses.create(
-        model="gpt-4.1-mini",
-        input=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": json.dumps(user_payload, ensure_ascii=False)}
-        ],
-        # Structured Outputs
-        response_format={
-            "type": "json_schema",
-            "json_schema": {
-                "name": "lead_scoring",
-                "schema": schema,
-                "strict": True
-            }
-        },
-    )
+        # Самый стабильный способ достать текст в разных SDK:
+        out_text = getattr(resp, "output_text", None)
+        if not out_text:
+            # fallback
+            out_text = ""
+            for o in getattr(resp, "output", []) or []:
+                if getattr(o, "type", None) == "message":
+                    for c in getattr(o, "content", []) or []:
+                        if getattr(c, "type", None) == "output_text":
+                            out_text += getattr(c, "text", "")
 
-    # В новом SDK это самый стабильный способ получить текст JSON:
-    out_text = getattr(resp, "output_text", None)
-    if not out_text:
-        raise RuntimeError("No output_text from OpenAI response")
+        data = _extract_json(out_text)
 
-    return json.loads(out_text)
+        if not isinstance(data, dict) or "results" not in data:
+            raise ValueError(f"bad_ai_response: {out_text[:200]}")
+
+        return data
+
+    except Exception as e:
+        # возвращаем понятную причину в JSON
+        raise HTTPException(status_code=500, detail=f"AI error: {type(e).__name__}: {e}")
