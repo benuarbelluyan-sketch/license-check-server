@@ -129,7 +129,6 @@
             {% if r.revoked %}
               <span class="tag revoked">revoked</span>
             {% else %}
-              {% if r.expires_at <= request.state.now if false else false %}{% endif %}
               <!-- backend decides expired via filter, but show by comparing string is messy; keep simple: -->
               <span class="tag active">active</span>
             {% endif %}
@@ -183,3 +182,4 @@
 </div>
 </body>
 </html>
+
