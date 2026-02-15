@@ -4,12 +4,12 @@ import io
 import json
 import re
 from datetime import datetime, timedelta, timezone
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
-from fastapi import FastAPI, HTTPException, Request, Form
+from fastapi import FastAPI, HTTPException, Request, Form, Header
 from fastapi.responses import (
     HTMLResponse,
     RedirectResponse,
@@ -18,16 +18,19 @@ from fastapi.responses import (
     JSONResponse,
 )
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from starlette.middleware.sessions import SessionMiddleware
 
+import jwt
+from passlib.context import CryptContext
+
 from openai import OpenAI
+
 
 app = FastAPI()
 
 # =========================
 # GLOBAL ERROR HANDLER
-# (чтобы вместо "Internal Server Error" всегда было {error,message})
 # =========================
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
@@ -36,13 +39,31 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={"error": type(exc).__name__, "message": str(exc)}
     )
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "")
-ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
-ADMIN_PANEL_SECRET = os.environ.get("ADMIN_PANEL_SECRET", "change-me")
 
-# ----------------------------
+# =========================
+# ENV
+# =========================
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
+
+# Админ-авторизация в панели (cookie session)
+ADMIN_PANEL_SECRET = os.environ.get("ADMIN_PANEL_SECRET", "change-me").strip()
+
+# Админ-токен для admin API (удобно для Postman, без браузерной сессии)
+ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "").strip()
+
+# JWT
+JWT_SECRET = os.environ.get("JWT_SECRET", "CHANGE_ME").strip()
+JWT_TTL_DAYS = int(os.environ.get("JWT_TTL_DAYS", "30"))
+
+# Цена AI: сколько центов списывать за 1 item (1 item = 1 пользователь/сообщение для скоринга)
+AI_PRICE_PER_ITEM_CENTS = int(os.environ.get("AI_PRICE_PER_ITEM_CENTS", "1"))
+
+pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+# =========================
 # OPENAI CLIENT
-# ----------------------------
+# =========================
 _openai_client = None
 
 def get_openai_client():
@@ -63,29 +84,9 @@ app.add_middleware(
     same_site="lax",
 )
 
-templates = Jinja2Templates(directory="templates")
-
 
 # =========================
-# ROOT (Render health)
-# =========================
-@app.get("/", response_class=PlainTextResponse)
-def root():
-    return "OK"
-
-
-@app.head("/")
-def head_root():
-    return
-
-
-@app.head("/admin")
-def head_admin():
-    return
-
-
-# =========================
-# DATABASE
+# DB helpers
 # =========================
 def db():
     if not DATABASE_URL:
@@ -93,10 +94,15 @@ def db():
     return psycopg2.connect(DATABASE_URL)
 
 
+def now_utc():
+    return datetime.now(timezone.utc)
+
+
 def init_db():
     con = db()
     cur = con.cursor()
 
+    # ---- LICENSES (старое, оставляем для совместимости) ----
     cur.execute("""
     CREATE TABLE IF NOT EXISTS licenses (
         key TEXT PRIMARY KEY,
@@ -124,6 +130,31 @@ def init_db():
     );
     """)
 
+    # ---- USERS (новое: аккаунты) ----
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      email TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      subscription_expiry TIMESTAMPTZ,
+      ai_balance_cents INTEGER NOT NULL DEFAULT 0,
+      device_hwid TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    """)
+
+    # ---- Wallet ledger (чтобы всегда было видно списания/начисления) ----
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS wallet_ledger (
+      id BIGSERIAL PRIMARY KEY,
+      ts TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      delta_cents INTEGER NOT NULL,
+      reason TEXT NOT NULL,
+      meta JSONB
+    );
+    """)
+
     con.commit()
     cur.close()
     con.close()
@@ -134,358 +165,24 @@ def startup():
     init_db()
 
 
-def now():
-    return datetime.now(timezone.utc)
-
-
-def is_admin(request: Request):
-    return request.session.get("is_admin")
-
-
 # =========================
-# CLIENT API (LICENSE CHECK)
+# ADMIN helpers
 # =========================
-class CheckReq(BaseModel):
-    key: str
-    hwid: str
+templates = Jinja2Templates(directory="templates")
 
 
-@app.post("/api/check")
-def check(req: CheckReq):
-    con = db()
-    cur = con.cursor()
-    cur.execute(
-        "SELECT hwid, expires_at, revoked FROM licenses WHERE key=%s",
-        (req.key,)
-    )
-    row = cur.fetchone()
+def is_admin_session(request: Request) -> bool:
+    return bool(request.session.get("is_admin"))
 
-    if not row:
-        raise HTTPException(status_code=401, detail="key_not_found")
 
-    hwid, expires_at, revoked = row
+def require_admin(request: Request, x_admin_token: Optional[str]):
+    # можно зайти как админ через браузерную сессию
+    if is_admin_session(request):
+        return
+    # либо через заголовок x-admin-token
+    if ADMIN_TOKEN and x_admin_token and x_admin_token.strip() == ADMIN_TOKEN:
+        return
+    raise HTTPException(status_code=403, detail="admin_required")
 
-    cur.execute("""
-        UPDATE licenses
-        SET last_check_at=NOW(), check_count=check_count+1
-        WHERE key=%s
-    """, (req.key,))
-    con.commit()
 
-    cur.close()
-    con.close()
-
-    if revoked:
-        raise HTTPException(status_code=403, detail="revoked")
-
-    if hwid != req.hwid:
-        raise HTTPException(status_code=403, detail="hwid_mismatch")
-
-    if now() > expires_at:
-        raise HTTPException(status_code=403, detail="expired")
-
-    return {"ok": True, "expires_at": expires_at.isoformat()}
-
-
-# =========================
-# AI DIAGNOSTIC
-# =========================
-@app.get("/api/ai/ping")
-def ai_ping():
-    key_ok = bool(os.environ.get("OPENAI_API_KEY", "").strip())
-    try:
-        import openai
-        ver = getattr(openai, "__version__", "unknown")
-    except Exception as e:
-        ver = f"import_error: {e}"
-    return {"ok": True, "openai_version": ver, "key_set": key_ok}
-
-
-# =========================
-# ADMIN LOGIN
-# =========================
-@app.get("/admin/login", response_class=HTMLResponse)
-def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request, "error": ""})
-
-
-@app.post("/admin/login")
-def login(request: Request, token: str = Form(...)):
-    if token != ADMIN_TOKEN:
-        return templates.TemplateResponse(
-            "login.html",
-            {"request": request, "error": "Неверный токен"}
-        )
-
-    request.session["is_admin"] = True
-    return RedirectResponse("/admin", status_code=303)
-
-
-@app.post("/admin/logout")
-def logout(request: Request):
-    request.session.clear()
-    return RedirectResponse("/admin/login", status_code=303)
-
-
-# =========================
-# ADMIN PANEL
-# =========================
-@app.get("/admin", response_class=HTMLResponse)
-def admin_panel(request: Request):
-    if not is_admin(request):
-        return RedirectResponse("/admin/login", status_code=303)
-
-    con = db()
-    cur = con.cursor(cursor_factory=RealDictCursor)
-    cur.execute("""
-        SELECT * FROM licenses
-        ORDER BY updated_at DESC
-        LIMIT 500
-    """)
-    rows = cur.fetchall()
-    cur.close()
-    con.close()
-
-    stats = {
-        "total": len(rows),
-        "active": len([r for r in rows if not r["revoked"] and r["expires_at"] > now()]),
-        "revoked": len([r for r in rows if r["revoked"]]),
-        "expired": len([r for r in rows if not r["revoked"] and r["expires_at"] <= now()])
-    }
-
-    return templates.TemplateResponse(
-        "admin.html",
-        {
-            "request": request,
-            "rows": rows,
-            "stats": stats,
-        }
-    )
-
-
-# =========================
-# CREATE / UPDATE LICENSE
-# =========================
-@app.post("/admin/upsert")
-def upsert_license(
-    request: Request,
-    key: str = Form(...),
-    hwid: str = Form(...),
-    days: int = Form(...),
-    note: str = Form("")
-):
-    if not is_admin(request):
-        return RedirectResponse("/admin/login", status_code=303)
-
-    expires = now() + timedelta(days=int(days))
-
-    con = db()
-    cur = con.cursor()
-    cur.execute("""
-        INSERT INTO licenses(key, hwid, expires_at, revoked, note, updated_at)
-        VALUES (%s,%s,%s,FALSE,%s,NOW())
-        ON CONFLICT (key) DO UPDATE SET
-            hwid=EXCLUDED.hwid,
-            expires_at=EXCLUDED.expires_at,
-            revoked=FALSE,
-            note=EXCLUDED.note,
-            updated_at=NOW()
-    """, (key.strip(), hwid.strip(), expires, note.strip()))
-    con.commit()
-    cur.close()
-    con.close()
-
-    return RedirectResponse("/admin", status_code=303)
-
-
-# =========================
-# ADD DAYS
-# =========================
-@app.post("/admin/add_days")
-def add_days(request: Request, key: str = Form(...), add: int = Form(...)):
-    if not is_admin(request):
-        return RedirectResponse("/admin/login", status_code=303)
-
-    con = db()
-    cur = con.cursor()
-    cur.execute("""
-        UPDATE licenses
-        SET expires_at = expires_at + (%s || ' days')::interval,
-            revoked = FALSE,
-            updated_at = NOW()
-        WHERE key=%s
-    """, (add, key))
-    con.commit()
-    cur.close()
-    con.close()
-
-    return RedirectResponse("/admin", status_code=303)
-
-
-# =========================
-# REVOKE / UNREVOKE
-# =========================
-@app.post("/admin/revoke")
-def revoke(request: Request, key: str = Form(...)):
-    if not is_admin(request):
-        return RedirectResponse("/admin/login", status_code=303)
-
-    con = db()
-    cur = con.cursor()
-    cur.execute("UPDATE licenses SET revoked=TRUE WHERE key=%s", (key,))
-    con.commit()
-    cur.close()
-    con.close()
-
-    return RedirectResponse("/admin", status_code=303)
-
-
-@app.post("/admin/unrevoke")
-def unrevoke(request: Request, key: str = Form(...)):
-    if not is_admin(request):
-        return RedirectResponse("/admin/login", status_code=303)
-
-    con = db()
-    cur = con.cursor()
-    cur.execute("UPDATE licenses SET revoked=FALSE WHERE key=%s", (key,))
-    con.commit()
-    cur.close()
-    con.close()
-
-    return RedirectResponse("/admin", status_code=303)
-
-
-# =========================
-# DELETE
-# =========================
-@app.post("/admin/delete")
-def delete(request: Request, key: str = Form(...)):
-    if not is_admin(request):
-        return RedirectResponse("/admin/login", status_code=303)
-
-    con = db()
-    cur = con.cursor()
-    cur.execute("DELETE FROM licenses WHERE key=%s", (key,))
-    con.commit()
-    cur.close()
-    con.close()
-
-    return RedirectResponse("/admin", status_code=303)
-
-
-# =========================
-# EXPORT CSV
-# =========================
-@app.get("/admin/export")
-def export_csv(request: Request):
-    if not is_admin(request):
-        return RedirectResponse("/admin/login", status_code=303)
-
-    con = db()
-    cur = con.cursor(cursor_factory=RealDictCursor)
-    cur.execute("SELECT * FROM licenses ORDER BY updated_at DESC")
-    rows = cur.fetchall()
-    cur.close()
-    con.close()
-
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerow(rows[0].keys() if rows else [])
-
-    for row in rows:
-        writer.writerow(row.values())
-
-    output.seek(0)
-
-    return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=licenses.csv"}
-    )
-
-
-# =========================
-# AI API (совместимо со всеми версиями SDK)
-# =========================
-class AIItem(BaseModel):
-    id: str
-    text: str
-
-class AIScoreReq(BaseModel):
-    prompt: str
-    items: List[AIItem]
-    min_score: int = 70
-    lang: str = "ru"
-
-
-def _extract_json(text: str) -> Dict[str, Any]:
-    """
-    Пытается вытащить JSON-объект из текста (на случай если модель добавила лишнее).
-    """
-    text = (text or "").strip()
-
-    # 1) прямой parse
-    try:
-        return json.loads(text)
-    except Exception:
-        pass
-
-    # 2) вырезаем первый {...} блок
-    m = re.search(r"\{.*\}", text, flags=re.S)
-    if not m:
-        raise ValueError("No JSON object found in model output")
-
-    return json.loads(m.group(0))
-
-
-@app.post("/api/ai/score")
-def ai_score(req: AIScoreReq) -> Dict[str, Any]:
-    try:
-        client = get_openai_client()
-
-        items = [{"id": it.id, "text": (it.text or "")[:1200]} for it in req.items]
-
-        system_prompt = (
-            "Ты анализируешь сообщения пользователей Telegram на русском языке.\n"
-            "Я дам промт (кого ищем) и тексты сообщений людей.\n"
-            "Верни СТРОГО валидный JSON (без markdown, без пояснений) строго в формате:\n"
-            "{ \"results\": [ {\"id\":\"...\",\"score\":0-100,\"pass\":true/false,\"reason\":\"коротко 5-12 слов\",\"flags\":[\"bot_like|spam_like|toxic|low_quality\"...]}, ... ] }\n"
-            "Правило pass: true если score >= min_score и нет flags bot_like/spam_like/toxic.\n"
-            "Reason на русском."
-        )
-
-        payload = {
-            "prompt": req.prompt,
-            "min_score": req.min_score,
-            "items": items
-        }
-
-        resp = client.responses.create(
-            model="gpt-4.1-mini",
-            input=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": json.dumps(payload, ensure_ascii=False)}
-            ],
-        )
-
-        # Самый стабильный способ достать текст в разных SDK:
-        out_text = getattr(resp, "output_text", None)
-        if not out_text:
-            # fallback
-            out_text = ""
-            for o in getattr(resp, "output", []) or []:
-                if getattr(o, "type", None) == "message":
-                    for c in getattr(o, "content", []) or []:
-                        if getattr(c, "type", None) == "output_text":
-                            out_text += getattr(c, "text", "")
-
-        data = _extract_json(out_text)
-
-        if not isinstance(data, dict) or "results" not in data:
-            raise ValueError(f"bad_ai_response: {out_text[:200]}")
-
-        return data
-
-    except Exception as e:
-        # возвращаем понятную причину в JSON
-        raise HTTPException(status_code=500, detail=f"AI error: {type(e).__name__}: {e}")
+# ========================
