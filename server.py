@@ -267,7 +267,7 @@ def generate_session_token() -> str:
 # =========================
 
 class RegisterReq(BaseModel):
-    email: EmailStr
+    email: str  # Временно используем просто строку, а не EmailStr
     password: str
     license_key: str
 
@@ -865,3 +865,4 @@ def ai_score(req: AIScoreReq) -> Dict[str, Any]:
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
+
