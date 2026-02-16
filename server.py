@@ -303,11 +303,11 @@ def startup():
     init_db()
 
 # =========================
-# ИСПРАВЛЕННАЯ ПРОВЕРКА ЛИЦЕНЗИИ (БЕЗ HWID)
+# ПРОВЕРКА ЛИЦЕНЗИИ
 # =========================
 class CheckReq(BaseModel):
     key: str
-    hwid: str  # оставляем для совместимости, но не используем
+    hwid: str
 
 @app.post("/api/check")
 def check(req: CheckReq):
@@ -351,7 +351,7 @@ def check(req: CheckReq):
     return {"ok": True, "expires_at": expires_at.isoformat()}
 
 # =========================
-# API РЕГИСТРАЦИИ И ВХОДА
+# РЕГИСТРАЦИЯ (С ПОДРОБНЫМИ ЛОГАМИ)
 # =========================
 class RegisterReq(BaseModel):
     email: str
@@ -362,10 +362,15 @@ class RegisterReq(BaseModel):
 
 @app.post("/api/auth/register")
 def register(req: RegisterReq, background_tasks: BackgroundTasks, request: Request):
+    print(f"🚀 REGISTER ATTEMPT: {req.email} with key {req.license_key}")
+    print(f"📱 Device fingerprint: {req.device_fingerprint}")
+    
     con = db()
     cur = con.cursor()
     
     try:
+        # Проверяем лицензию
+        print("🔍 Checking license...")
         cur.execute("""
             SELECT key, max_devices, expires_at, revoked 
             FROM licenses 
@@ -374,29 +379,41 @@ def register(req: RegisterReq, background_tasks: BackgroundTasks, request: Reque
         
         license = cur.fetchone()
         if not license:
+            print("❌ License not found")
             raise HTTPException(status_code=404, detail="license_not_found")
         
         key, max_devices, expires_at, revoked = license
+        print(f"✓ License found: {key}, expires: {expires_at}, revoked: {revoked}, max_devices: {max_devices}")
         
         if revoked:
+            print("❌ License revoked")
             raise HTTPException(status_code=403, detail="license_revoked")
         
         if now() > expires_at:
+            print("❌ License expired")
             raise HTTPException(status_code=403, detail="license_expired")
         
+        # Проверяем email
+        print("🔍 Checking email...")
         cur.execute("SELECT id FROM users WHERE email = %s", (req.email,))
         if cur.fetchone():
+            print("❌ Email already registered")
             raise HTTPException(status_code=400, detail="email_already_registered")
         
+        # Создаем пользователя
+        print("🔍 Creating user...")
         password_hash = hash_password(req.password)
         cur.execute("""
-            INSERT INTO users (email, password_hash, license_key)
-            VALUES (%s, %s, %s)
+            INSERT INTO users (email, password_hash, license_key, balance, total_spent)
+            VALUES (%s, %s, %s, 0.00, 0.00)
             RETURNING id
         """, (req.email, password_hash, req.license_key))
         
         user_id = cur.fetchone()[0]
+        print(f"✓ User created with ID: {user_id}")
         
+        # Добавляем устройство
+        print("🔍 Adding device...")
         client_ip = request.client.host if request.client else "0.0.0.0"
         cur.execute("""
             INSERT INTO user_devices (user_id, device_fingerprint, device_name, last_ip)
@@ -405,7 +422,10 @@ def register(req: RegisterReq, background_tasks: BackgroundTasks, request: Reque
         """, (user_id, req.device_fingerprint, req.device_name, client_ip))
         
         device_id = cur.fetchone()[0]
+        print(f"✓ Device added with ID: {device_id}")
         
+        # Создаем сессию
+        print("🔍 Creating session...")
         session_token = generate_token()
         expires_at_session = now() + timedelta(days=30)
         
@@ -413,7 +433,10 @@ def register(req: RegisterReq, background_tasks: BackgroundTasks, request: Reque
             INSERT INTO user_sessions (user_id, session_token, device_id, expires_at)
             VALUES (%s, %s, %s, %s)
         """, (user_id, session_token, device_id, expires_at_session))
+        print(f"✓ Session created with token: {session_token[:10]}...")
         
+        # Создаем подтверждение email
+        print("🔍 Creating email confirmation...")
         confirm_token = generate_token()
         confirm_expires = now() + timedelta(hours=24)
         
@@ -421,14 +444,19 @@ def register(req: RegisterReq, background_tasks: BackgroundTasks, request: Reque
             INSERT INTO email_confirmations (user_id, token, expires_at)
             VALUES (%s, %s, %s)
         """, (user_id, confirm_token, confirm_expires))
+        print(f"✓ Email confirmation created with token: {confirm_token[:10]}...")
         
         con.commit()
+        print("✅ All changes committed!")
         
+        # Отправляем письмо
+        print("📧 Sending confirmation email...")
         background_tasks.add_task(
             send_confirmation_email,
             req.email,
             confirm_token
         )
+        print("📧 Email task added")
         
         return {
             "success": True,
@@ -439,15 +467,24 @@ def register(req: RegisterReq, background_tasks: BackgroundTasks, request: Reque
         }
         
     except HTTPException:
+        print("❌ HTTPException occurred")
         con.rollback()
         raise
     except Exception as e:
+        print(f"❌ UNEXPECTED ERROR: {str(e)}")
+        print(f"❌ Error type: {type(e).__name__}")
+        import traceback
+        traceback.print_exc()
         con.rollback()
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         cur.close()
         con.close()
+        print("🔚 Register function finished")
 
+# =========================
+# ВХОД
+# =========================
 class LoginReq(BaseModel):
     email: str
     password: str
@@ -456,6 +493,8 @@ class LoginReq(BaseModel):
 
 @app.post("/api/auth/login")
 def login(req: LoginReq, request: Request):
+    print(f"🚀 LOGIN ATTEMPT: {req.email}")
+    
     con = db()
     cur = con.cursor(cursor_factory=RealDictCursor)
     
@@ -469,12 +508,19 @@ def login(req: LoginReq, request: Request):
         
         user = cur.fetchone()
         if not user:
+            print("❌ User not found")
             raise HTTPException(status_code=401, detail="invalid_credentials")
+        
+        print(f"✓ User found: {user['email']}")
         
         if not verify_password(req.password, user['password_hash']):
+            print("❌ Invalid password")
             raise HTTPException(status_code=401, detail="invalid_credentials")
         
+        print("✓ Password correct")
+        
         if not user['email_confirmed']:
+            print("❌ Email not confirmed")
             confirm_token = generate_token()
             confirm_expires = now() + timedelta(hours=24)
             
@@ -493,6 +539,7 @@ def login(req: LoginReq, request: Request):
                 }
             )
         
+        print("🔍 Checking device...")
         cur.execute("""
             SELECT * FROM user_devices 
             WHERE user_id = %s AND device_fingerprint = %s
@@ -502,6 +549,7 @@ def login(req: LoginReq, request: Request):
         client_ip = request.client.host if request.client else "0.0.0.0"
         
         if device:
+            print(f"✓ Existing device found: {device['device_name']}")
             device_id = device['id']
             cur.execute("""
                 UPDATE user_devices 
@@ -509,13 +557,17 @@ def login(req: LoginReq, request: Request):
                 WHERE id = %s
             """, (client_ip, device_id))
         else:
+            print("🔍 New device, checking limit...")
             cur.execute("""
                 SELECT COUNT(*) FROM user_devices 
                 WHERE user_id = %s AND is_active = TRUE
             """, (user['id'],))
             device_count = cur.fetchone()['count']
             
+            print(f"Active devices: {device_count}, max: {user['max_devices']}")
+            
             if device_count >= user['max_devices']:
+                print("❌ Device limit exceeded")
                 cur.execute("""
                     SELECT * FROM user_devices 
                     WHERE user_id = %s
@@ -540,6 +592,7 @@ def login(req: LoginReq, request: Request):
                     }
                 )
             
+            print("✓ Adding new device...")
             cur.execute("""
                 INSERT INTO user_devices (user_id, device_fingerprint, device_name, last_ip)
                 VALUES (%s, %s, %s, %s)
@@ -547,7 +600,9 @@ def login(req: LoginReq, request: Request):
             """, (user['id'], req.device_fingerprint, req.device_name, client_ip))
             
             device_id = cur.fetchone()['id']
+            print(f"✓ New device added with ID: {device_id}")
         
+        print("🔍 Creating session...")
         session_token = generate_token()
         expires_at_session = now() + timedelta(days=30)
         
@@ -561,6 +616,7 @@ def login(req: LoginReq, request: Request):
         """, (user['id'],))
         
         con.commit()
+        print(f"✓ Session created: {session_token[:10]}...")
         
         cur.execute("""
             SELECT * FROM user_devices 
@@ -595,6 +651,7 @@ def login(req: LoginReq, request: Request):
         con.rollback()
         raise
     except Exception as e:
+        print(f"❌ UNEXPECTED ERROR: {str(e)}")
         con.rollback()
         raise HTTPException(status_code=500, detail=str(e))
     finally:
@@ -1507,13 +1564,13 @@ def ai_score(req: AIScoreReq) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"AI error: {type(e).__name__}: {e}")
 
 # =========================
-# CRUD ДЛЯ ЛИЦЕНЗИЙ (ИСПРАВЛЕНО - HWID НЕ ОБЯЗАТЕЛЕН)
+# CRUD ДЛЯ ЛИЦЕНЗИЙ
 # =========================
 @app.post("/admin/upsert")
 def upsert_license(
     request: Request,
     key: str = Form(...),
-    hwid: str = Form(""),  # больше не обязателен
+    hwid: str = Form(""),
     days: int = Form(...),
     note: str = Form("")
 ):
@@ -1525,7 +1582,6 @@ def upsert_license(
     con = db()
     cur = con.cursor()
     
-    # Если HWID не указан, ставим временное значение
     hwid_value = hwid.strip() if hwid.strip() else "temp"
     
     cur.execute("""
