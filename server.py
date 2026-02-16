@@ -484,7 +484,7 @@ def confirm_email(token: str):
         con.close()
 
 # =========================
-# АДМИН ПАНЕЛЬ (С НОВОЙ СТАТИСТИКОЙ)
+# АДМИН ПАНЕЛЬ (ИСПРАВЛЕННАЯ)
 # =========================
 @app.get("/admin", response_class=HTMLResponse)
 def admin_panel(request: Request):
@@ -583,6 +583,7 @@ def admin_panel(request: Request):
             "request": request,
             "rows": rows,
             "stats": stats,
+            "now": now_ts,  # 👈 ВАЖНО: передаем текущую дату в шаблон
         }
     )
     
@@ -748,5 +749,6 @@ def ai_score(req: AIScoreReq) -> Dict[str, Any]:
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
+
 
 
