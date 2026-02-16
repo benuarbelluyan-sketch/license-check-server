@@ -484,10 +484,30 @@ def confirm_email(token: str):
         con.close()
 
 # =========================
-# АДМИН ПАНЕЛЬ (ИСПРАВЛЕННАЯ)
+# АДМИН ПАНЕЛЬ - ДАШБОРД
 # =========================
+@app.get("/admin/login", response_class=HTMLResponse)
+def login_page(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request, "error": ""})
+
+@app.post("/admin/login")
+def login(request: Request, token: str = Form(...)):
+    if token != ADMIN_TOKEN:
+        return templates.TemplateResponse(
+            "login.html",
+            {"request": request, "error": "Неверный токен"}
+        )
+    
+    request.session["is_admin"] = True
+    return RedirectResponse("/admin", status_code=303)
+
+@app.post("/admin/logout")
+def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse("/admin/login", status_code=303)
+
 @app.get("/admin", response_class=HTMLResponse)
-def admin_panel(request: Request):
+def admin_dashboard(request: Request):
     if not is_admin(request):
         return RedirectResponse("/admin/login", status_code=303)
     
@@ -513,7 +533,7 @@ def admin_panel(request: Request):
             else:
                 expired += 1
         
-        # Пробуем получить статистику пользователей
+        # Статистика пользователей
         try:
             cur.execute("SELECT COUNT(*) as count FROM users")
             total_users = cur.fetchone()['count'] or 0
@@ -578,15 +598,168 @@ def admin_panel(request: Request):
         con.close()
     
     return templates.TemplateResponse(
-        "admin.html",
+        "admin_dashboard.html",
         {
             "request": request,
             "rows": rows,
             "stats": stats,
-            "now": now_ts,  # 👈 ВАЖНО: передаем текущую дату в шаблон
+            "now": now_ts,
+            "active_tab": "dashboard"
         }
     )
+
+# =========================
+# СТРАНИЦА ЛИЦЕНЗИЙ
+# =========================
+@app.get("/admin/licenses", response_class=HTMLResponse)
+def admin_licenses(request: Request):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
     
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    
+    try:
+        cur.execute("SELECT * FROM licenses ORDER BY updated_at DESC LIMIT 500")
+        rows = cur.fetchall()
+    except:
+        rows = []
+    finally:
+        cur.close()
+        con.close()
+    
+    return templates.TemplateResponse(
+        "admin_licenses.html",
+        {
+            "request": request,
+            "rows": rows,
+            "now": now(),
+            "active_tab": "licenses"
+        }
+    )
+
+# =========================
+# СТРАНИЦА ПОЛЬЗОВАТЕЛЕЙ
+# =========================
+@app.get("/admin/users", response_class=HTMLResponse)
+def admin_users(request: Request):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+    
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    
+    try:
+        cur.execute("""
+            SELECT u.*, l.plan, l.expires_at as license_expires 
+            FROM users u
+            LEFT JOIN licenses l ON u.license_key = l.key
+            ORDER BY u.created_at DESC
+            LIMIT 500
+        """)
+        users = cur.fetchall()
+    except:
+        users = []
+    finally:
+        cur.close()
+        con.close()
+    
+    return templates.TemplateResponse(
+        "admin_users.html",
+        {
+            "request": request,
+            "users": users,
+            "active_tab": "users"
+        }
+    )
+
+# =========================
+# СТРАНИЦА УСТРОЙСТВ
+# =========================
+@app.get("/admin/devices", response_class=HTMLResponse)
+def admin_devices(request: Request):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+    
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    
+    try:
+        cur.execute("""
+            SELECT d.*, u.email, u.license_key
+            FROM user_devices d
+            JOIN users u ON d.user_id = u.id
+            WHERE d.is_active = TRUE
+            ORDER BY d.last_login DESC
+            LIMIT 500
+        """)
+        devices = cur.fetchall()
+    except:
+        devices = []
+    finally:
+        cur.close()
+        con.close()
+    
+    return templates.TemplateResponse(
+        "admin_devices.html",
+        {
+            "request": request,
+            "devices": devices,
+            "active_tab": "devices"
+        }
+    )
+
+# =========================
+# СТРАНИЦА ТРАНЗАКЦИЙ
+# =========================
+@app.get("/admin/transactions", response_class=HTMLResponse)
+def admin_transactions(request: Request):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+    
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    
+    try:
+        cur.execute("""
+            SELECT t.*, u.email
+            FROM transactions t
+            JOIN users u ON t.user_id = u.id
+            ORDER BY t.created_at DESC
+            LIMIT 500
+        """)
+        transactions = cur.fetchall()
+    except:
+        transactions = []
+    finally:
+        cur.close()
+        con.close()
+    
+    return templates.TemplateResponse(
+        "admin_transactions.html",
+        {
+            "request": request,
+            "transactions": transactions,
+            "active_tab": "transactions"
+        }
+    )
+
+# =========================
+# СТРАНИЦА НАСТРОЕК
+# =========================
+@app.get("/admin/settings", response_class=HTMLResponse)
+def admin_settings(request: Request):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+    
+    return templates.TemplateResponse(
+        "admin_settings.html",
+        {
+            "request": request,
+            "active_tab": "settings"
+        }
+    )
+
 # =========================
 # API УСТРОЙСТВ
 # =========================
@@ -627,6 +800,73 @@ def list_devices(req: DeviceReq):
         cur.close()
         con.close()
 
+@app.post("/api/devices/rename")
+def rename_device(device_id: int, new_name: str, session_token: str):
+    con = db()
+    cur = con.cursor()
+    
+    try:
+        cur.execute("""
+            UPDATE user_devices 
+            SET device_name = %s
+            WHERE id = %s AND user_id = (
+                SELECT user_id FROM user_sessions WHERE session_token = %s
+            )
+        """, (new_name, device_id, session_token))
+        
+        con.commit()
+        return {"success": True}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+@app.post("/api/devices/remove")
+def remove_device(device_id: int, session_token: str):
+    con = db()
+    cur = con.cursor()
+    
+    try:
+        cur.execute("""
+            SELECT d.id 
+            FROM user_devices d
+            JOIN user_sessions s ON d.user_id = s.user_id
+            WHERE s.session_token = %s AND d.id = %s AND d.device_fingerprint != (
+                SELECT device_fingerprint FROM user_devices WHERE id = (
+                    SELECT device_id FROM user_sessions WHERE session_token = %s
+                )
+            )
+        """, (session_token, device_id, session_token))
+        
+        if not cur.fetchone():
+            raise HTTPException(status_code=403, detail="cannot_remove_current_device")
+        
+        cur.execute("""
+            UPDATE user_devices 
+            SET is_active = FALSE
+            WHERE id = %s
+        """, (device_id,))
+        
+        cur.execute("""
+            DELETE FROM user_sessions 
+            WHERE device_id = %s
+        """, (device_id,))
+        
+        con.commit()
+        return {"success": True}
+        
+    except HTTPException:
+        con.rollback()
+        raise
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
 # =========================
 # API БАЛАНСА
 # =========================
@@ -656,6 +896,129 @@ def get_balance(req: BalanceReq):
             "currency": user['currency']
         }
         
+    finally:
+        cur.close()
+        con.close()
+
+class EstimateReq(BaseModel):
+    session_token: str
+    operation: str
+    units: int
+
+@app.post("/api/balance/estimate")
+def estimate_cost(req: EstimateReq):
+    con = db()
+    cur = con.cursor()
+    
+    try:
+        cur.execute("""
+            SELECT final_price, min_units 
+            FROM pricing 
+            WHERE operation_type = %s
+        """, (req.operation,))
+        
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="operation_not_found")
+        
+        final_price, min_units = row
+        units = max(req.units, min_units)
+        total_cost = final_price * units
+        
+        cur.execute("""
+            SELECT u.balance 
+            FROM users u
+            JOIN user_sessions s ON u.id = s.user_id
+            WHERE s.session_token = %s
+        """, (req.session_token,))
+        
+        balance = cur.fetchone()[0]
+        
+        return {
+            "total_cost": float(total_cost),
+            "current_balance": float(balance),
+            "sufficient": balance >= total_cost
+        }
+        
+    finally:
+        cur.close()
+        con.close()
+
+class ChargeReq(BaseModel):
+    session_token: str
+    operation: str
+    units: int
+    description: str = ""
+
+@app.post("/api/balance/charge")
+def charge(req: ChargeReq):
+    con = db()
+    cur = con.cursor()
+    
+    try:
+        cur.execute("BEGIN")
+        
+        cur.execute("""
+            SELECT final_price, min_units 
+            FROM pricing 
+            WHERE operation_type = %s
+        """, (req.operation,))
+        
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="operation_not_found")
+        
+        final_price, min_units = row
+        units = max(req.units, min_units)
+        total_cost = final_price * units
+        
+        cur.execute("""
+            SELECT u.id, u.balance, u.license_key
+            FROM users u
+            JOIN user_sessions s ON u.id = s.user_id
+            WHERE s.session_token = %s
+            FOR UPDATE
+        """, (req.session_token,))
+        
+        user = cur.fetchone()
+        if not user:
+            raise HTTPException(status_code=401, detail="invalid_session")
+        
+        user_id, balance, license_key = user
+        
+        if balance < total_cost:
+            raise HTTPException(status_code=403, detail="insufficient_funds")
+        
+        cur.execute("""
+            UPDATE users 
+            SET balance = balance - %s, total_spent = total_spent + %s
+            WHERE id = %s
+            RETURNING balance
+        """, (total_cost, total_cost, user_id))
+        
+        new_balance = cur.fetchone()[0]
+        
+        cur.execute("""
+            INSERT INTO usage_logs 
+            (user_id, license_key, operation_type, units_used, cost, details)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (user_id, license_key, req.operation, units, total_cost, 
+              json.dumps({"description": req.description})))
+        
+        cur.execute("COMMIT")
+        
+        return {
+            "success": True,
+            "charged": float(total_cost),
+            "new_balance": float(new_balance)
+        }
+        
+    except HTTPException:
+        cur.execute("ROLLBACK")
+        raise
+    except Exception as e:
+        cur.execute("ROLLBACK")
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         cur.close()
         con.close()
@@ -744,11 +1107,146 @@ def ai_score(req: AIScoreReq) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"AI error: {type(e).__name__}: {e}")
 
 # =========================
+# CRUD ДЛЯ ЛИЦЕНЗИЙ
+# =========================
+@app.post("/admin/upsert")
+def upsert_license(
+    request: Request,
+    key: str = Form(...),
+    hwid: str = Form(...),
+    days: int = Form(...),
+    note: str = Form("")
+):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+
+    expires = now() + timedelta(days=int(days))
+
+    con = db()
+    cur = con.cursor()
+    cur.execute("""
+        INSERT INTO licenses(key, hwid, expires_at, revoked, note, updated_at)
+        VALUES (%s,%s,%s,FALSE,%s,NOW())
+        ON CONFLICT (key) DO UPDATE SET
+            hwid=EXCLUDED.hwid,
+            expires_at=EXCLUDED.expires_at,
+            revoked=FALSE,
+            note=EXCLUDED.note,
+            updated_at=NOW()
+    """, (key.strip(), hwid.strip(), expires, note.strip()))
+    con.commit()
+    cur.close()
+    con.close()
+
+    return RedirectResponse("/admin", status_code=303)
+
+@app.post("/admin/add_days")
+def add_days(request: Request, key: str = Form(...), add: int = Form(...)):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+
+    con = db()
+    cur = con.cursor()
+    cur.execute("""
+        UPDATE licenses
+        SET expires_at = expires_at + (%s || ' days')::interval,
+            revoked = FALSE,
+            updated_at = NOW()
+        WHERE key=%s
+    """, (add, key))
+    con.commit()
+    cur.close()
+    con.close()
+
+    return RedirectResponse("/admin", status_code=303)
+
+@app.post("/admin/revoke")
+def revoke(request: Request, key: str = Form(...)):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+
+    con = db()
+    cur = con.cursor()
+    cur.execute("UPDATE licenses SET revoked=TRUE WHERE key=%s", (key,))
+    con.commit()
+    cur.close()
+    con.close()
+
+    return RedirectResponse("/admin", status_code=303)
+
+@app.post("/admin/unrevoke")
+def unrevoke(request: Request, key: str = Form(...)):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+
+    con = db()
+    cur = con.cursor()
+    cur.execute("UPDATE licenses SET revoked=FALSE WHERE key=%s", (key,))
+    con.commit()
+    cur.close()
+    con.close()
+
+    return RedirectResponse("/admin", status_code=303)
+
+@app.post("/admin/delete")
+def delete(request: Request, key: str = Form(...)):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+
+    con = db()
+    cur = con.cursor()
+    cur.execute("DELETE FROM licenses WHERE key=%s", (key,))
+    con.commit()
+    cur.close()
+    con.close()
+
+    return RedirectResponse("/admin", status_code=303)
+
+@app.get("/admin/export")
+def export_csv(request: Request):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    cur.execute("SELECT * FROM licenses ORDER BY updated_at DESC")
+    rows = cur.fetchall()
+    cur.close()
+    con.close()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    if rows:
+        writer.writerow(rows[0].keys())
+        for row in rows:
+            writer.writerow(row.values())
+
+    output.seek(0)
+
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=licenses.csv"}
+    )
+
+@app.post("/admin/generate_key")
+def generate_key(request: Request, prefix: str = Form("")):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+    
+    import random
+    import string
+    suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+    key = f"{prefix}-{suffix}" if prefix else suffix
+    
+    return templates.TemplateResponse(
+        "admin.html",
+        {"request": request, "generated_key": key}
+    )
+
+# =========================
 # ЗАПУСК
 # =========================
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
-
-
-
