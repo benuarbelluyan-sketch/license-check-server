@@ -168,7 +168,6 @@
       color: white;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.2s;
     }
 
     .btn-primary:hover {
@@ -263,10 +262,6 @@
       border-bottom: 1px solid #1e242c;
     }
 
-    tr:last-child td {
-      border-bottom: none;
-    }
-
     tr:hover td {
       background: #151a24;
     }
@@ -306,11 +301,12 @@
     .action-btn {
       padding: 6px 12px;
       border-radius: 30px;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 500;
       border: none;
       cursor: pointer;
       transition: all 0.2s;
+      white-space: nowrap;
     }
 
     .action-btn.ok {
@@ -346,6 +342,17 @@
       color: #fff;
     }
 
+    .action-btn.settings {
+      background: rgba(59, 130, 246, 0.1);
+      color: #3b82f6;
+      border: 1px solid rgba(59, 130, 246, 0.2);
+    }
+
+    .action-btn.settings:hover {
+      background: #3b82f6;
+      color: #fff;
+    }
+
     .mono {
       font-family: 'JetBrains Mono', monospace;
       font-size: 13px;
@@ -356,6 +363,53 @@
       color: #6b7a8f;
       font-size: 13px;
       text-align: center;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.7);
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: #0f1217;
+      border: 1px solid #1e242c;
+      border-radius: 20px;
+      padding: 32px;
+      max-width: 400px;
+      width: 90%;
+    }
+
+    .modal-content h3 {
+      margin-bottom: 20px;
+      font-size: 20px;
+    }
+
+    .modal-content select {
+      width: 100%;
+      background: #0a0c10;
+      border: 1px solid #1e242c;
+      border-radius: 12px;
+      padding: 12px 16px;
+      color: #e5e9f0;
+      margin-bottom: 20px;
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
     }
   </style>
 </head>
@@ -403,131 +457,4 @@
 
     <!-- Поиск и фильтр -->
     <div class="action-bar">
-      <div class="search-box">
-        <input type="text" placeholder="🔍 Поиск по key, hwid, note..." value="{{ q or '' }}">
-        <select>
-          <option value="all" {% if status=="all" %}selected{% endif %}>Все статусы</option>
-          <option value="active" {% if status=="active" %}selected{% endif %}>Active</option>
-          <option value="expired" {% if status=="expired" %}selected{% endif %}>Expired</option>
-          <option value="revoked" {% if status=="revoked" %}selected{% endif %}>Revoked</option>
-        </select>
-        <button class="btn-primary">Найти</button>
-      </div>
-      <a href="/admin/export" style="text-decoration:none;">
-        <button class="btn-secondary">📥 Экспорт CSV</button>
-      </a>
-    </div>
-
-    <!-- Создание лицензии -->
-    <div class="create-card">
-      <h3>✨ Создать новую лицензию</h3>
-      <form method="post" action="/admin/upsert">
-        <div class="form-grid">
-          <div class="form-group">
-            <input name="key" placeholder="KEY (например MY-PC-001)" required>
-          </div>
-          <div class="form-group">
-            <input name="hwid" placeholder="HWID (UUID клиента)" required>
-          </div>
-          <div class="form-group">
-            <input name="days" type="number" placeholder="Срок (дни)" value="30" required>
-          </div>
-          <div class="form-group">
-            <select name="plan">
-              <option value="custom">custom (базовый)</option>
-              <option value="m1">m1 (1 месяц)</option>
-              <option value="m3">m3 (3 месяца)</option>
-              <option value="m6">m6 (6 месяцев)</option>
-              <option value="y1">y1 (1 год)</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <input name="note" placeholder="Заметка (необязательно)">
-          </div>
-        </div>
-        <div class="generate-section">
-          <button class="btn-primary" type="submit">💾 Сохранить лицензию</button>
-          <span style="color:#9aa4b2;">или</span>
-          <button class="btn-secondary" type="button" onclick="alert('Сгенерирован: VIP-' + Math.random().toString(36).substring(7).toUpperCase())">🎲 Generate KEY</button>
-          <span style="color:#6b7a8f; font-size:13px; margin-left:auto;">
-            Совет: клиент присылает HWID → ты генеришь KEY
-          </span>
-        </div>
-      </form>
-    </div>
-
-    <!-- Таблица лицензий -->
-    <div class="table-container">
-      <table>
-        <thead>
-          <tr>
-            <th>KEY</th>
-            <th>HWID</th>
-            <th>Действует до</th>
-            <th>Статус</th>
-            <th>План</th>
-            <th>Проверок</th>
-            <th>Заметка</th>
-            <th>Действия</th>
-          </tr>
-        </thead>
-        <tbody>
-        {% for r in rows %}
-          <tr>
-            <td class="mono"><b>{{ r.key }}</b></td>
-            <td class="mono">{{ r.hwid[:16] }}...</td>
-            <td class="mono">{{ r.expires_at.strftime('%Y-%m-%d') }}</td>
-            <td>
-              {% if r.revoked %}
-                <span class="badge revoked">revoked</span>
-              {% elif r.expires_at <= now %}
-                <span class="badge expired">expired</span>
-              {% else %}
-                <span class="badge active">active</span>
-              {% endif %}
-            </td>
-            <td><span class="badge">{{ r.plan }}</span></td>
-            <td>{{ r.check_count }}</td>
-            <td>{{ r.note or '—' }}</td>
-            <td>
-              <div class="actions">
-                <form method="post" action="/admin/add_days" style="display:inline;">
-                  <input type="hidden" name="key" value="{{ r.key }}">
-                  <input type="hidden" name="add" value="30">
-                  <button class="action-btn ok" type="submit">+30</button>
-                </form>
-                <form method="post" action="/admin/add_days" style="display:inline;">
-                  <input type="hidden" name="key" value="{{ r.key }}">
-                  <input type="hidden" name="add" value="90">
-                  <button class="action-btn secondary" type="submit">+90</button>
-                </form>
-                {% if r.revoked %}
-                <form method="post" action="/admin/unrevoke" style="display:inline;">
-                  <input type="hidden" name="key" value="{{ r.key }}">
-                  <button class="action-btn secondary" type="submit">Unrevoke</button>
-                </form>
-                {% else %}
-                <form method="post" action="/admin/revoke" style="display:inline;" onsubmit="return confirm('Заблокировать ключ {{ r.key }}?');">
-                  <input type="hidden" name="key" value="{{ r.key }}">
-                  <button class="action-btn warn" type="submit">Revoke</button>
-                </form>
-                {% endif %}
-                <form method="post" action="/admin/delete" style="display:inline;" onsubmit="return confirm('Удалить ключ {{ r.key }}? Это необратимо!');">
-                  <input type="hidden" name="key" value="{{ r.key }}">
-                  <button class="action-btn warn" type="submit">Delete</button>
-                </form>
-              </div>
-            </td>
-          </tr>
-        {% endfor %}
-        </tbody>
-      </table>
-    </div>
-
-    <div class="footer-note">
-      Показано максимум 500 записей • Используйте поиск и фильтры
-    </div>
-  </div>
-</div>
-</body>
-</html>
+      <div class="search-box
