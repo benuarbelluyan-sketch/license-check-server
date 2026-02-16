@@ -6,16 +6,13 @@ import re
 import secrets
 import hashlib
 import hmac
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any, Optional
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
-from fastapi import FastAPI, HTTPException, Request, Form, Cookie, Response, BackgroundTasks
+from fastapi import FastAPI, HTTPException, Request, Form, BackgroundTasks
 from fastapi.responses import (
     HTMLResponse,
     RedirectResponse,
@@ -32,21 +29,7 @@ from openai import OpenAI
 app = FastAPI()
 
 # =========================
-# НАСТРОЙКИ
-# =========================
-DATABASE_URL = os.environ.get("DATABASE_URL", "")
-ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
-ADMIN_PANEL_SECRET = os.environ.get("ADMIN_PANEL_SECRET", "change-me")
-
-# Для отправки писем (пока заглушка, потом подключим SendGrid)
-SMTP_HOST = os.environ.get("SMTP_HOST", "")
-SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
-SMTP_USER = os.environ.get("SMTP_USER", "")
-SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
-SMTP_FROM = os.environ.get("SMTP_FROM", "noreply@tgparsersender.me")
-
-# =========================
-# ГЛОБАЛЬНЫЙ ОБРАБОТЧИК
+# ГЛОБАЛЬНЫЙ ОБРАБОТЧИК ОШИБОК
 # =========================
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
@@ -56,16 +39,11 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 # =========================
-# СЕССИИ
+# НАСТРОЙКИ
 # =========================
-app.add_middleware(
-    SessionMiddleware,
-    secret_key=ADMIN_PANEL_SECRET,
-    https_only=True,
-    same_site="lax",
-)
-
-templates = Jinja2Templates(directory="templates")
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
+ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
+ADMIN_PANEL_SECRET = os.environ.get("ADMIN_PANEL_SECRET", "change-me")
 
 # =========================
 # OPENAI
@@ -82,6 +60,18 @@ def get_openai_client():
     return _openai_client
 
 # =========================
+# СЕССИИ
+# =========================
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=ADMIN_PANEL_SECRET,
+    https_only=True,
+    same_site="lax",
+)
+
+templates = Jinja2Templates(directory="templates")
+
+# =========================
 # ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 # =========================
 def now():
@@ -91,12 +81,10 @@ def is_admin(request: Request):
     return request.session.get("is_admin")
 
 def hash_password(password: str) -> str:
-    """Хеширование пароля"""
     salt = secrets.token_hex(16)
     return salt + ':' + hashlib.sha256((salt + password).encode()).hexdigest()
 
 def verify_password(password: str, password_hash: str) -> bool:
-    """Проверка пароля"""
     try:
         salt, hash_val = password_hash.split(':')
         return hash_val == hashlib.sha256((salt + password).encode()).hexdigest()
@@ -104,7 +92,6 @@ def verify_password(password: str, password_hash: str) -> bool:
         return False
 
 def generate_token() -> str:
-    """Генерация случайного токена"""
     return secrets.token_urlsafe(32)
 
 # =========================
@@ -159,7 +146,7 @@ def init_db():
         """)
         print("✓ users")
         
-        # Таблица устройств (fingerprint)
+        # Таблица устройств
         cur.execute("""
         CREATE TABLE IF NOT EXISTS user_devices (
             id BIGSERIAL PRIMARY KEY,
@@ -175,7 +162,7 @@ def init_db():
         """)
         print("✓ user_devices")
         
-        # Таблица сессий (для входа)
+        # Таблица сессий
         cur.execute("""
         CREATE TABLE IF NOT EXISTS user_sessions (
             id BIGSERIAL PRIMARY KEY,
@@ -242,7 +229,6 @@ def init_db():
         );
         """)
         
-        # Заполняем тарифы
         cur.execute("""
         INSERT INTO pricing (operation_type, base_price, final_price, min_units, description)
         VALUES 
@@ -362,7 +348,6 @@ def check(req: CheckReq):
 # =========================
 # API РЕГИСТРАЦИИ И ВХОДА
 # =========================
-
 class RegisterReq(BaseModel):
     email: str
     password: str
@@ -371,13 +356,11 @@ class RegisterReq(BaseModel):
     device_name: str = "Мой компьютер"
 
 @app.post("/api/auth/register")
-def register(req: RegisterReq, background_tasks: BackgroundTasks):
-    """Регистрация нового пользователя"""
+def register(req: RegisterReq, background_tasks: BackgroundTasks, request: Request):
     con = db()
     cur = con.cursor()
     
     try:
-        # Проверяем лицензию
         cur.execute("""
             SELECT key, max_devices, expires_at, revoked 
             FROM licenses 
@@ -396,12 +379,10 @@ def register(req: RegisterReq, background_tasks: BackgroundTasks):
         if now() > expires_at:
             raise HTTPException(status_code=403, detail="license_expired")
         
-        # Проверяем email
         cur.execute("SELECT id FROM users WHERE email = %s", (req.email,))
         if cur.fetchone():
             raise HTTPException(status_code=400, detail="email_already_registered")
         
-        # Создаем пользователя
         password_hash = hash_password(req.password)
         cur.execute("""
             INSERT INTO users (email, password_hash, license_key)
@@ -411,16 +392,15 @@ def register(req: RegisterReq, background_tasks: BackgroundTasks):
         
         user_id = cur.fetchone()[0]
         
-        # Добавляем устройство
+        client_ip = request.client.host if request.client else "0.0.0.0"
         cur.execute("""
             INSERT INTO user_devices (user_id, device_fingerprint, device_name, last_ip)
             VALUES (%s, %s, %s, %s)
             RETURNING id
-        """, (user_id, req.device_fingerprint, req.device_name, req.client.host))
+        """, (user_id, req.device_fingerprint, req.device_name, client_ip))
         
         device_id = cur.fetchone()[0]
         
-        # Создаем сессию
         session_token = generate_token()
         expires_at_session = now() + timedelta(days=30)
         
@@ -429,7 +409,6 @@ def register(req: RegisterReq, background_tasks: BackgroundTasks):
             VALUES (%s, %s, %s, %s)
         """, (user_id, session_token, device_id, expires_at_session))
         
-        # Создаем токен подтверждения email
         confirm_token = generate_token()
         confirm_expires = now() + timedelta(hours=24)
         
@@ -440,7 +419,6 @@ def register(req: RegisterReq, background_tasks: BackgroundTasks):
         
         con.commit()
         
-        # Отправляем письмо (фоново)
         background_tasks.add_task(
             send_confirmation_email,
             req.email,
@@ -473,12 +451,10 @@ class LoginReq(BaseModel):
 
 @app.post("/api/auth/login")
 def login(req: LoginReq, request: Request):
-    """Вход в аккаунт"""
     con = db()
     cur = con.cursor(cursor_factory=RealDictCursor)
     
     try:
-        # Ищем пользователя
         cur.execute("""
             SELECT u.*, l.max_devices 
             FROM users u
@@ -490,13 +466,10 @@ def login(req: LoginReq, request: Request):
         if not user:
             raise HTTPException(status_code=401, detail="invalid_credentials")
         
-        # Проверяем пароль
         if not verify_password(req.password, user['password_hash']):
             raise HTTPException(status_code=401, detail="invalid_credentials")
         
-        # Проверяем подтверждение email
         if not user['email_confirmed']:
-            # Создаем новый токен подтверждения
             confirm_token = generate_token()
             confirm_expires = now() + timedelta(hours=24)
             
@@ -515,24 +488,22 @@ def login(req: LoginReq, request: Request):
                 }
             )
         
-        # Проверяем устройство
         cur.execute("""
             SELECT * FROM user_devices 
             WHERE user_id = %s AND device_fingerprint = %s
         """, (user['id'], req.device_fingerprint))
         
         device = cur.fetchone()
+        client_ip = request.client.host if request.client else "0.0.0.0"
         
         if device:
-            # Устройство уже есть - обновляем
             device_id = device['id']
             cur.execute("""
                 UPDATE user_devices 
                 SET last_login = NOW(), last_ip = %s
                 WHERE id = %s
-            """, (request.client.host, device_id))
+            """, (client_ip, device_id))
         else:
-            # Новое устройство - проверяем лимит
             cur.execute("""
                 SELECT COUNT(*) FROM user_devices 
                 WHERE user_id = %s AND is_active = TRUE
@@ -540,7 +511,6 @@ def login(req: LoginReq, request: Request):
             device_count = cur.fetchone()['count']
             
             if device_count >= user['max_devices']:
-                # Лимит превышен - возвращаем список устройств
                 cur.execute("""
                     SELECT * FROM user_devices 
                     WHERE user_id = %s
@@ -565,16 +535,14 @@ def login(req: LoginReq, request: Request):
                     }
                 )
             
-            # Добавляем новое устройство
             cur.execute("""
                 INSERT INTO user_devices (user_id, device_fingerprint, device_name, last_ip)
                 VALUES (%s, %s, %s, %s)
                 RETURNING id
-            """, (user['id'], req.device_fingerprint, req.device_name, request.client.host))
+            """, (user['id'], req.device_fingerprint, req.device_name, client_ip))
             
             device_id = cur.fetchone()['id']
         
-        # Создаем сессию
         session_token = generate_token()
         expires_at_session = now() + timedelta(days=30)
         
@@ -583,14 +551,12 @@ def login(req: LoginReq, request: Request):
             VALUES (%s, %s, %s, %s)
         """, (user['id'], session_token, device_id, expires_at_session))
         
-        # Обновляем last_login
         cur.execute("""
             UPDATE users SET last_login = NOW() WHERE id = %s
         """, (user['id'],))
         
         con.commit()
         
-        # Получаем все устройства пользователя
         cur.execute("""
             SELECT * FROM user_devices 
             WHERE user_id = %s AND is_active = TRUE
@@ -632,7 +598,6 @@ def login(req: LoginReq, request: Request):
 
 @app.post("/api/auth/logout")
 def logout(session_token: str = Form(...)):
-    """Выход из аккаунта"""
     con = db()
     cur = con.cursor()
     
@@ -648,12 +613,10 @@ def logout(session_token: str = Form(...)):
 
 @app.get("/api/auth/confirm")
 def confirm_email(token: str):
-    """Подтверждение email"""
     con = db()
     cur = con.cursor()
     
     try:
-        # Ищем токен
         cur.execute("""
             SELECT user_id, expires_at 
             FROM email_confirmations 
@@ -683,7 +646,6 @@ def confirm_email(token: str):
                 </html>
             """)
         
-        # Подтверждаем email
         cur.execute("""
             UPDATE users 
             SET email_confirmed = TRUE, email_confirmed_at = NOW()
@@ -721,633 +683,9 @@ def confirm_email(token: str):
         cur.close()
         con.close()
 
-@app.post("/api/auth/resend-confirmation")
-def resend_confirmation(email: str, background_tasks: BackgroundTasks):
-    """Переотправить письмо подтверждения"""
-    con = db()
-    cur = con.cursor()
-    
-    try:
-        cur.execute("SELECT id FROM users WHERE email = %s", (email,))
-        user = cur.fetchone()
-        if not user:
-            raise HTTPException(status_code=404, detail="user_not_found")
-        
-        user_id = user[0]
-        
-        # Создаем новый токен
-        confirm_token = generate_token()
-        confirm_expires = now() + timedelta(hours=24)
-        
-        cur.execute("""
-            INSERT INTO email_confirmations (user_id, token, expires_at)
-            VALUES (%s, %s, %s)
-        """, (user_id, confirm_token, confirm_expires))
-        
-        con.commit()
-        
-        # Отправляем письмо
-        background_tasks.add_task(
-            send_confirmation_email,
-            email,
-            confirm_token
-        )
-        
-        return {"success": True}
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        cur.close()
-        con.close()
-
-@app.post("/api/auth/forgot-password")
-def forgot_password(email: str, background_tasks: BackgroundTasks):
-    """Запрос на сброс пароля"""
-    con = db()
-    cur = con.cursor()
-    
-    try:
-        cur.execute("SELECT id FROM users WHERE email = %s", (email,))
-        user = cur.fetchone()
-        if not user:
-            # Не говорим, что пользователь не найден (безопасность)
-            return {"success": True}
-        
-        user_id = user[0]
-        
-        # Создаем токен сброса
-        reset_token = generate_token()
-        reset_expires = now() + timedelta(hours=1)
-        
-        cur.execute("""
-            INSERT INTO password_resets (user_id, token, expires_at)
-            VALUES (%s, %s, %s)
-        """, (user_id, reset_token, reset_expires))
-        
-        con.commit()
-        
-        # Отправляем письмо
-        background_tasks.add_task(
-            send_password_reset_email,
-            email,
-            reset_token
-        )
-        
-        return {"success": True}
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        cur.close()
-        con.close()
-
-@app.post("/api/auth/reset-password")
-def reset_password(token: str, new_password: str):
-    """Сброс пароля"""
-    con = db()
-    cur = con.cursor()
-    
-    try:
-        # Ищем токен
-        cur.execute("""
-            SELECT user_id, expires_at 
-            FROM password_resets 
-            WHERE token = %s AND used = FALSE
-        """, (token,))
-        
-        row = cur.fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="invalid_token")
-        
-        user_id, expires_at = row
-        
-        if now() > expires_at:
-            raise HTTPException(status_code=403, detail="token_expired")
-        
-        # Меняем пароль
-        password_hash = hash_password(new_password)
-        cur.execute("""
-            UPDATE users 
-            SET password_hash = %s
-            WHERE id = %s
-        """, (password_hash, user_id))
-        
-        # Помечаем токен как использованный
-        cur.execute("""
-            UPDATE password_resets 
-            SET used = TRUE
-            WHERE token = %s
-        """, (token,))
-        
-        con.commit()
-        
-        return {"success": True}
-        
-    except Exception as e:
-        con.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        cur.close()
-        con.close()
-
-@app.post("/api/auth/sessions")
-def get_sessions(session_token: str):
-    """Получить все активные сессии пользователя"""
-    con = db()
-    cur = con.cursor(cursor_factory=RealDictCursor)
-    
-    try:
-        cur.execute("""
-            SELECT s.*, d.device_name, d.device_fingerprint
-            FROM user_sessions s
-            JOIN user_devices d ON s.device_id = d.id
-            WHERE s.user_id = (
-                SELECT user_id FROM user_sessions WHERE session_token = %s
-            ) AND s.expires_at > NOW()
-            ORDER BY s.last_active DESC
-        """, (session_token,))
-        
-        sessions = cur.fetchall()
-        
-        return {
-            "sessions": [
-                {
-                    "id": s['id'],
-                    "device_name": s['device_name'],
-                    "last_active": s['last_active'].isoformat() if s['last_active'] else None,
-                    "is_current": s['session_token'] == session_token
-                }
-                for s in sessions
-            ]
-        }
-        
-    finally:
-        cur.close()
-        con.close()
-
-@app.post("/api/auth/terminate-session")
-def terminate_session(session_id: int, session_token: str):
-    """Завершить сессию"""
-    con = db()
-    cur = con.cursor()
-    
-    try:
-        # Проверяем, что это сессия текущего пользователя
-        cur.execute("""
-            DELETE FROM user_sessions 
-            WHERE id = %s AND user_id = (
-                SELECT user_id FROM user_sessions WHERE session_token = %s
-            )
-        """, (session_id, session_token))
-        
-        con.commit()
-        return {"success": True}
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        cur.close()
-        con.close()
-
 # =========================
-# API УСТРОЙСТВ
+# АДМИН ПАНЕЛЬ (ИСПРАВЛЕННАЯ)
 # =========================
-
-class DeviceReq(BaseModel):
-    session_token: str
-    device_fingerprint: str
-
-@app.post("/api/devices/list")
-def list_devices(req: DeviceReq):
-    """Список устройств пользователя"""
-    con = db()
-    cur = con.cursor(cursor_factory=RealDictCursor)
-    
-    try:
-        cur.execute("""
-            SELECT d.* 
-            FROM user_devices d
-            JOIN user_sessions s ON d.user_id = s.user_id
-            WHERE s.session_token = %s AND d.is_active = TRUE
-            ORDER BY d.last_login DESC
-        """, (req.session_token,))
-        
-        devices = cur.fetchall()
-        
-        return {
-            "devices": [
-                {
-                    "id": d['id'],
-                    "name": d['device_name'],
-                    "fingerprint": d['device_fingerprint'],
-                    "last_login": d['last_login'].isoformat() if d['last_login'] else None,
-                    "is_current": d['device_fingerprint'] == req.device_fingerprint
-                }
-                for d in devices
-            ]
-        }
-        
-    finally:
-        cur.close()
-        con.close()
-
-@app.post("/api/devices/rename")
-def rename_device(device_id: int, new_name: str, session_token: str):
-    """Переименовать устройство"""
-    con = db()
-    cur = con.cursor()
-    
-    try:
-        cur.execute("""
-            UPDATE user_devices 
-            SET device_name = %s
-            WHERE id = %s AND user_id = (
-                SELECT user_id FROM user_sessions WHERE session_token = %s
-            )
-        """, (new_name, device_id, session_token))
-        
-        con.commit()
-        return {"success": True}
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        cur.close()
-        con.close()
-
-@app.post("/api/devices/remove")
-def remove_device(device_id: int, session_token: str):
-    """Отвязать устройство"""
-    con = db()
-    cur = con.cursor()
-    
-    try:
-        # Нельзя удалить текущее устройство
-        cur.execute("""
-            SELECT d.id 
-            FROM user_devices d
-            JOIN user_sessions s ON d.user_id = s.user_id
-            WHERE s.session_token = %s AND d.id = %s AND d.device_fingerprint != (
-                SELECT device_fingerprint FROM user_devices WHERE id = (
-                    SELECT device_id FROM user_sessions WHERE session_token = %s
-                )
-            )
-        """, (session_token, device_id, session_token))
-        
-        if not cur.fetchone():
-            raise HTTPException(status_code=403, detail="cannot_remove_current_device")
-        
-        cur.execute("""
-            UPDATE user_devices 
-            SET is_active = FALSE
-            WHERE id = %s
-        """, (device_id,))
-        
-        # Удаляем сессии этого устройства
-        cur.execute("""
-            DELETE FROM user_sessions 
-            WHERE device_id = %s
-        """, (device_id,))
-        
-        con.commit()
-        return {"success": True}
-        
-    except HTTPException:
-        con.rollback()
-        raise
-    except Exception as e:
-        con.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        cur.close()
-        con.close()
-
-# =========================
-# ФУНКЦИИ ОТПРАВКИ ПИСЕМ
-# =========================
-
-def send_confirmation_email(email: str, token: str):
-    """Отправка письма с подтверждением"""
-    confirm_url = f"https://license-check-server-xatc.onrender.com/api/auth/confirm?token={token}"
-    
-    html = f"""
-    <html>
-    <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #333;">TG Parser Sender</h2>
-        <p>Здравствуйте!</p>
-        <p>Для подтверждения email нажмите на кнопку:</p>
-        <a href="{confirm_url}" style="display: inline-block; background: #4CAF50; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin: 20px 0;">Подтвердить email</a>
-        <p>Или перейдите по ссылке: <a href="{confirm_url}">{confirm_url}</a></p>
-        <p>Ссылка действительна 24 часа.</p>
-        <p>С уважением,<br>Команда TG Parser Sender</p>
-    </body>
-    </html>
-    """
-    
-    # Пока просто печатаем в консоль (потом подключим SendGrid)
-    print(f"📧 Письмо для {email}: {confirm_url}")
-    
-    # Здесь будет код отправки через SendGrid/Mailgun
-
-def send_password_reset_email(email: str, token: str):
-    """Отправка письма для сброса пароля"""
-    reset_url = f"https://license-check-server-xatc.onrender.com/reset-password?token={token}"
-    
-    html = f"""
-    <html>
-    <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #333;">TG Parser Sender</h2>
-        <p>Здравствуйте!</p>
-        <p>Для сброса пароля нажмите на кнопку:</p>
-        <a href="{reset_url}" style="display: inline-block; background: #2196F3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; margin: 20px 0;">Сбросить пароль</a>
-        <p>Или перейдите по ссылке: <a href="{reset_url}">{reset_url}</a></p>
-        <p>Ссылка действительна 1 час.</p>
-        <p>Если вы не запрашивали сброс пароля, проигнорируйте это письмо.</p>
-        <p>С уважением,<br>Команда TG Parser Sender</p>
-    </body>
-    </html>
-    """
-    
-    print(f"📧 Письмо для сброса пароля {email}: {reset_url}")
-
-# =========================
-# API БАЛАНСА
-# =========================
-
-class BalanceReq(BaseModel):
-    session_token: str
-
-@app.post("/api/balance/get")
-def get_balance(req: BalanceReq):
-    """Получить баланс"""
-    con = db()
-    cur = con.cursor(cursor_factory=RealDictCursor)
-    
-    try:
-        cur.execute("""
-            SELECT u.balance, u.total_spent, u.currency
-            FROM users u
-            JOIN user_sessions s ON u.id = s.user_id
-            WHERE s.session_token = %s
-        """, (req.session_token,))
-        
-        user = cur.fetchone()
-        if not user:
-            raise HTTPException(status_code=401, detail="invalid_session")
-        
-        return {
-            "balance": float(user['balance']),
-            "total_spent": float(user['total_spent']),
-            "currency": user['currency']
-        }
-        
-    finally:
-        cur.close()
-        con.close()
-
-class EstimateReq(BaseModel):
-    session_token: str
-    operation: str
-    units: int
-
-@app.post("/api/balance/estimate")
-def estimate_cost(req: EstimateReq):
-    """Оценить стоимость"""
-    con = db()
-    cur = con.cursor()
-    
-    try:
-        cur.execute("""
-            SELECT final_price, min_units 
-            FROM pricing 
-            WHERE operation_type = %s
-        """, (req.operation,))
-        
-        row = cur.fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="operation_not_found")
-        
-        final_price, min_units = row
-        units = max(req.units, min_units)
-        total_cost = final_price * units
-        
-        cur.execute("""
-            SELECT u.balance 
-            FROM users u
-            JOIN user_sessions s ON u.id = s.user_id
-            WHERE s.session_token = %s
-        """, (req.session_token,))
-        
-        balance = cur.fetchone()[0]
-        
-        return {
-            "total_cost": float(total_cost),
-            "current_balance": float(balance),
-            "sufficient": balance >= total_cost
-        }
-        
-    finally:
-        cur.close()
-        con.close()
-
-class ChargeReq(BaseModel):
-    session_token: str
-    operation: str
-    units: int
-    description: str = ""
-
-@app.post("/api/balance/charge")
-def charge(req: ChargeReq):
-    """Списать средства"""
-    con = db()
-    cur = con.cursor()
-    
-    try:
-        cur.execute("BEGIN")
-        
-        # Получаем цену
-        cur.execute("""
-            SELECT final_price, min_units 
-            FROM pricing 
-            WHERE operation_type = %s
-        """, (req.operation,))
-        
-        row = cur.fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="operation_not_found")
-        
-        final_price, min_units = row
-        units = max(req.units, min_units)
-        total_cost = final_price * units
-        
-        # Получаем пользователя
-        cur.execute("""
-            SELECT u.id, u.balance, u.license_key
-            FROM users u
-            JOIN user_sessions s ON u.id = s.user_id
-            WHERE s.session_token = %s
-            FOR UPDATE
-        """, (req.session_token,))
-        
-        user = cur.fetchone()
-        if not user:
-            raise HTTPException(status_code=401, detail="invalid_session")
-        
-        user_id, balance, license_key = user
-        
-        if balance < total_cost:
-            raise HTTPException(status_code=403, detail="insufficient_funds")
-        
-        # Списываем
-        cur.execute("""
-            UPDATE users 
-            SET balance = balance - %s, total_spent = total_spent + %s
-            WHERE id = %s
-            RETURNING balance
-        """, (total_cost, total_cost, user_id))
-        
-        new_balance = cur.fetchone()[0]
-        
-        # Логируем
-        cur.execute("""
-            INSERT INTO usage_logs 
-            (user_id, license_key, operation_type, units_used, cost, details)
-            VALUES (%s, %s, %s, %s, %s, %s)
-        """, (user_id, license_key, req.operation, units, total_cost, 
-              json.dumps({"description": req.description})))
-        
-        cur.execute("COMMIT")
-        
-        return {
-            "success": True,
-            "charged": float(total_cost),
-            "new_balance": float(new_balance)
-        }
-        
-    except HTTPException:
-        cur.execute("ROLLBACK")
-        raise
-    except Exception as e:
-        cur.execute("ROLLBACK")
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        cur.close()
-        con.close()
-
-class DepositReq(BaseModel):
-    session_token: str
-    amount: float
-    method: str
-
-@app.post("/api/balance/create_deposit")
-def create_deposit(req: DepositReq):
-    """Создать запрос на пополнение"""
-    con = db()
-    cur = con.cursor()
-    
-    try:
-        if req.amount < 5:
-            raise HTTPException(status_code=400, detail="minimum_amount_5")
-        
-        cur.execute("""
-            SELECT u.id, u.license_key
-            FROM users u
-            JOIN user_sessions s ON u.id = s.user_id
-            WHERE s.session_token = %s
-        """, (req.session_token,))
-        
-        user = cur.fetchone()
-        if not user:
-            raise HTTPException(status_code=401, detail="invalid_session")
-        
-        user_id, license_key = user
-        
-        payment_id = secrets.token_hex(16)
-        
-        if req.method == 'cryptobot':
-            payment_url = f"https://t.me/CryptoBot?start={payment_id}"
-        else:
-            payment_url = f"/manual_payment/{payment_id}"
-        
-        cur.execute("""
-            INSERT INTO payment_requests 
-            (user_id, license_key, amount, payment_id, status, payment_url)
-            VALUES (%s, %s, %s, %s, 'pending', %s)
-        """, (user_id, license_key, req.amount, payment_id, payment_url))
-        
-        con.commit()
-        
-        return {
-            "success": True,
-            "payment_id": payment_id,
-            "payment_url": payment_url,
-            "amount": req.amount,
-            "instructions": "Переведите точную сумму и отправьте скриншот @Ben_bell97"
-        }
-        
-    except Exception as e:
-        con.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        cur.close()
-        con.close()
-
-@app.post("/api/balance/confirm_payment")
-def confirm_payment(payment_id: str, admin_token: str = Form(...)):
-    """Подтверждение платежа админом"""
-    if admin_token != ADMIN_TOKEN:
-        raise HTTPException(status_code=403, detail="unauthorized")
-    
-    con = db()
-    cur = con.cursor()
-    
-    try:
-        cur.execute("""
-            SELECT user_id, license_key, amount, status 
-            FROM payment_requests 
-            WHERE payment_id = %s AND status = 'pending'
-        """, (payment_id,))
-        
-        payment = cur.fetchone()
-        if not payment:
-            raise HTTPException(status_code=404, detail="payment_not_found")
-        
-        user_id, license_key, amount, status = payment
-        
-        cur.execute("""
-            UPDATE users 
-            SET balance = balance + %s 
-            WHERE id = %s
-        """, (amount, user_id))
-        
-        cur.execute("""
-            UPDATE payment_requests 
-            SET status = 'completed', completed_at = NOW()
-            WHERE payment_id = %s
-        """, (payment_id,))
-        
-        cur.execute("""
-            INSERT INTO transactions 
-            (user_id, license_key, amount, type, description)
-            VALUES (%s, %s, %s, 'deposit', 'Пополнение баланса')
-        """, (user_id, license_key, amount))
-        
-        con.commit()
-        
-        return {"success": True, "amount": amount}
-        
-    except Exception as e:
-        con.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        cur.close()
-        con.close()
-
-# =========================
-# АДМИН ПАНЕЛЬ
-# =========================
-
 @app.get("/admin/login", response_class=HTMLResponse)
 def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request, "error": ""})
@@ -1406,7 +744,8 @@ def admin_panel(request: Request):
                 FROM users
             """)
             user_stats = cur.fetchone()
-        except:
+        except Exception as e:
+            print(f"Ошибка получения статистики пользователей: {e}")
             user_stats = {"total_users": 0, "confirmed_users": 0, "total_balance": 0, "total_revenue": 0}
         
         # Статистика устройств
@@ -1419,7 +758,8 @@ def admin_panel(request: Request):
                 WHERE is_active = TRUE
             """)
             device_stats = cur.fetchone()
-        except:
+        except Exception as e:
+            print(f"Ошибка получения статистики устройств: {e}")
             device_stats = {"total_devices": 0, "users_with_devices": 0}
         
         stats = {
@@ -1456,6 +796,280 @@ def admin_panel(request: Request):
             "stats": stats,
         }
     )
+
+# =========================
+# API УСТРОЙСТВ
+# =========================
+class DeviceReq(BaseModel):
+    session_token: str
+    device_fingerprint: str
+
+@app.post("/api/devices/list")
+def list_devices(req: DeviceReq):
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    
+    try:
+        cur.execute("""
+            SELECT d.* 
+            FROM user_devices d
+            JOIN user_sessions s ON d.user_id = s.user_id
+            WHERE s.session_token = %s AND d.is_active = TRUE
+            ORDER BY d.last_login DESC
+        """, (req.session_token,))
+        
+        devices = cur.fetchall()
+        
+        return {
+            "devices": [
+                {
+                    "id": d['id'],
+                    "name": d['device_name'],
+                    "fingerprint": d['device_fingerprint'],
+                    "last_login": d['last_login'].isoformat() if d['last_login'] else None,
+                    "is_current": d['device_fingerprint'] == req.device_fingerprint
+                }
+                for d in devices
+            ]
+        }
+        
+    finally:
+        cur.close()
+        con.close()
+
+@app.post("/api/devices/rename")
+def rename_device(device_id: int, new_name: str, session_token: str):
+    con = db()
+    cur = con.cursor()
+    
+    try:
+        cur.execute("""
+            UPDATE user_devices 
+            SET device_name = %s
+            WHERE id = %s AND user_id = (
+                SELECT user_id FROM user_sessions WHERE session_token = %s
+            )
+        """, (new_name, device_id, session_token))
+        
+        con.commit()
+        return {"success": True}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+@app.post("/api/devices/remove")
+def remove_device(device_id: int, session_token: str):
+    con = db()
+    cur = con.cursor()
+    
+    try:
+        cur.execute("""
+            SELECT d.id 
+            FROM user_devices d
+            JOIN user_sessions s ON d.user_id = s.user_id
+            WHERE s.session_token = %s AND d.id = %s AND d.device_fingerprint != (
+                SELECT device_fingerprint FROM user_devices WHERE id = (
+                    SELECT device_id FROM user_sessions WHERE session_token = %s
+                )
+            )
+        """, (session_token, device_id, session_token))
+        
+        if not cur.fetchone():
+            raise HTTPException(status_code=403, detail="cannot_remove_current_device")
+        
+        cur.execute("""
+            UPDATE user_devices 
+            SET is_active = FALSE
+            WHERE id = %s
+        """, (device_id,))
+        
+        cur.execute("""
+            DELETE FROM user_sessions 
+            WHERE device_id = %s
+        """, (device_id,))
+        
+        con.commit()
+        return {"success": True}
+        
+    except HTTPException:
+        con.rollback()
+        raise
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+# =========================
+# API БАЛАНСА
+# =========================
+class BalanceReq(BaseModel):
+    session_token: str
+
+@app.post("/api/balance/get")
+def get_balance(req: BalanceReq):
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    
+    try:
+        cur.execute("""
+            SELECT u.balance, u.total_spent, u.currency
+            FROM users u
+            JOIN user_sessions s ON u.id = s.user_id
+            WHERE s.session_token = %s
+        """, (req.session_token,))
+        
+        user = cur.fetchone()
+        if not user:
+            raise HTTPException(status_code=401, detail="invalid_session")
+        
+        return {
+            "balance": float(user['balance']),
+            "total_spent": float(user['total_spent']),
+            "currency": user['currency']
+        }
+        
+    finally:
+        cur.close()
+        con.close()
+
+class EstimateReq(BaseModel):
+    session_token: str
+    operation: str
+    units: int
+
+@app.post("/api/balance/estimate")
+def estimate_cost(req: EstimateReq):
+    con = db()
+    cur = con.cursor()
+    
+    try:
+        cur.execute("""
+            SELECT final_price, min_units 
+            FROM pricing 
+            WHERE operation_type = %s
+        """, (req.operation,))
+        
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="operation_not_found")
+        
+        final_price, min_units = row
+        units = max(req.units, min_units)
+        total_cost = final_price * units
+        
+        cur.execute("""
+            SELECT u.balance 
+            FROM users u
+            JOIN user_sessions s ON u.id = s.user_id
+            WHERE s.session_token = %s
+        """, (req.session_token,))
+        
+        balance = cur.fetchone()[0]
+        
+        return {
+            "total_cost": float(total_cost),
+            "current_balance": float(balance),
+            "sufficient": balance >= total_cost
+        }
+        
+    finally:
+        cur.close()
+        con.close()
+
+class ChargeReq(BaseModel):
+    session_token: str
+    operation: str
+    units: int
+    description: str = ""
+
+@app.post("/api/balance/charge")
+def charge(req: ChargeReq):
+    con = db()
+    cur = con.cursor()
+    
+    try:
+        cur.execute("BEGIN")
+        
+        cur.execute("""
+            SELECT final_price, min_units 
+            FROM pricing 
+            WHERE operation_type = %s
+        """, (req.operation,))
+        
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="operation_not_found")
+        
+        final_price, min_units = row
+        units = max(req.units, min_units)
+        total_cost = final_price * units
+        
+        cur.execute("""
+            SELECT u.id, u.balance, u.license_key
+            FROM users u
+            JOIN user_sessions s ON u.id = s.user_id
+            WHERE s.session_token = %s
+            FOR UPDATE
+        """, (req.session_token,))
+        
+        user = cur.fetchone()
+        if not user:
+            raise HTTPException(status_code=401, detail="invalid_session")
+        
+        user_id, balance, license_key = user
+        
+        if balance < total_cost:
+            raise HTTPException(status_code=403, detail="insufficient_funds")
+        
+        cur.execute("""
+            UPDATE users 
+            SET balance = balance - %s, total_spent = total_spent + %s
+            WHERE id = %s
+            RETURNING balance
+        """, (total_cost, total_cost, user_id))
+        
+        new_balance = cur.fetchone()[0]
+        
+        cur.execute("""
+            INSERT INTO usage_logs 
+            (user_id, license_key, operation_type, units_used, cost, details)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (user_id, license_key, req.operation, units, total_cost, 
+              json.dumps({"description": req.description})))
+        
+        cur.execute("COMMIT")
+        
+        return {
+            "success": True,
+            "charged": float(total_cost),
+            "new_balance": float(new_balance)
+        }
+        
+    except HTTPException:
+        cur.execute("ROLLBACK")
+        raise
+    except Exception as e:
+        cur.execute("ROLLBACK")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+# =========================
+# ФУНКЦИИ ОТПРАВКИ ПИСЕМ
+# =========================
+def send_confirmation_email(email: str, token: str):
+    confirm_url = f"https://license-check-server-xatc.onrender.com/api/auth/confirm?token={token}"
+    print(f"📧 Письмо для {email}: {confirm_url}")
+
+def send_password_reset_email(email: str, token: str):
+    reset_url = f"https://license-check-server-xatc.onrender.com/reset-password?token={token}"
+    print(f"📧 Письмо для сброса пароля {email}: {reset_url}")
 
 # =========================
 # AI API
@@ -1535,4 +1149,3 @@ def ai_score(req: AIScoreReq) -> Dict[str, Any]:
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
-
