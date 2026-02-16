@@ -24,6 +24,12 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
 
+# =========================
+# НОВЫЕ ИМПОРТЫ ДЛЯ ПОЧТЫ
+# =========================
+import sendgrid
+from sendgrid.helpers.mail import Mail, Email, To, Content
+
 from openai import OpenAI
 
 app = FastAPI()
@@ -44,6 +50,13 @@ async def global_exception_handler(request: Request, exc: Exception):
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
 ADMIN_PANEL_SECRET = os.environ.get("ADMIN_PANEL_SECRET", "change-me")
+
+# =========================
+# НАСТРОЙКИ SENDGRID (НОВЫЕ)
+# =========================
+SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "")
+FROM_EMAIL = "noreply@tgparsersender.me"  # Этот email ты подтвердил в SendGrid
+FROM_NAME = "TG Parser Sender"
 
 # =========================
 # OPENAI
@@ -744,6 +757,197 @@ def confirm_email(token: str):
     finally:
         cur.close()
         con.close()
+
+# =========================
+# КРАСИВЫЕ ПИСЬМА (НОВЫЕ)
+# =========================
+def send_confirmation_email(email: str, token: str):
+    """Отправка красивого письма с подтверждением"""
+    confirm_url = f"https://license-check-server-xatc.onrender.com/api/auth/confirm?token={token}"
+    
+    # Если нет API ключа - печатаем в консоль (для отладки)
+    if not SENDGRID_API_KEY:
+        print(f"📧 [ТЕСТ] Письмо для {email}: {confirm_url}")
+        return
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Подтверждение email</title>
+    </head>
+    <body style="margin:0; padding:0; font-family: 'Segoe UI', Arial, sans-serif; background:#f5f7fa;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin:0 auto; background:white; border-radius:16px; margin-top:40px; box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+            <!-- Шапка -->
+            <tr>
+                <td style="padding:40px 40px 20px 40px; text-align:center; background:linear-gradient(135deg, #3b82f6, #8b5cf6); border-radius:16px 16px 0 0;">
+                    <h1 style="color:white; margin:0; font-size:28px; font-weight:600;">TG Parser Sender</h1>
+                    <p style="color:rgba(255,255,255,0.9); margin:10px 0 0 0; font-size:16px;">Профессиональный парсинг Telegram</p>
+                </td>
+            </tr>
+            
+            <!-- Основной контент -->
+            <tr>
+                <td style="padding:40px;">
+                    <h2 style="color:#1e293b; margin:0 0 20px 0; font-size:24px;">Подтверждение email</h2>
+                    <p style="color:#475569; line-height:1.6; margin:0 0 30px 0; font-size:16px;">
+                        Здравствуйте!<br><br>
+                        Для завершения регистрации в <strong>TG Parser Sender</strong> подтвердите ваш email адрес.
+                    </p>
+                    
+                    <!-- Кнопка -->
+                    <table cellpadding="0" cellspacing="0" style="margin:30px auto;">
+                        <tr>
+                            <td style="background:#4CAF50; border-radius:40px; padding:14px 40px;">
+                                <a href="{confirm_url}" style="color:white; text-decoration:none; font-size:16px; font-weight:600; letter-spacing:0.5px;">✅ ПОДТВЕРДИТЬ EMAIL</a>
+                            </td>
+                        </tr>
+                    </table>
+                    
+                    <!-- Альтернативная ссылка -->
+                    <p style="color:#64748b; font-size:14px; margin:30px 0 0 0; text-align:center;">
+                        Или перейдите по ссылке:<br>
+                        <a href="{confirm_url}" style="color:#3b82f6; word-break:break-all;">{confirm_url}</a>
+                    </p>
+                    
+                    <!-- Срок действия -->
+                    <p style="color:#94a3b8; font-size:13px; margin:30px 0 0 0; text-align:center; border-top:1px solid #e2e8f0; padding-top:30px;">
+                        Ссылка действительна 24 часа.<br>
+                        Если вы не регистрировались, просто проигнорируйте это письмо.
+                    </p>
+                </td>
+            </tr>
+            
+            <!-- Подвал -->
+            <tr>
+                <td style="padding:30px 40px; background:#f8fafc; border-radius:0 0 16px 16px;">
+                    <table width="100%">
+                        <tr>
+                            <td style="text-align:center;">
+                                <p style="color:#64748b; margin:0 0 10px 0; font-size:14px;">
+                                    С уважением, команда TG Parser Sender
+                                </p>
+                                <p style="color:#94a3b8; margin:0; font-size:13px;">
+                                    📧 support@tgparsersender.me | 📱 @Ben_bell97
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    """
+    
+    message = Mail(
+        from_email=Email(FROM_EMAIL, FROM_NAME),
+        to_emails=To(email),
+        subject="Подтверждение email · TG Parser Sender",
+        html_content=Content("text/html", html_content)
+    )
+    
+    try:
+        sg = sendgrid.SendGridAPIClient(api_key=SENDGRID_API_KEY)
+        response = sg.send(message)
+        print(f"📧 Красивое письмо отправлено на {email}, статус: {response.status_code}")
+    except Exception as e:
+        print(f"❌ Ошибка отправки письма: {e}")
+
+def send_password_reset_email(email: str, token: str):
+    """Отправка красивого письма для сброса пароля"""
+    reset_url = f"https://license-check-server-xatc.onrender.com/reset-password?token={token}"
+    
+    if not SENDGRID_API_KEY:
+        print(f"📧 [ТЕСТ] Письмо для сброса пароля {email}: {reset_url}")
+        return
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Сброс пароля</title>
+    </head>
+    <body style="margin:0; padding:0; font-family: 'Segoe UI', Arial, sans-serif; background:#f5f7fa;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin:0 auto; background:white; border-radius:16px; margin-top:40px; box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+            <!-- Шапка -->
+            <tr>
+                <td style="padding:40px 40px 20px 40px; text-align:center; background:linear-gradient(135deg, #ef4444, #f97316); border-radius:16px 16px 0 0;">
+                    <h1 style="color:white; margin:0; font-size:28px; font-weight:600;">TG Parser Sender</h1>
+                    <p style="color:rgba(255,255,255,0.9); margin:10px 0 0 0; font-size:16px;">Восстановление доступа</p>
+                </td>
+            </tr>
+            
+            <!-- Основной контент -->
+            <tr>
+                <td style="padding:40px;">
+                    <h2 style="color:#1e293b; margin:0 0 20px 0; font-size:24px;">Сброс пароля</h2>
+                    <p style="color:#475569; line-height:1.6; margin:0 0 30px 0; font-size:16px;">
+                        Мы получили запрос на сброс пароля для вашего аккаунта.
+                    </p>
+                    
+                    <!-- Кнопка -->
+                    <table cellpadding="0" cellspacing="0" style="margin:30px auto;">
+                        <tr>
+                            <td style="background:#3b82f6; border-radius:40px; padding:14px 40px;">
+                                <a href="{reset_url}" style="color:white; text-decoration:none; font-size:16px; font-weight:600; letter-spacing:0.5px;">🔄 СБРОСИТЬ ПАРОЛЬ</a>
+                            </td>
+                        </tr>
+                    </table>
+                    
+                    <!-- Альтернативная ссылка -->
+                    <p style="color:#64748b; font-size:14px; margin:30px 0 0 0; text-align:center;">
+                        Или перейдите по ссылке:<br>
+                        <a href="{reset_url}" style="color:#3b82f6; word-break:break-all;">{reset_url}</a>
+                    </p>
+                    
+                    <!-- Предупреждение -->
+                    <p style="color:#94a3b8; font-size:13px; margin:30px 0 0 0; text-align:center; border-top:1px solid #e2e8f0; padding-top:30px;">
+                        Ссылка действительна 1 час.<br>
+                        Если вы не запрашивали сброс пароля, проигнорируйте это письмо.
+                    </p>
+                </td>
+            </tr>
+            
+            <!-- Подвал -->
+            <tr>
+                <td style="padding:30px 40px; background:#f8fafc; border-radius:0 0 16px 16px;">
+                    <table width="100%">
+                        <tr>
+                            <td style="text-align:center;">
+                                <p style="color:#64748b; margin:0 0 10px 0; font-size:14px;">
+                                    С уважением, команда TG Parser Sender
+                                </p>
+                                <p style="color:#94a3b8; margin:0; font-size:13px;">
+                                    📧 support@tgparsersender.me | 📱 @Ben_bell97
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    """
+    
+    message = Mail(
+        from_email=Email(FROM_EMAIL, FROM_NAME),
+        to_emails=To(email),
+        subject="Сброс пароля · TG Parser Sender",
+        html_content=Content("text/html", html_content)
+    )
+    
+    try:
+        sg = sendgrid.SendGridAPIClient(api_key=SENDGRID_API_KEY)
+        response = sg.send(message)
+        print(f"📧 Красивое письмо для сброса пароля отправлено на {email}, статус: {response.status_code}")
+    except Exception as e:
+        print(f"❌ Ошибка отправки письма: {e}")
 
 # =========================
 # АДМИН ПАНЕЛЬ - ДАШБОРД
@@ -1479,17 +1683,6 @@ def charge(req: ChargeReq):
     finally:
         cur.close()
         con.close()
-
-# =========================
-# ФУНКЦИИ ОТПРАВКИ ПИСЕМ
-# =========================
-def send_confirmation_email(email: str, token: str):
-    confirm_url = f"https://license-check-server-xatc.onrender.com/api/auth/confirm?token={token}"
-    print(f"📧 Письмо для {email}: {confirm_url}")
-
-def send_password_reset_email(email: str, token: str):
-    reset_url = f"https://license-check-server-xatc.onrender.com/reset-password?token={token}"
-    print(f"📧 Письмо для сброса пароля {email}: {reset_url}")
 
 # =========================
 # AI API
