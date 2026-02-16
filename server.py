@@ -1504,3 +1504,101 @@ def ai_score(req: AIScoreReq) -> Dict[str, Any]:
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
+# =========================
+# ВРЕМЕННЫЙ ENDPOINT ДЛЯ МИГРАЦИИ (УДАЛИТЬ ПОТОМ)
+# =========================
+@app.get("/api/migrate")
+def run_migration(secret: str):
+    if secret != ADMIN_TOKEN:
+        return {"error": "unauthorized"}
+    
+    con = db()
+    cur = con.cursor()
+    results = []
+    
+    try:
+        # Добавляем колонки в licenses
+        cur.execute("ALTER TABLE licenses ADD COLUMN IF NOT EXISTS max_devices INTEGER DEFAULT 1;")
+        results.append("✅ licenses.max_devices")
+        
+        # Добавляем колонки в users
+        cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS balance DECIMAL(10,2) DEFAULT 0.00;")
+        results.append("✅ users.balance")
+        
+        cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'USD';")
+        results.append("✅ users.currency")
+        
+        cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_confirmed BOOLEAN DEFAULT FALSE;")
+        results.append("✅ users.email_confirmed")
+        
+        cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_confirmed_at TIMESTAMPTZ;")
+        results.append("✅ users.email_confirmed_at")
+        
+        cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS total_spent DECIMAL(10,2) DEFAULT 0.00;")
+        results.append("✅ users.total_spent")
+        
+        # Создаем таблицу устройств
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS user_devices (
+            id BIGSERIAL PRIMARY KEY,
+            user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+            device_fingerprint TEXT NOT NULL,
+            device_name TEXT,
+            last_ip INET,
+            last_login TIMESTAMPTZ DEFAULT NOW(),
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            UNIQUE(user_id, device_fingerprint)
+        );
+        """)
+        results.append("✅ user_devices")
+        
+        # Создаем таблицу сессий
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS user_sessions (
+            id BIGSERIAL PRIMARY KEY,
+            user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+            session_token TEXT UNIQUE NOT NULL,
+            device_id BIGINT REFERENCES user_devices(id),
+            expires_at TIMESTAMPTZ NOT NULL,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            last_active TIMESTAMPTZ DEFAULT NOW()
+        );
+        """)
+        results.append("✅ user_sessions")
+        
+        # Создаем таблицу подтверждения email
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS email_confirmations (
+            id BIGSERIAL PRIMARY KEY,
+            user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+            token TEXT UNIQUE NOT NULL,
+            expires_at TIMESTAMPTZ NOT NULL,
+            confirmed_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        """)
+        results.append("✅ email_confirmations")
+        
+        # Создаем таблицу сброса пароля
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS password_resets (
+            id BIGSERIAL PRIMARY KEY,
+            user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+            token TEXT UNIQUE NOT NULL,
+            expires_at TIMESTAMPTZ NOT NULL,
+            used BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        """)
+        results.append("✅ password_resets")
+        
+        con.commit()
+        return {"success": True, "results": results}
+        
+    except Exception as e:
+        con.rollback()
+        return {"success": False, "error": str(e), "results": results}
+    finally:
+        cur.close()
+        con.close()
