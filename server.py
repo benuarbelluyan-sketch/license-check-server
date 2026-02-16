@@ -484,28 +484,8 @@ def confirm_email(token: str):
         con.close()
 
 # =========================
-# АДМИН ПАНЕЛЬ (ПРОСТАЯ ВЕРСИЯ)
+# АДМИН ПАНЕЛЬ (МАКСИМАЛЬНО ПРОСТАЯ)
 # =========================
-@app.get("/admin/login", response_class=HTMLResponse)
-def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request, "error": ""})
-
-@app.post("/admin/login")
-def login(request: Request, token: str = Form(...)):
-    if token != ADMIN_TOKEN:
-        return templates.TemplateResponse(
-            "login.html",
-            {"request": request, "error": "Неверный токен"}
-        )
-    
-    request.session["is_admin"] = True
-    return RedirectResponse("/admin", status_code=303)
-
-@app.post("/admin/logout")
-def logout(request: Request):
-    request.session.clear()
-    return RedirectResponse("/admin/login", status_code=303)
-
 @app.get("/admin", response_class=HTMLResponse)
 def admin_panel(request: Request):
     if not is_admin(request):
@@ -515,11 +495,11 @@ def admin_panel(request: Request):
     cur = con.cursor(cursor_factory=RealDictCursor)
     
     try:
-        # Получаем лицензии
+        # Просто получаем все лицензии
         cur.execute("SELECT * FROM licenses ORDER BY updated_at DESC LIMIT 500")
         rows = cur.fetchall()
         
-        # Простая статистика по лицензиям
+        # Очень простая статистика
         now_ts = now()
         active = 0
         expired = 0
@@ -720,3 +700,4 @@ def ai_score(req: AIScoreReq) -> Dict[str, Any]:
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
+
