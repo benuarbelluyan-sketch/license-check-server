@@ -484,8 +484,28 @@ def confirm_email(token: str):
         con.close()
 
 # =========================
-# АДМИН ПАНЕЛЬ (С ПРАВИЛЬНОЙ СТАТИСТИКОЙ)
+# АДМИН ПАНЕЛЬ (ПРОСТАЯ ВЕРСИЯ)
 # =========================
+@app.get("/admin/login", response_class=HTMLResponse)
+def login_page(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request, "error": ""})
+
+@app.post("/admin/login")
+def login(request: Request, token: str = Form(...)):
+    if token != ADMIN_TOKEN:
+        return templates.TemplateResponse(
+            "login.html",
+            {"request": request, "error": "Неверный токен"}
+        )
+    
+    request.session["is_admin"] = True
+    return RedirectResponse("/admin", status_code=303)
+
+@app.post("/admin/logout")
+def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse("/admin/login", status_code=303)
+
 @app.get("/admin", response_class=HTMLResponse)
 def admin_panel(request: Request):
     if not is_admin(request):
@@ -499,44 +519,31 @@ def admin_panel(request: Request):
         cur.execute("SELECT * FROM licenses ORDER BY updated_at DESC LIMIT 500")
         rows = cur.fetchall()
         
-        # Статистика по лицензиям
+        # Простая статистика по лицензиям
         now_ts = now()
-        active_count = 0
-        expired_count = 0
-        revoked_count = 0
+        active = 0
+        expired = 0
+        revoked = 0
         
-        for r in rows:
-            if r["revoked"]:
-                revoked_count += 1
-            elif r["expires_at"] > now_ts:
-                active_count += 1
+        for row in rows:
+            if row['revoked']:
+                revoked += 1
+            elif row['expires_at'] > now_ts:
+                active += 1
             else:
-                expired_count += 1
+                expired += 1
         
-        # Базовая статистика (без сложных запросов)
         stats = {
             "total": len(rows),
-            "active": active_count,
-            "expired": expired_count,
-            "revoked": revoked_count,
-            # Добавляем заглушки для шаблона
-            "total_users": 0,
-            "confirmed_users": 0,
-            "total_balance": 0,
-            "total_revenue": 0,
-            "total_devices": 0,
-            "users_with_devices": 0
+            "active": active,
+            "expired": expired,
+            "revoked": revoked
         }
         
     except Exception as e:
-        print(f"Ошибка в админке: {e}")
+        print(f"Ошибка: {e}")
         rows = []
-        stats = {
-            "total": 0, "active": 0, "expired": 0, "revoked": 0,
-            "total_users": 0, "confirmed_users": 0,
-            "total_balance": 0, "total_revenue": 0,
-            "total_devices": 0, "users_with_devices": 0
-        }
+        stats = {"total": 0, "active": 0, "expired": 0, "revoked": 0}
         
     finally:
         cur.close()
@@ -713,4 +720,3 @@ def ai_score(req: AIScoreReq) -> Dict[str, Any]:
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
-
