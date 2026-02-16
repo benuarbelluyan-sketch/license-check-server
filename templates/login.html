@@ -2,29 +2,142 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Admin Login</title>
+  <title>Admin Login · TG Parser</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:#0b0f19; color:#e6e8ee; }
-    .card { max-width: 420px; margin: 10vh auto; padding: 22px; background:#121a2a; border:1px solid #1f2a44; border-radius:16px; }
-    input { width:100%; padding:12px 14px; border-radius:10px; border:1px solid #2a3a5f; background:#0b1322; color:#e6e8ee; }
-    button { width:100%; margin-top:12px; padding:12px 14px; border:0; border-radius:10px; background:#3b82f6; color:white; font-weight:600; cursor:pointer; }
-    .err { margin-top:12px; color:#ff7b7b; }
-    .hint { margin-top:10px; color:#9aa4b2; font-size:14px; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: #0a0c10;
+      color: #e5e9f0;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .login-card {
+      background: #0f1217;
+      border: 1px solid #1e242c;
+      border-radius: 24px;
+      padding: 40px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+    }
+
+    .logo {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 32px;
+      text-align: center;
+    }
+
+    .logo span {
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    h2 {
+      font-size: 20px;
+      margin-bottom: 24px;
+      text-align: center;
+      color: #fff;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #9aa4b2;
+      font-size: 14px;
+    }
+
+    input {
+      width: 100%;
+      background: #0a0c10;
+      border: 1px solid #1e242c;
+      border-radius: 12px;
+      padding: 14px 16px;
+      color: #e5e9f0;
+      font-size: 15px;
+      transition: all 0.2s;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+    }
+
+    button {
+      width: 100%;
+      background: #3b82f6;
+      border: none;
+      border-radius: 12px;
+      padding: 14px;
+      color: white;
+      font-weight: 600;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 12px;
+    }
+
+    button:hover {
+      background: #2563eb;
+      transform: translateY(-1px);
+    }
+
+    .error {
+      background: rgba(255, 123, 123, 0.1);
+      border: 1px solid rgba(255, 123, 123, 0.3);
+      border-radius: 10px;
+      padding: 12px;
+      color: #ff7b7b;
+      font-size: 14px;
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    .hint {
+      margin-top: 24px;
+      color: #6b7a8f;
+      font-size: 13px;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
-  <div class="card">
+  <div class="login-card">
+    <div class="logo">
+      <span>TG Parser</span> Sender
+    </div>
+    
     <h2>Вход в админ-панель</h2>
+    
     <form method="post" action="/admin/login">
-      <label>ADMIN_TOKEN</label><br/><br/>
-      <input type="password" name="token" placeholder="вставь токен из Render" required />
+      <div class="form-group">
+        <label>ADMIN_TOKEN</label>
+        <input type="password" name="token" placeholder="вставьте токен из Render" required />
+      </div>
+      
       <button type="submit">Войти</button>
     </form>
+    
     {% if error %}
-      <div class="err">{{ error }}</div>
+    <div class="error">{{ error }}</div>
     {% endif %}
-    <div class="hint">Токен: Render → Service → Environment → ADMIN_TOKEN</div>
+    
+    <div class="hint">
+      Токен: Render → Service → Environment → ADMIN_TOKEN
+    </div>
   </div>
 </body>
 </html>
