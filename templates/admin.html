@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:#0b0f19; color:#e6e8ee; }
-    .wrap { max-width: 1280px; margin: 24px auto; padding: 0 16px; }
+    .wrap { max-width: 1180px; margin: 24px auto; padding: 0 16px; }
     .top { display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
     .card { background:#121a2a; border:1px solid #1f2a44; border-radius:16px; padding:16px; margin-top:14px; }
     input, select { padding:10px 12px; border-radius:10px; border:1px solid #2a3a5f; background:#0b1322; color:#e6e8ee; }
@@ -22,14 +22,12 @@
     .expired { color:#ffd37b; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
     .grid { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-    .stats-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:12px; margin-bottom:20px; }
-    .stat { padding:16px; border-radius:14px; background:#0b1322; border:1px solid #1f2a44; text-align:center; }
-    .stat-value { font-size:28px; font-weight:bold; line-height:1.2; }
-    .stat-label { color:#9aa4b2; font-size:13px; margin-top:4px; }
-    .stat-small { font-size:14px; color:#7c8aa0; margin-top:4px; }
+    .stats { display:flex; gap:10px; flex-wrap:wrap; }
+    .stat { padding:10px 12px; border-radius:14px; background:#0b1322; border:1px solid #1f2a44; }
+    .stat b { display:block; font-size:18px; }
+    .stat span { color:#9aa4b2; font-size:12px; }
     .row-actions form { display:inline; margin-right:6px; }
     a { color:#93c5fd; text-decoration:none; }
-    .section-title { font-size:18px; font-weight:600; margin:20px 0 10px 0; color:#fff; }
   </style>
 </head>
 <body>
@@ -38,7 +36,7 @@
   <div class="top">
     <div>
       <h2 style="margin:0;">Админ-панель лицензий</h2>
-      <div style="color:#9aa4b2; font-size:13px;">Управление лицензиями, пользователями и устройствами</div>
+      <div style="color:#9aa4b2; font-size:13px;">Управление лицензиями</div>
     </div>
 
     <form method="post" action="/admin/logout">
@@ -46,45 +44,12 @@
     </form>
   </div>
 
-  <!-- ========== НОВАЯ СТАТИСТИКА ========== -->
-  <div class="stats-grid">
-    <!-- Лицензии -->
-    <div class="stat">
-      <div class="stat-value">{{ stats.total }}</div>
-      <div class="stat-label">Всего лицензий</div>
-      <div class="stat-small">
-        <span class="active">{{ stats.active }}</span> активных |
-        <span class="expired">{{ stats.expired }}</span> просрочено |
-        <span class="revoked">{{ stats.revoked }}</span> заблокировано
-      </div>
-    </div>
-    
-    <!-- Пользователи -->
-    <div class="stat">
-      <div class="stat-value">{{ stats.total_users }}</div>
-      <div class="stat-label">Всего пользователей</div>
-      <div class="stat-small">
-        <span style="color:#7CFFB2;">{{ stats.confirmed_users }}</span> подтвердили email
-      </div>
-    </div>
-    
-    <!-- Баланс -->
-    <div class="stat">
-      <div class="stat-value">${{ "%.2f"|format(stats.total_balance) }}</div>
-      <div class="stat-label">Баланс пользователей</div>
-      <div class="stat-small">
-        всего потрачено: ${{ "%.2f"|format(stats.total_revenue) }}
-      </div>
-    </div>
-    
-    <!-- Устройства -->
-    <div class="stat">
-      <div class="stat-value">{{ stats.total_devices }}</div>
-      <div class="stat-label">Активных устройств</div>
-      <div class="stat-small">
-        у {{ stats.users_with_devices }} пользователей
-      </div>
-    </div>
+  <!-- Простая статистика -->
+  <div class="stats">
+    <div class="stat"><b>{{ stats.total }}</b><span>Всего</span></div>
+    <div class="stat"><b class="active">{{ stats.active }}</b><span>Active</span></div>
+    <div class="stat"><b class="expired">{{ stats.expired }}</b><span>Expired</span></div>
+    <div class="stat"><b class="revoked">{{ stats.revoked }}</b><span>Revoked</span></div>
   </div>
 
   <div class="card">
@@ -116,10 +81,10 @@
         <input name="days" placeholder="days" required value="30" style="width:90px;">
         <select name="plan">
           <option value="custom">custom</option>
-          <option value="m1">m1 (1 устройство)</option>
-          <option value="m3">m3 (2 устройства)</option>
-          <option value="m6">m6 (3 устройства)</option>
-          <option value="y1">y1 (5 устройств)</option>
+          <option value="m1">m1</option>
+          <option value="m3">m3</option>
+          <option value="m6">m6</option>
+          <option value="y1">y1</option>
         </select>
         <input name="note" placeholder="note (необязательно)" style="min-width:220px;">
         <button type="submit">Сохранить</button>
@@ -137,8 +102,9 @@
     </div>
   </div>
 
-  <div class="section-title">📋 Список лицензий</div>
   <div class="card">
+    <h3 style="margin:0;">Лицензии</h3>
+
     <table>
       <thead>
         <tr>
