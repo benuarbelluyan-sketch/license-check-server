@@ -326,42 +326,59 @@ class CheckReq(BaseModel):
 def check(req: CheckReq):
     """
     Проверка лицензии при активации.
-    Теперь HWID не проверяется - только существование ключа и срок!
+    ЛОГИКА:
+    - ключ должен существовать, быть не revoked и не expired
+    - HWID "привязывается" при первой успешной проверке, если в лицензии HWID пустой/temporary
+    - после привязки HWID должен совпадать (защита от шаринга ключей)
     """
     con = db()
     cur = con.cursor()
-    
-    # Проверяем только ключ, без сравнения HWID
-    cur.execute(
-        "SELECT expires_at, revoked FROM licenses WHERE key=%s",
-        (req.key,)
-    )
-    row = cur.fetchone()
+    try:
+        cur.execute(
+            "SELECT hwid, expires_at, revoked FROM licenses WHERE key=%s",
+            (req.key,)
+        )
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=401, detail="key_not_found")
 
-    if not row:
-        raise HTTPException(status_code=401, detail="key_not_found")
+        lic_hwid, expires_at, revoked = row
 
-    expires_at, revoked = row
+        # Успех/ошибки по сроку и статусу
+        if revoked:
+            raise HTTPException(status_code=403, detail="revoked")
+        if now() > expires_at:
+            raise HTTPException(status_code=403, detail="expired")
 
-    # Обновляем счётчик проверок
-    cur.execute("""
-        UPDATE licenses
-        SET last_check_at=NOW(), check_count=check_count+1
-        WHERE key=%s
-    """, (req.key,))
-    con.commit()
+        # Нормализуем HWID
+        incoming_hwid = (req.hwid or "").strip().upper()
+        stored_hwid = (lic_hwid or "").strip().upper()
 
-    cur.close()
-    con.close()
+        # Если HWID ещё не привязан — привязываем (разрешаем значения вроде "TEMP")
+        if not stored_hwid or stored_hwid in {"TEMP", "NONE", "NULL", "-"}:
+            if incoming_hwid:
+                cur.execute(
+                    "UPDATE licenses SET hwid=%s WHERE key=%s",
+                    (incoming_hwid, req.key)
+                )
+                stored_hwid = incoming_hwid
+        else:
+            # Если HWID уже привязан — требуем совпадение (если клиент передал hwid)
+            if incoming_hwid and incoming_hwid != stored_hwid:
+                raise HTTPException(status_code=403, detail="hwid_mismatch")
 
-    if revoked:
-        raise HTTPException(status_code=403, detail="revoked")
+        # Обновляем счётчик проверок
+        cur.execute("""
+            UPDATE licenses
+            SET last_check_at=NOW(), check_count=check_count+1
+            WHERE key=%s
+        """, (req.key,))
+        con.commit()
 
-    if now() > expires_at:
-        raise HTTPException(status_code=403, detail="expired")
-
-    # Успех! HWID не проверяем
-    return {"ok": True, "expires_at": expires_at.isoformat()}
+        return {"ok": True, "expires_at": expires_at.isoformat(), "hwid": stored_hwid}
+    finally:
+        cur.close()
+        con.close()
 
 # =========================
 # РЕГИСТРАЦИЯ (С ПОДРОБНЫМИ ЛОГАМИ)
@@ -667,6 +684,239 @@ def login(req: LoginReq, request: Request):
         print(f"❌ UNEXPECTED ERROR: {str(e)}")
         con.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+# =========================
+# ВХОД (С КЛЮЧОМ) — как в продукте: ключ вводится вместе с логином
+# =========================
+class LoginWithKeyReq(BaseModel):
+    email: str
+    password: str
+    license_key: str
+    device_fingerprint: str
+    device_name: str = "Мой компьютер"
+
+@app.post("/api/auth/login_with_key")
+def login_with_key(req: LoginWithKeyReq, background_tasks: BackgroundTasks, request: Request):
+    """
+    Вход с ключом:
+    - проверяет пароль
+    - проверяет/привязывает ключ к пользователю (1 ключ = 1 пользователь)
+    - регистрирует устройство с лимитом max_devices (из licenses)
+    - если email не подтвержден: создаёт токен подтверждения, отправляет письмо, НО всё равно возвращает session_token
+    """
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    try:
+        # 1) Найдём пользователя
+        cur.execute("SELECT * FROM users WHERE email=%s", (req.email,))
+        user = cur.fetchone()
+        if not user:
+            raise HTTPException(status_code=401, detail="invalid_credentials")
+
+        if not verify_password(req.password, user["password_hash"]):
+            raise HTTPException(status_code=401, detail="invalid_credentials")
+
+        # 2) Проверим лицензию по ключу
+        cur.execute("SELECT key, expires_at, revoked, max_devices FROM licenses WHERE key=%s", (req.license_key,))
+        lic = cur.fetchone()
+        if not lic:
+            raise HTTPException(status_code=404, detail="license_not_found")
+        if lic["revoked"]:
+            raise HTTPException(status_code=403, detail="license_revoked")
+        if now() > lic["expires_at"]:
+            raise HTTPException(status_code=403, detail="license_expired")
+
+        # 3) Привязка ключа к пользователю (если уже привязан — должен совпадать)
+        current_key = (user.get("license_key") or "").strip()
+        incoming_key = (req.license_key or "").strip()
+        if current_key and current_key != incoming_key:
+            raise HTTPException(status_code=403, detail="license_key_mismatch")
+
+        if not current_key:
+            # убедимся, что ключ не занят другим пользователем
+            cur.execute("SELECT id FROM users WHERE license_key=%s AND id<>%s", (incoming_key, user["id"]))
+            if cur.fetchone():
+                raise HTTPException(status_code=403, detail="license_key_already_used")
+
+            cur.execute("UPDATE users SET license_key=%s WHERE id=%s", (incoming_key, user["id"]))
+            user["license_key"] = incoming_key
+
+        # 4) Работа с устройством (лимит)
+        client_ip = request.client.host if request.client else "0.0.0.0"
+        max_devices = int(lic["max_devices"] or 1)
+
+        cur.execute("""
+            SELECT * FROM user_devices
+            WHERE user_id=%s AND device_fingerprint=%s
+        """, (user["id"], req.device_fingerprint))
+        device = cur.fetchone()
+
+        if device:
+            device_id = device["id"]
+            cur.execute("""
+                UPDATE user_devices
+                SET last_login=NOW(), last_ip=%s, device_name=%s, is_active=TRUE
+                WHERE id=%s
+            """, (client_ip, req.device_name, device_id))
+        else:
+            cur.execute("""
+                SELECT COUNT(*) AS cnt FROM user_devices
+                WHERE user_id=%s AND is_active=TRUE
+            """, (user["id"],))
+            cnt = int(cur.fetchone()["cnt"] or 0)
+            if cnt >= max_devices:
+                raise HTTPException(status_code=403, detail={"error": "device_limit_exceeded", "max_devices": max_devices, "current_devices": cnt})
+
+            cur.execute("""
+                INSERT INTO user_devices (user_id, device_fingerprint, device_name, last_ip, last_login)
+                VALUES (%s, %s, %s, %s, NOW())
+                RETURNING id
+            """, (user["id"], req.device_fingerprint, req.device_name, client_ip))
+            device_id = cur.fetchone()["id"]
+
+        # 5) Сессия
+        session_token = generate_token()
+        expires_at_session = now() + timedelta(days=30)
+
+        cur.execute("""
+            INSERT INTO user_sessions (user_id, session_token, device_id, expires_at)
+            VALUES (%s, %s, %s, %s)
+        """, (user["id"], session_token, device_id, expires_at_session))
+        cur.execute("UPDATE users SET last_login=NOW() WHERE id=%s", (user["id"],))
+
+        # 6) Если почта не подтверждена — создадим/обновим токен и отправим письмо
+        need_confirmation = not bool(user.get("email_confirmed"))
+        if need_confirmation:
+            confirm_token = generate_token()
+            confirm_expires = now() + timedelta(hours=24)
+            cur.execute("""
+                INSERT INTO email_confirmations (user_id, token, expires_at)
+                VALUES (%s, %s, %s)
+            """, (user["id"], confirm_token, confirm_expires))
+            # отправка письма асинхронно
+            background_tasks.add_task(send_confirmation_email, user["email"], confirm_token)
+
+        con.commit()
+
+        return {
+            "success": True,
+            "session_token": session_token,
+            "need_confirmation": need_confirmation,
+            "user": {
+                "id": user["id"],
+                "email": user["email"],
+                "license_key": user.get("license_key"),
+                "balance": float(user.get("balance") or 0),
+                "email_confirmed": bool(user.get("email_confirmed")),
+            }
+        }
+
+    except HTTPException:
+        con.rollback()
+        raise
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+
+# =========================
+# ME — статус сессии/почты/ключа (для окна "Я подтвердил")
+# =========================
+def _get_session_user(cur, session_token: str):
+    cur.execute("""
+        SELECT s.user_id, s.expires_at, u.email, u.license_key, u.balance, u.currency, u.email_confirmed, u.total_spent
+        FROM user_sessions s
+        JOIN users u ON u.id = s.user_id
+        WHERE s.session_token=%s
+    """, (session_token,))
+    return cur.fetchone()
+
+@app.get("/api/auth/me")
+def auth_me(authorization: str = Header(None)):
+    """
+    Authorization: Bearer <token>
+    """
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="missing_token")
+    token = authorization.split(" ", 1)[1].strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="missing_token")
+
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    try:
+        row = _get_session_user(cur, token)
+        if not row:
+            raise HTTPException(status_code=401, detail="invalid_session")
+        if now() > row["expires_at"]:
+            raise HTTPException(status_code=401, detail="session_expired")
+
+        # подтягиваем лицензию
+        lic = None
+        if row.get("license_key"):
+            cur.execute("SELECT key, expires_at, revoked, max_devices, plan FROM licenses WHERE key=%s", (row["license_key"],))
+            lic = cur.fetchone()
+
+        return {
+            "success": True,
+            "user": {
+                "id": row["user_id"],
+                "email": row["email"],
+                "license_key": row.get("license_key"),
+                "balance": float(row.get("balance") or 0),
+                "currency": row.get("currency") or "USD",
+                "email_confirmed": bool(row.get("email_confirmed")),
+                "total_spent": float(row.get("total_spent") or 0),
+            },
+            "license": {
+                "key": lic.get("key") if lic else None,
+                "expires_at": lic.get("expires_at").isoformat() if lic and lic.get("expires_at") else None,
+                "revoked": bool(lic.get("revoked")) if lic else None,
+                "max_devices": int(lic.get("max_devices") or 1) if lic else None,
+                "plan": lic.get("plan") if lic else None,
+            } if lic else None
+        }
+
+    finally:
+        cur.close()
+        con.close()
+
+
+# =========================
+# Переотправить письмо подтверждения
+# =========================
+class ResendConfirmReq(BaseModel):
+    email: str
+
+@app.post("/api/auth/resend-confirmation")
+def resend_confirmation(req: ResendConfirmReq, background_tasks: BackgroundTasks):
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("SELECT id, email, email_confirmed FROM users WHERE email=%s", (req.email,))
+        u = cur.fetchone()
+        if not u:
+            # не палим существование email
+            return {"success": True}
+        if u["email_confirmed"]:
+            return {"success": True}
+
+        confirm_token = generate_token()
+        confirm_expires = now() + timedelta(hours=24)
+        cur.execute("""
+            INSERT INTO email_confirmations (user_id, token, expires_at)
+            VALUES (%s, %s, %s)
+        """, (u["id"], confirm_token, confirm_expires))
+        con.commit()
+
+        background_tasks.add_task(send_confirmation_email, u["email"], confirm_token)
+        return {"success": True}
     finally:
         cur.close()
         con.close()
