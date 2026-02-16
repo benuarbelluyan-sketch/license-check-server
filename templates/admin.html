@@ -22,10 +22,10 @@
     .expired { color:#ffd37b; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
     .grid { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
-    .stats { display:flex; gap:10px; flex-wrap:wrap; }
-    .stat { padding:10px 12px; border-radius:14px; background:#0b1322; border:1px solid #1f2a44; }
-    .stat b { display:block; font-size:18px; }
-    .stat span { color:#9aa4b2; font-size:12px; }
+    .stats { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
+    .stat { padding:15px 20px; border-radius:14px; background:#0b1322; border:1px solid #1f2a44; min-width:100px; text-align:center; }
+    .stat b { display:block; font-size:24px; }
+    .stat span { color:#9aa4b2; font-size:13px; }
     .row-actions form { display:inline; margin-right:6px; }
     a { color:#93c5fd; text-decoration:none; }
   </style>
@@ -46,16 +46,29 @@
 
   <!-- Простая статистика -->
   <div class="stats">
-    <div class="stat"><b>{{ stats.total }}</b><span>Всего</span></div>
-    <div class="stat"><b class="active">{{ stats.active }}</b><span>Active</span></div>
-    <div class="stat"><b class="expired">{{ stats.expired }}</b><span>Expired</span></div>
-    <div class="stat"><b class="revoked">{{ stats.revoked }}</b><span>Revoked</span></div>
+    <div class="stat">
+      <b>{{ stats.total }}</b>
+      <span>Всего</span>
+    </div>
+    <div class="stat">
+      <b style="color:#7CFFB2;">{{ stats.active }}</b>
+      <span>Active</span>
+    </div>
+    <div class="stat">
+      <b style="color:#ffd37b;">{{ stats.expired }}</b>
+      <span>Expired</span>
+    </div>
+    <div class="stat">
+      <b style="color:#ff7b7b;">{{ stats.revoked }}</b>
+      <span>Revoked</span>
+    </div>
   </div>
 
+  <!-- Поиск и фильтр -->
   <div class="card">
     <div class="grid">
       <form method="get" action="/admin" class="grid">
-        <input name="q" value="{{ q }}" placeholder="поиск: key / hwid / note" style="min-width:260px;">
+        <input name="q" value="{{ q or '' }}" placeholder="поиск: key / hwid / note" style="min-width:260px;">
         <select name="status">
           <option value="all" {% if status=="all" %}selected{% endif %}>Все</option>
           <option value="active" {% if status=="active" %}selected{% endif %}>Active</option>
@@ -65,20 +78,21 @@
         <button type="submit">Найти</button>
       </form>
 
-      <a href="/admin/export.csv?status={{ status }}" style="margin-left:auto;">
+      <a href="/admin/export" style="margin-left:auto;">
         <button type="button" class="btn2">Export CSV</button>
       </a>
     </div>
   </div>
 
+  <!-- Создание лицензии -->
   <div class="card">
-    <h3 style="margin-top:0;">Создать / продлить лицензию</h3>
+    <h3 style="margin-top:0;">Создать / продлить</h3>
 
     <form method="post" action="/admin/upsert">
       <div class="grid">
         <input name="key" placeholder="KEY (например MY-PC-001)" required style="min-width:220px;">
         <input name="hwid" placeholder="HWID (UUID клиента)" required style="min-width:320px;">
-        <input name="days" placeholder="days" required value="30" style="width:90px;">
+        <input name="days" type="number" placeholder="days" required value="30" style="width:90px;">
         <select name="plan">
           <option value="custom">custom</option>
           <option value="m1">m1</option>
@@ -102,6 +116,7 @@
     </div>
   </div>
 
+  <!-- Таблица лицензий -->
   <div class="card">
     <h3 style="margin:0;">Лицензии</h3>
 
@@ -139,31 +154,31 @@
           <td>{{ r.note }}</td>
 
           <td class="row-actions">
-            <form method="post" action="/admin/add_days">
+            <form method="post" action="/admin/add_days" style="display:inline;">
               <input type="hidden" name="key" value="{{ r.key }}">
               <input type="hidden" name="add" value="30">
               <button class="okbtn" type="submit">+30</button>
             </form>
 
-            <form method="post" action="/admin/add_days">
+            <form method="post" action="/admin/add_days" style="display:inline;">
               <input type="hidden" name="key" value="{{ r.key }}">
               <input type="hidden" name="add" value="90">
               <button class="btn2" type="submit">+90</button>
             </form>
 
             {% if r.revoked %}
-              <form method="post" action="/admin/unrevoke">
+              <form method="post" action="/admin/unrevoke" style="display:inline;">
                 <input type="hidden" name="key" value="{{ r.key }}">
                 <button class="btn2" type="submit">Unrevoke</button>
               </form>
             {% else %}
-              <form method="post" action="/admin/revoke" onsubmit="return confirm('Заблокировать ключ {{ r.key }}?');">
+              <form method="post" action="/admin/revoke" style="display:inline;" onsubmit="return confirm('Заблокировать ключ {{ r.key }}?');">
                 <input type="hidden" name="key" value="{{ r.key }}">
                 <button class="danger" type="submit">Revoke</button>
               </form>
             {% endif %}
 
-            <form method="post" action="/admin/delete" onsubmit="return confirm('Удалить ключ {{ r.key }}? Это необратимо!');">
+            <form method="post" action="/admin/delete" style="display:inline;" onsubmit="return confirm('Удалить ключ {{ r.key }}? Это необратимо!');">
               <input type="hidden" name="key" value="{{ r.key }}">
               <button class="danger" type="submit">Delete</button>
             </form>
@@ -171,7 +186,6 @@
         </tr>
       {% endfor %}
       </tbody>
-
     </table>
 
     <div style="margin-top:10px; color:#9aa4b2; font-size:13px;">
