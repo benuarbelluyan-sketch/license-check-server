@@ -240,6 +240,124 @@
       font-size: 13px;
     }
 
+    .actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .action-btn {
+      padding: 6px 12px;
+      border-radius: 30px;
+      font-size: 11px;
+      font-weight: 500;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .action-btn.deposit {
+      background: rgba(124, 255, 178, 0.1);
+      color: #7CFFB2;
+      border: 1px solid rgba(124, 255, 178, 0.2);
+    }
+
+    .action-btn.deposit:hover {
+      background: #22c55e;
+      color: #fff;
+      border-color: #22c55e;
+    }
+
+    .action-btn.reset {
+      background: rgba(255, 211, 123, 0.1);
+      color: #ffd37b;
+      border: 1px solid rgba(255, 211, 123, 0.2);
+    }
+
+    .action-btn.reset:hover {
+      background: #f59e0b;
+      color: #fff;
+      border-color: #f59e0b;
+    }
+
+    .action-btn.email {
+      background: rgba(59, 130, 246, 0.1);
+      color: #3b82f6;
+      border: 1px solid rgba(59, 130, 246, 0.2);
+    }
+
+    .action-btn.email:hover {
+      background: #3b82f6;
+      color: #fff;
+      border-color: #3b82f6;
+    }
+
+    .action-btn.unlink {
+      background: rgba(255, 123, 123, 0.1);
+      color: #ff7b7b;
+      border: 1px solid rgba(255, 123, 123, 0.2);
+    }
+
+    .action-btn.unlink:hover {
+      background: #ff7b7b;
+      color: #fff;
+      border-color: #ff7b7b;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.7);
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: #0f1217;
+      border: 1px solid #1e242c;
+      border-radius: 20px;
+      padding: 32px;
+      max-width: 400px;
+      width: 90%;
+    }
+
+    .modal-content h3 {
+      margin-bottom: 20px;
+      font-size: 20px;
+    }
+
+    .modal-content input,
+    .modal-content select {
+      width: 100%;
+      background: #0a0c10;
+      border: 1px solid #1e242c;
+      border-radius: 12px;
+      padding: 12px 16px;
+      color: #e5e9f0;
+      margin-bottom: 16px;
+    }
+
+    .modal-content input:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
     .footer-note {
       margin-top: 20px;
       color: #6b7a8f;
@@ -293,23 +411,23 @@
     <!-- Поиск -->
     <div class="action-bar">
       <div class="search-box">
-        <input type="text" placeholder="🔍 Поиск по email, ключу...">
-        <button class="btn-primary">Найти</button>
+        <input type="text" id="searchInput" placeholder="🔍 Поиск по email, ключу...">
+        <button class="btn-primary" onclick="filterTable()">Найти</button>
       </div>
     </div>
 
     <!-- Таблица пользователей -->
     <div class="table-container">
-      <table>
+      <table id="usersTable">
         <thead>
           <tr>
             <th>ID</th>
             <th>Email</th>
             <th>Ключ</th>
             <th>Баланс</th>
-            <th>Статус email</th>
+            <th>Статус</th>
             <th>Зарегистрирован</th>
-            <th>Последний вход</th>
+            <th>Действия</th>
           </tr>
         </thead>
         <tbody>
@@ -318,7 +436,7 @@
             <td class="mono">#{{ u.id }}</td>
             <td>{{ u.email }}</td>
             <td class="mono">{{ u.license_key or '—' }}</td>
-            <td>${{ "%.2f"|format(u.balance or 0) }}</td>
+            <td><span class="balance-{{ u.id }}">${{ "%.2f"|format(u.balance or 0) }}</span></td>
             <td>
               {% if u.email_confirmed %}
                 <span class="badge confirmed">подтверждён</span>
@@ -327,7 +445,29 @@
               {% endif %}
             </td>
             <td>{{ u.created_at.strftime('%Y-%m-%d') if u.created_at else '—' }}</td>
-            <td>{{ u.last_login.strftime('%Y-%m-%d %H:%M') if u.last_login else '—' }}</td>
+            <td>
+              <div class="actions">
+                <!-- Кнопка пополнить баланс -->
+                <button class="action-btn deposit" onclick="showDepositModal({{ u.id }}, '{{ u.email }}', {{ u.balance or 0 }})">
+                  💰 Пополнить
+                </button>
+                
+                <!-- Кнопка сброса пароля -->
+                <button class="action-btn reset" onclick="resetPassword({{ u.id }}, '{{ u.email }}')">
+                  🔑 Сброс пароля
+                </button>
+                
+                <!-- Кнопка отправить письмо -->
+                <button class="action-btn email" onclick="sendEmail({{ u.id }}, '{{ u.email }}')">
+                  📧 Письмо
+                </button>
+                
+                <!-- Кнопка отвязать все устройства -->
+                <button class="action-btn unlink" onclick="unlinkDevices({{ u.id }}, '{{ u.email }}')">
+                  🔌 Отвязать всё
+                </button>
+              </div>
+            </td>
           </tr>
         {% endfor %}
         </tbody>
@@ -339,5 +479,182 @@
     </div>
   </div>
 </div>
+
+<!-- Модальное окно для пополнения баланса -->
+<div class="modal" id="depositModal">
+  <div class="modal-content">
+    <h3>💰 Пополнить баланс</h3>
+    <p id="depositUserInfo" style="color: #9aa4b2; margin-bottom: 16px;"></p>
+    
+    <input type="number" id="depositAmount" placeholder="Сумма (USD)" min="1" step="0.01" value="10">
+    
+    <select id="depositMethod">
+      <option value="manual">Ручное пополнение</option>
+      <option value="crypto">Крипта (USDT)</option>
+      <option value="card">Банковская карта</option>
+    </select>
+    
+    <input type="text" id="depositNote" placeholder="Комментарий (необязательно)">
+    
+    <div class="modal-buttons">
+      <button class="action-btn secondary" onclick="closeModal()">Отмена</button>
+      <button class="action-btn deposit" onclick="confirmDeposit()">✅ Пополнить</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let currentUserId = null;
+  let currentUserEmail = null;
+  let currentUserBalance = null;
+
+  // Поиск по таблице
+  function filterTable() {
+    let input = document.getElementById('searchInput');
+    let filter = input.value.toLowerCase();
+    let table = document.getElementById('usersTable');
+    let tr = table.getElementsByTagName('tr');
+
+    for (let i = 1; i < tr.length; i++) {
+      let tdEmail = tr[i].getElementsByTagName('td')[1];
+      let tdKey = tr[i].getElementsByTagName('td')[2];
+      if (tdEmail || tdKey) {
+        let textValue = (tdEmail.textContent + tdKey.textContent).toLowerCase();
+        tr[i].style.display = textValue.includes(filter) ? '' : 'none';
+      }
+    }
+  }
+
+  // Модалка пополнения
+  function showDepositModal(userId, email, balance) {
+    currentUserId = userId;
+    currentUserEmail = email;
+    currentUserBalance = balance;
+    
+    document.getElementById('depositUserInfo').innerHTML = 
+      `Пользователь: <b>${email}</b><br>Текущий баланс: <b>$${balance.toFixed(2)}</b>`;
+    document.getElementById('depositModal').classList.add('active');
+  }
+
+  function closeModal() {
+    document.getElementById('depositModal').classList.remove('active');
+  }
+
+  // Подтверждение пополнения
+  function confirmDeposit() {
+    let amount = parseFloat(document.getElementById('depositAmount').value);
+    let method = document.getElementById('depositMethod').value;
+    let note = document.getElementById('depositNote').value;
+    
+    if (!amount || amount <= 0) {
+      alert('Введите корректную сумму');
+      return;
+    }
+
+    // Отправляем запрос на сервер
+    fetch('/admin/api/deposit', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        user_id: currentUserId,
+        amount: amount,
+        method: method,
+        note: note
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Обновляем баланс в таблице
+        let balanceSpan = document.querySelector(`.balance-${currentUserId}`);
+        if (balanceSpan) {
+          let newBalance = currentUserBalance + amount;
+          balanceSpan.textContent = `$${newBalance.toFixed(2)}`;
+        }
+        alert(`✅ Баланс пополнен на $${amount.toFixed(2)}`);
+        closeModal();
+      } else {
+        alert('❌ Ошибка: ' + data.error);
+      }
+    })
+    .catch(error => {
+      alert('❌ Ошибка: ' + error);
+    });
+  }
+
+  // Сброс пароля
+  function resetPassword(userId, email) {
+    if (!confirm(`Отправить ссылку для сброса пароля на ${email}?`)) return;
+    
+    fetch('/admin/api/reset-password', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        email: email
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert(`✅ Письмо со сбросом пароля отправлено на ${email}`);
+      } else {
+        alert('❌ Ошибка: ' + data.error);
+      }
+    });
+  }
+
+  // Отправка письма
+  function sendEmail(userId, email) {
+    let type = prompt('Какое письмо отправить?\n1 - Подтверждение email\n2 - Напоминание\n3 - Приветственное');
+    
+    fetch('/admin/api/send-email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        email: email,
+        type: type
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert(`✅ Письмо отправлено на ${email}`);
+      } else {
+        alert('❌ Ошибка: ' + data.error);
+      }
+    });
+  }
+
+  // Отвязать все устройства
+  function unlinkDevices(userId, email) {
+    if (!confirm(`⚠️ Отвязать ВСЕ устройства пользователя ${email}?\nОн сможет заново привязать новые.`)) return;
+    
+    fetch('/admin/api/unlink-devices', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        user_id: userId
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert(`✅ Все устройства отвязаны. Отвязано: ${data.count} шт.`);
+      } else {
+        alert('❌ Ошибка: ' + data.error);
+      }
+    });
+  }
+</script>
 </body>
 </html>
