@@ -300,6 +300,25 @@ def init_db():
         """)
         print("✓ admin_audit")
         
+        # ========== МИГРАЦИИ ==========
+        print("🔧 Применяю миграции...")
+        
+        # Проверяем наличие колонки last_login в users
+        cur.execute("""
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name='users' AND column_name='last_login';
+        """)
+        if not cur.fetchone():
+            print("  → Добавляю колонку last_login в users...")
+            cur.execute("""
+                ALTER TABLE users 
+                ADD COLUMN last_login TIMESTAMPTZ;
+            """)
+            print("  ✓ Колонка last_login добавлена")
+        else:
+            print("  ✓ Колонка last_login уже существует")
+        
         con.commit()
         print("✅ ВСЕ ТАБЛИЦЫ СОЗДАНЫ!")
         
@@ -2153,5 +2172,3 @@ def generate_key(request: Request, prefix: str = Form("")):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
-
-
