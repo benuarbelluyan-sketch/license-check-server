@@ -604,7 +604,7 @@
             <td>
               {% if r.revoked %}
                 <span class="badge revoked">revoked</span>
-              {% elif r.expires_at <= now() %}
+              {% elif r.expires_at <= now %}
                 <span class="badge expired">expired</span>
               {% else %}
                 <span class="badge active">active</span>
@@ -655,3 +655,4 @@
 </div>
 </body>
 </html>
+
