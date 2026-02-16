@@ -139,7 +139,7 @@
         <tr>
           <td class="mono">{{ r.key }}</td>
           <td class="mono">{{ r.hwid[:20] }}...</td>
-          <td class="mono">{{ r.expires_at[:10] }}</td>
+          <td class="mono">{{ r.expires_at.strftime('%Y-%m-%d') }}</td>
 
           <td>
             {% if r.revoked %}
