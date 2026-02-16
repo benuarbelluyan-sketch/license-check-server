@@ -484,7 +484,7 @@ def confirm_email(token: str):
         con.close()
 
 # =========================
-# АДМИН ПАНЕЛЬ (МАКСИМАЛЬНО ПРОСТАЯ)
+# АДМИН ПАНЕЛЬ (С НОВОЙ СТАТИСТИКОЙ)
 # =========================
 @app.get("/admin", response_class=HTMLResponse)
 def admin_panel(request: Request):
@@ -495,11 +495,11 @@ def admin_panel(request: Request):
     cur = con.cursor(cursor_factory=RealDictCursor)
     
     try:
-        # Просто получаем все лицензии
+        # Получаем лицензии
         cur.execute("SELECT * FROM licenses ORDER BY updated_at DESC LIMIT 500")
         rows = cur.fetchall()
         
-        # Очень простая статистика
+        # Статистика по лицензиям
         now_ts = now()
         active = 0
         expired = 0
@@ -513,17 +513,65 @@ def admin_panel(request: Request):
             else:
                 expired += 1
         
+        # Пробуем получить статистику пользователей
+        try:
+            cur.execute("SELECT COUNT(*) as count FROM users")
+            total_users = cur.fetchone()['count'] or 0
+        except:
+            total_users = 0
+            
+        try:
+            cur.execute("SELECT COUNT(*) as count FROM users WHERE email_confirmed = TRUE")
+            confirmed_users = cur.fetchone()['count'] or 0
+        except:
+            confirmed_users = 0
+            
+        try:
+            cur.execute("SELECT COALESCE(SUM(balance), 0) as total FROM users")
+            total_balance = float(cur.fetchone()['total'] or 0)
+        except:
+            total_balance = 0
+            
+        try:
+            cur.execute("SELECT COALESCE(SUM(total_spent), 0) as total FROM users")
+            total_revenue = float(cur.fetchone()['total'] or 0)
+        except:
+            total_revenue = 0
+            
+        try:
+            cur.execute("SELECT COUNT(*) as count FROM user_devices WHERE is_active = TRUE")
+            total_devices = cur.fetchone()['count'] or 0
+        except:
+            total_devices = 0
+            
+        try:
+            cur.execute("SELECT COUNT(DISTINCT user_id) as count FROM user_devices WHERE is_active = TRUE")
+            users_with_devices = cur.fetchone()['count'] or 0
+        except:
+            users_with_devices = 0
+        
         stats = {
             "total": len(rows),
             "active": active,
             "expired": expired,
-            "revoked": revoked
+            "revoked": revoked,
+            "total_users": total_users,
+            "confirmed_users": confirmed_users,
+            "total_balance": total_balance,
+            "total_revenue": total_revenue,
+            "total_devices": total_devices,
+            "users_with_devices": users_with_devices
         }
         
     except Exception as e:
-        print(f"Ошибка: {e}")
+        print(f"Ошибка в админке: {e}")
         rows = []
-        stats = {"total": 0, "active": 0, "expired": 0, "revoked": 0}
+        stats = {
+            "total": 0, "active": 0, "expired": 0, "revoked": 0,
+            "total_users": 0, "confirmed_users": 0,
+            "total_balance": 0, "total_revenue": 0,
+            "total_devices": 0, "users_with_devices": 0
+        }
         
     finally:
         cur.close()
@@ -537,7 +585,7 @@ def admin_panel(request: Request):
             "stats": stats,
         }
     )
-
+    
 # =========================
 # API УСТРОЙСТВ
 # =========================
@@ -700,4 +748,5 @@ def ai_score(req: AIScoreReq) -> Dict[str, Any]:
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
+
 
