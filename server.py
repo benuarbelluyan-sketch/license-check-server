@@ -609,6 +609,219 @@ def admin_dashboard(request: Request):
     )
 
 # =========================
+# НОВЫЕ API ДЛЯ АДМИНКИ
+# =========================
+
+class DepositRequest(BaseModel):
+    user_id: int
+    amount: float
+    method: str
+    note: str = ""
+
+@app.post("/admin/api/deposit")
+def admin_deposit(request: Request, data: DepositRequest):
+    """Пополнение баланса пользователя админом"""
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    con = db()
+    cur = con.cursor()
+    
+    try:
+        cur.execute("BEGIN")
+        
+        # Проверяем пользователя
+        cur.execute("SELECT license_key FROM users WHERE id = %s", (data.user_id,))
+        user = cur.fetchone()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        license_key = user[0]
+        
+        # Начисляем баланс
+        cur.execute("""
+            UPDATE users 
+            SET balance = balance + %s 
+            WHERE id = %s
+            RETURNING balance
+        """, (data.amount, data.user_id))
+        
+        new_balance = cur.fetchone()[0]
+        
+        # Записываем транзакцию
+        cur.execute("""
+            INSERT INTO transactions 
+            (user_id, license_key, amount, type, description, metadata)
+            VALUES (%s, %s, %s, 'deposit', %s, %s)
+        """, (
+            data.user_id, 
+            license_key, 
+            data.amount, 
+            f"Ручное пополнение: {data.note}" if data.note else "Ручное пополнение",
+            json.dumps({"method": data.method, "admin": True})
+        ))
+        
+        con.commit()
+        
+        return {"success": True, "new_balance": float(new_balance)}
+        
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+class ResetPasswordRequest(BaseModel):
+    user_id: int
+    email: str
+
+@app.post("/admin/api/reset-password")
+def admin_reset_password(request: Request, data: ResetPasswordRequest):
+    """Сброс пароля пользователя админом"""
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    # Генерируем токен сброса
+    reset_token = generate_token()
+    expires_at = now() + timedelta(hours=24)
+    
+    con = db()
+    cur = con.cursor()
+    
+    try:
+        cur.execute("""
+            INSERT INTO password_resets (user_id, token, expires_at)
+            VALUES (%s, %s, %s)
+        """, (data.user_id, reset_token, expires_at))
+        con.commit()
+        
+        # Отправляем письмо
+        send_password_reset_email(data.email, reset_token)
+        
+        return {"success": True}
+        
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+class UnlinkDevicesRequest(BaseModel):
+    user_id: int
+
+@app.post("/admin/api/unlink-devices")
+def admin_unlink_devices(request: Request, data: UnlinkDevicesRequest):
+    """Отвязать все устройства пользователя"""
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    con = db()
+    cur = con.cursor()
+    
+    try:
+        # Получаем список устройств
+        cur.execute("""
+            SELECT id FROM user_devices 
+            WHERE user_id = %s AND is_active = TRUE
+        """, (data.user_id,))
+        devices = cur.fetchall()
+        
+        count = len(devices)
+        
+        # Деактивируем все устройства
+        cur.execute("""
+            UPDATE user_devices 
+            SET is_active = FALSE 
+            WHERE user_id = %s
+        """, (data.user_id,))
+        
+        # Удаляем все сессии
+        cur.execute("""
+            DELETE FROM user_sessions 
+            WHERE user_id = %s
+        """, (data.user_id,))
+        
+        con.commit()
+        
+        return {"success": True, "count": count}
+        
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+class UnlinkSingleDeviceRequest(BaseModel):
+    device_id: int
+
+@app.post("/admin/api/unlink-device")
+def admin_unlink_device(request: Request, data: UnlinkSingleDeviceRequest):
+    """Отвязать конкретное устройство"""
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    con = db()
+    cur = con.cursor()
+    
+    try:
+        # Деактивируем устройство
+        cur.execute("""
+            UPDATE user_devices 
+            SET is_active = FALSE 
+            WHERE id = %s
+        """, (data.device_id,))
+        
+        # Удаляем сессии этого устройства
+        cur.execute("""
+            DELETE FROM user_sessions 
+            WHERE device_id = %s
+        """, (data.device_id,))
+        
+        con.commit()
+        
+        return {"success": True}
+        
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+class UpdateLimitRequest(BaseModel):
+    key: str
+    max_devices: int
+
+@app.post("/admin/api/update-limit")
+def admin_update_limit(request: Request, data: UpdateLimitRequest):
+    """Изменить лимит устройств для лицензии"""
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    con = db()
+    cur = con.cursor()
+    
+    try:
+        cur.execute("""
+            UPDATE licenses 
+            SET max_devices = %s 
+            WHERE key = %s
+        """, (data.max_devices, data.key))
+        con.commit()
+        
+        return {"success": True}
+        
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+# =========================
 # СТРАНИЦА ЛИЦЕНЗИЙ
 # =========================
 @app.get("/admin/licenses", response_class=HTMLResponse)
@@ -1250,3 +1463,4 @@ def generate_key(request: Request, prefix: str = Form("")):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
+
