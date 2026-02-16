@@ -1376,46 +1376,77 @@ def admin_panel(request: Request):
     con = db()
     cur = con.cursor(cursor_factory=RealDictCursor)
     
-    # Лицензии
-    cur.execute("SELECT * FROM licenses ORDER BY updated_at DESC LIMIT 500")
-    rows = cur.fetchall()
-    
-    # Статистика пользователей
-    cur.execute("""
-        SELECT 
-            COUNT(*) as total_users,
-            COALESCE(SUM(balance), 0) as total_balance,
-            COALESCE(SUM(total_spent), 0) as total_revenue,
-            COUNT(CASE WHEN email_confirmed THEN 1 END) as confirmed_users
-        FROM users
-    """)
-    user_stats = cur.fetchone()
-    
-    # Статистика устройств
-    cur.execute("""
-        SELECT 
-            COUNT(*) as total_devices,
-            COUNT(DISTINCT user_id) as users_with_devices
-        FROM user_devices
-        WHERE is_active = TRUE
-    """)
-    device_stats = cur.fetchone()
-    
-    cur.close()
-    con.close()
-    
-    stats = {
-        "total": len(rows),
-        "active": len([r for r in rows if not r["revoked"] and r["expires_at"] > now()]),
-        "revoked": len([r for r in rows if r["revoked"]]),
-        "expired": len([r for r in rows if not r["revoked"] and r["expires_at"] <= now()]),
-        "total_users": user_stats['total_users'] or 0,
-        "confirmed_users": user_stats['confirmed_users'] or 0,
-        "total_balance": float(user_stats['total_balance'] or 0),
-        "total_revenue": float(user_stats['total_revenue'] or 0),
-        "total_devices": device_stats['total_devices'] or 0,
-        "users_with_devices": device_stats['users_with_devices'] or 0
-    }
+    try:
+        # Получаем лицензии
+        cur.execute("SELECT * FROM licenses ORDER BY updated_at DESC LIMIT 500")
+        rows = cur.fetchall()
+        
+        # Статистика по лицензиям
+        now_ts = now()
+        active_count = 0
+        expired_count = 0
+        revoked_count = 0
+        
+        for r in rows:
+            if r["revoked"]:
+                revoked_count += 1
+            elif r["expires_at"] > now_ts:
+                active_count += 1
+            else:
+                expired_count += 1
+        
+        # Статистика пользователей
+        try:
+            cur.execute("""
+                SELECT 
+                    COUNT(*) as total_users,
+                    COUNT(CASE WHEN email_confirmed THEN 1 END) as confirmed_users,
+                    COALESCE(SUM(balance), 0) as total_balance,
+                    COALESCE(SUM(total_spent), 0) as total_revenue
+                FROM users
+            """)
+            user_stats = cur.fetchone()
+        except:
+            user_stats = {"total_users": 0, "confirmed_users": 0, "total_balance": 0, "total_revenue": 0}
+        
+        # Статистика устройств
+        try:
+            cur.execute("""
+                SELECT 
+                    COUNT(*) as total_devices,
+                    COUNT(DISTINCT user_id) as users_with_devices
+                FROM user_devices
+                WHERE is_active = TRUE
+            """)
+            device_stats = cur.fetchone()
+        except:
+            device_stats = {"total_devices": 0, "users_with_devices": 0}
+        
+        stats = {
+            "total": len(rows),
+            "active": active_count,
+            "expired": expired_count,
+            "revoked": revoked_count,
+            "total_users": user_stats["total_users"] or 0,
+            "confirmed_users": user_stats["confirmed_users"] or 0,
+            "total_balance": float(user_stats["total_balance"] or 0),
+            "total_revenue": float(user_stats["total_revenue"] or 0),
+            "total_devices": device_stats["total_devices"] or 0,
+            "users_with_devices": device_stats["users_with_devices"] or 0
+        }
+        
+    except Exception as e:
+        print(f"Ошибка в админке: {e}")
+        rows = []
+        stats = {
+            "total": 0, "active": 0, "expired": 0, "revoked": 0,
+            "total_users": 0, "confirmed_users": 0,
+            "total_balance": 0, "total_revenue": 0,
+            "total_devices": 0, "users_with_devices": 0
+        }
+    finally:
+        cur.close()
+        con.close()
     
     return templates.TemplateResponse(
         "admin.html",
@@ -1504,3 +1535,4 @@ def ai_score(req: AIScoreReq) -> Dict[str, Any]:
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
+
