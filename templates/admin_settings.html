@@ -156,4 +156,193 @@
 
     .settings-group input,
     .settings-group select {
-      width
+      width: 100%;
+      background: #0a0c10;
+      border: 1px solid #1e242c;
+      border-radius: 12px;
+      padding: 12px 16px;
+      color: #e5e9f0;
+      margin-bottom: 16px;
+    }
+
+    .settings-group input:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid #1e242c;
+    }
+
+    .info-row:last-child {
+      border-bottom: none;
+    }
+
+    .info-label {
+      color: #9aa4b2;
+    }
+
+    .info-value {
+      font-weight: 500;
+      color: #fff;
+    }
+
+    .btn-save {
+      background: #3b82f6;
+      border: none;
+      border-radius: 40px;
+      padding: 12px 32px;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 16px;
+    }
+
+    .btn-save:hover {
+      background: #2563eb;
+    }
+
+    .danger-zone {
+      border-color: rgba(255, 123, 123, 0.3);
+    }
+
+    .danger-zone h2 {
+      color: #ff7b7b;
+      border-bottom-color: rgba(255, 123, 123, 0.3);
+    }
+
+    .btn-danger {
+      background: transparent;
+      border: 1px solid #ff7b7b;
+      border-radius: 40px;
+      padding: 12px 32px;
+      color: #ff7b7b;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    .btn-danger:hover {
+      background: rgba(255, 123, 123, 0.1);
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <!-- Сайдбар -->
+  <div class="sidebar">
+    <div class="logo">
+      <span>TG Parser</span> Sender
+    </div>
+    
+    <a href="/admin" class="nav-item {% if active_tab == 'dashboard' %}active{% endif %}">
+      <i>📊</i> Дашборд
+    </a>
+    <a href="/admin/licenses" class="nav-item {% if active_tab == 'licenses' %}active{% endif %}">
+      <i>🔑</i> Лицензии
+    </a>
+    <a href="/admin/users" class="nav-item {% if active_tab == 'users' %}active{% endif %}">
+      <i>👥</i> Пользователи
+    </a>
+    <a href="/admin/devices" class="nav-item {% if active_tab == 'devices' %}active{% endif %}">
+      <i>💻</i> Устройства
+    </a>
+    <a href="/admin/transactions" class="nav-item {% if active_tab == 'transactions' %}active{% endif %}">
+      <i>💰</i> Транзакции
+    </a>
+    <a href="/admin/settings" class="nav-item {% if active_tab == 'settings' %}active{% endif %}">
+      <i>⚙️</i> Настройки
+    </a>
+  </div>
+
+  <!-- Основной контент -->
+  <div class="main">
+    <div class="header">
+      <h1>Настройки</h1>
+      <div class="header-right">
+        <div class="admin-badge">
+          <span>👑</span> Администратор
+        </div>
+        <form method="post" action="/admin/logout" style="margin:0;">
+          <button class="logout-btn" type="submit">Выйти</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="settings-grid">
+      <!-- Основные настройки -->
+      <div class="settings-card">
+        <h2>⚙️ Основные настройки</h2>
+        
+        <div class="settings-group">
+          <label>ADMIN_TOKEN</label>
+          <input type="password" value="••••••••••••••••" readonly>
+        </div>
+
+        <div class="settings-group">
+          <label>Лимит устройств по умолчанию</label>
+          <select>
+            <option value="1" selected>1 устройство</option>
+            <option value="2">2 устройства</option>
+            <option value="3">3 устройства</option>
+            <option value="5">5 устройств</option>
+          </select>
+        </div>
+
+        <div class="settings-group">
+          <label>Время жизни сессии (дни)</label>
+          <input type="number" value="30">
+        </div>
+
+        <button class="btn-save">Сохранить изменения</button>
+      </div>
+
+      <!-- Информация о системе -->
+      <div class="settings-card">
+        <h2>ℹ️ Информация о системе</h2>
+        
+        <div class="info-row">
+          <span class="info-label">Версия</span>
+          <span class="info-value">2.0.0</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Сервер</span>
+          <span class="info-value">Render</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">База данных</span>
+          <span class="info-value">PostgreSQL</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Последний запуск</span>
+          <span class="info-value">{{ now().strftime('%Y-%m-%d %H:%M') if now else '—' }}</span>
+        </div>
+      </div>
+
+      <!-- Опасная зона -->
+      <div class="settings-card danger-zone">
+        <h2>⚠️ Опасная зона</h2>
+        
+        <div style="margin-bottom: 20px; color: #9aa4b2; font-size: 14px;">
+          Действия в этом разделе необратимы. Будьте осторожны!
+        </div>
+
+        <button class="btn-danger" onclick="return confirm('Вы уверены? Это действие нельзя отменить!')">
+          Очистить все неактивные сессии
+        </button>
+
+        <div style="height: 12px;"></div>
+
+        <button class="btn-danger" onclick="return confirm('Вы уверены? Все неактивные устройства будут удалены!')">
+          Очистить неактивные устройства
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
