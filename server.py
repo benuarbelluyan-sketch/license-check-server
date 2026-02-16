@@ -29,7 +29,7 @@ from openai import OpenAI
 app = FastAPI()
 
 # =========================
-# ГЛОБАЛЬНЫЙ ОБРАБОТЧИК ОШИБОК
+# ГЛОБАЛЬНЫЙ ОБРАБОТЧИК
 # =========================
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
@@ -101,206 +101,6 @@ def db():
     if not DATABASE_URL:
         raise RuntimeError("DATABASE_URL not set")
     return psycopg2.connect(DATABASE_URL)
-
-def init_db():
-    """Создание всех таблиц"""
-    print("🚀 Создаю таблицы...")
-    con = db()
-    cur = con.cursor()
-    
-    try:
-        # Таблица лицензий
-        cur.execute("""
-        CREATE TABLE IF NOT EXISTS licenses (
-            key TEXT PRIMARY KEY,
-            hwid TEXT NOT NULL,
-            expires_at TIMESTAMPTZ NOT NULL,
-            revoked BOOLEAN NOT NULL DEFAULT FALSE,
-            note TEXT DEFAULT '',
-            plan TEXT DEFAULT 'custom',
-            max_devices INTEGER DEFAULT 1,
-            created_at TIMESTAMPTZ DEFAULT NOW(),
-            updated_at TIMESTAMPTZ DEFAULT NOW(),
-            last_check_at TIMESTAMPTZ,
-            check_count BIGINT DEFAULT 0
-        );
-        """)
-        print("✓ licenses")
-        
-        # Таблица пользователей
-        cur.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id BIGSERIAL PRIMARY KEY,
-            email TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            license_key TEXT REFERENCES licenses(key) ON DELETE CASCADE,
-            balance DECIMAL(10,2) DEFAULT 0.00,
-            currency TEXT DEFAULT 'USD',
-            email_confirmed BOOLEAN DEFAULT FALSE,
-            email_confirmed_at TIMESTAMPTZ,
-            created_at TIMESTAMPTZ DEFAULT NOW(),
-            last_login TIMESTAMPTZ,
-            is_active BOOLEAN DEFAULT TRUE,
-            total_spent DECIMAL(10,2) DEFAULT 0.00
-        );
-        """)
-        print("✓ users")
-        
-        # Таблица устройств
-        cur.execute("""
-        CREATE TABLE IF NOT EXISTS user_devices (
-            id BIGSERIAL PRIMARY KEY,
-            user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
-            device_fingerprint TEXT NOT NULL,
-            device_name TEXT,
-            last_ip INET,
-            last_login TIMESTAMPTZ DEFAULT NOW(),
-            is_active BOOLEAN DEFAULT TRUE,
-            created_at TIMESTAMPTZ DEFAULT NOW(),
-            UNIQUE(user_id, device_fingerprint)
-        );
-        """)
-        print("✓ user_devices")
-        
-        # Таблица сессий
-        cur.execute("""
-        CREATE TABLE IF NOT EXISTS user_sessions (
-            id BIGSERIAL PRIMARY KEY,
-            user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
-            session_token TEXT UNIQUE NOT NULL,
-            device_id BIGINT REFERENCES user_devices(id),
-            expires_at TIMESTAMPTZ NOT NULL,
-            created_at TIMESTAMPTZ DEFAULT NOW(),
-            last_active TIMESTAMPTZ DEFAULT NOW()
-        );
-        """)
-        print("✓ user_sessions")
-        
-        # Таблица подтверждения email
-        cur.execute("""
-        CREATE TABLE IF NOT EXISTS email_confirmations (
-            id BIGSERIAL PRIMARY KEY,
-            user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
-            token TEXT UNIQUE NOT NULL,
-            expires_at TIMESTAMPTZ NOT NULL,
-            confirmed_at TIMESTAMPTZ,
-            created_at TIMESTAMPTZ DEFAULT NOW()
-        );
-        """)
-        print("✓ email_confirmations")
-        
-        # Таблица сброса пароля
-        cur.execute("""
-        CREATE TABLE IF NOT EXISTS password_resets (
-            id BIGSERIAL PRIMARY KEY,
-            user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
-            token TEXT UNIQUE NOT NULL,
-            expires_at TIMESTAMPTZ NOT NULL,
-            used BOOLEAN DEFAULT FALSE,
-            created_at TIMESTAMPTZ DEFAULT NOW()
-        );
-        """)
-        print("✓ password_resets")
-        
-        # Таблица транзакций
-        cur.execute("""
-        CREATE TABLE IF NOT EXISTS transactions (
-            id BIGSERIAL PRIMARY KEY,
-            user_id BIGINT REFERENCES users(id),
-            license_key TEXT REFERENCES licenses(key),
-            amount DECIMAL(10,2) NOT NULL,
-            type TEXT NOT NULL,
-            description TEXT,
-            created_at TIMESTAMPTZ DEFAULT NOW(),
-            metadata JSONB DEFAULT '{}'
-        );
-        """)
-        print("✓ transactions")
-        
-        # Тарифы
-        cur.execute("""
-        CREATE TABLE IF NOT EXISTS pricing (
-            id SERIAL PRIMARY KEY,
-            operation_type TEXT UNIQUE NOT NULL,
-            base_price DECIMAL(10,4) NOT NULL,
-            final_price DECIMAL(10,4) NOT NULL,
-            min_units INTEGER DEFAULT 1,
-            description TEXT
-        );
-        """)
-        
-        cur.execute("""
-        INSERT INTO pricing (operation_type, base_price, final_price, min_units, description)
-        VALUES 
-            ('parse', 0.0005, 0.0005, 100, 'Парсинг одного сообщения'),
-            ('ai_parse', 0.005, 0.0075, 10, 'AI-анализ одного сообщения'),
-            ('sender', 0.001, 0.001, 50, 'Отправка одного сообщения'),
-            ('invite', 0.002, 0.002, 20, 'Приглашение одного пользователя')
-        ON CONFLICT (operation_type) DO UPDATE SET
-            base_price = EXCLUDED.base_price,
-            final_price = EXCLUDED.final_price,
-            description = EXCLUDED.description;
-        """)
-        print("✓ pricing")
-        
-        # Логи использования
-        cur.execute("""
-        CREATE TABLE IF NOT EXISTS usage_logs (
-            id BIGSERIAL PRIMARY KEY,
-            user_id BIGINT REFERENCES users(id),
-            license_key TEXT REFERENCES licenses(key),
-            operation_type TEXT NOT NULL,
-            units_used INTEGER NOT NULL,
-            cost DECIMAL(10,2) NOT NULL,
-            details JSONB DEFAULT '{}',
-            created_at TIMESTAMPTZ DEFAULT NOW()
-        );
-        """)
-        print("✓ usage_logs")
-        
-        # Платежные запросы
-        cur.execute("""
-        CREATE TABLE IF NOT EXISTS payment_requests (
-            id BIGSERIAL PRIMARY KEY,
-            user_id BIGINT REFERENCES users(id),
-            license_key TEXT REFERENCES licenses(key),
-            amount DECIMAL(10,2) NOT NULL,
-            payment_id TEXT UNIQUE,
-            status TEXT DEFAULT 'pending',
-            payment_url TEXT,
-            created_at TIMESTAMPTZ DEFAULT NOW(),
-            completed_at TIMESTAMPTZ
-        );
-        """)
-        print("✓ payment_requests")
-        
-        # Аудит админа
-        cur.execute("""
-        CREATE TABLE IF NOT EXISTS admin_audit (
-            id BIGSERIAL PRIMARY KEY,
-            ts TIMESTAMPTZ DEFAULT NOW(),
-            action TEXT,
-            key TEXT,
-            hwid TEXT,
-            info TEXT DEFAULT ''
-        );
-        """)
-        print("✓ admin_audit")
-        
-        con.commit()
-        print("✅ ВСЕ ТАБЛИЦЫ СОЗДАНЫ!")
-        
-    except Exception as e:
-        print(f"❌ Ошибка: {e}")
-        con.rollback()
-        raise
-    finally:
-        cur.close()
-        con.close()
-
-@app.on_event("startup")
-def startup():
-    init_db()
 
 # =========================
 # API ПРОВЕРКИ ЛИЦЕНЗИИ
@@ -684,7 +484,7 @@ def confirm_email(token: str):
         con.close()
 
 # =========================
-# АДМИН ПАНЕЛЬ (ИСПРАВЛЕННАЯ)
+# АДМИН ПАНЕЛЬ (ПРОСТАЯ ВЕРСИЯ)
 # =========================
 @app.get("/admin/login", response_class=HTMLResponse)
 def login_page(request: Request):
@@ -719,71 +519,32 @@ def admin_panel(request: Request):
         cur.execute("SELECT * FROM licenses ORDER BY updated_at DESC LIMIT 500")
         rows = cur.fetchall()
         
-        # Статистика по лицензиям
+        # Простая статистика по лицензиям
         now_ts = now()
-        active_count = 0
-        expired_count = 0
-        revoked_count = 0
+        active = 0
+        expired = 0
+        revoked = 0
         
-        for r in rows:
-            if r["revoked"]:
-                revoked_count += 1
-            elif r["expires_at"] > now_ts:
-                active_count += 1
+        for row in rows:
+            if row['revoked']:
+                revoked += 1
+            elif row['expires_at'] > now_ts:
+                active += 1
             else:
-                expired_count += 1
-        
-        # Статистика пользователей
-        try:
-            cur.execute("""
-                SELECT 
-                    COUNT(*) as total_users,
-                    COUNT(CASE WHEN email_confirmed THEN 1 END) as confirmed_users,
-                    COALESCE(SUM(balance), 0) as total_balance,
-                    COALESCE(SUM(total_spent), 0) as total_revenue
-                FROM users
-            """)
-            user_stats = cur.fetchone()
-        except Exception as e:
-            print(f"Ошибка получения статистики пользователей: {e}")
-            user_stats = {"total_users": 0, "confirmed_users": 0, "total_balance": 0, "total_revenue": 0}
-        
-        # Статистика устройств
-        try:
-            cur.execute("""
-                SELECT 
-                    COUNT(*) as total_devices,
-                    COUNT(DISTINCT user_id) as users_with_devices
-                FROM user_devices
-                WHERE is_active = TRUE
-            """)
-            device_stats = cur.fetchone()
-        except Exception as e:
-            print(f"Ошибка получения статистики устройств: {e}")
-            device_stats = {"total_devices": 0, "users_with_devices": 0}
+                expired += 1
         
         stats = {
             "total": len(rows),
-            "active": active_count,
-            "expired": expired_count,
-            "revoked": revoked_count,
-            "total_users": user_stats["total_users"] or 0,
-            "confirmed_users": user_stats["confirmed_users"] or 0,
-            "total_balance": float(user_stats["total_balance"] or 0),
-            "total_revenue": float(user_stats["total_revenue"] or 0),
-            "total_devices": device_stats["total_devices"] or 0,
-            "users_with_devices": device_stats["users_with_devices"] or 0
+            "active": active,
+            "expired": expired,
+            "revoked": revoked
         }
         
     except Exception as e:
-        print(f"Ошибка в админке: {e}")
+        print(f"Ошибка: {e}")
         rows = []
-        stats = {
-            "total": 0, "active": 0, "expired": 0, "revoked": 0,
-            "total_users": 0, "confirmed_users": 0,
-            "total_balance": 0, "total_revenue": 0,
-            "total_devices": 0, "users_with_devices": 0
-        }
+        stats = {"total": 0, "active": 0, "expired": 0, "revoked": 0}
+        
     finally:
         cur.close()
         con.close()
@@ -837,73 +598,6 @@ def list_devices(req: DeviceReq):
         cur.close()
         con.close()
 
-@app.post("/api/devices/rename")
-def rename_device(device_id: int, new_name: str, session_token: str):
-    con = db()
-    cur = con.cursor()
-    
-    try:
-        cur.execute("""
-            UPDATE user_devices 
-            SET device_name = %s
-            WHERE id = %s AND user_id = (
-                SELECT user_id FROM user_sessions WHERE session_token = %s
-            )
-        """, (new_name, device_id, session_token))
-        
-        con.commit()
-        return {"success": True}
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        cur.close()
-        con.close()
-
-@app.post("/api/devices/remove")
-def remove_device(device_id: int, session_token: str):
-    con = db()
-    cur = con.cursor()
-    
-    try:
-        cur.execute("""
-            SELECT d.id 
-            FROM user_devices d
-            JOIN user_sessions s ON d.user_id = s.user_id
-            WHERE s.session_token = %s AND d.id = %s AND d.device_fingerprint != (
-                SELECT device_fingerprint FROM user_devices WHERE id = (
-                    SELECT device_id FROM user_sessions WHERE session_token = %s
-                )
-            )
-        """, (session_token, device_id, session_token))
-        
-        if not cur.fetchone():
-            raise HTTPException(status_code=403, detail="cannot_remove_current_device")
-        
-        cur.execute("""
-            UPDATE user_devices 
-            SET is_active = FALSE
-            WHERE id = %s
-        """, (device_id,))
-        
-        cur.execute("""
-            DELETE FROM user_sessions 
-            WHERE device_id = %s
-        """, (device_id,))
-        
-        con.commit()
-        return {"success": True}
-        
-    except HTTPException:
-        con.rollback()
-        raise
-    except Exception as e:
-        con.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        cur.close()
-        con.close()
-
 # =========================
 # API БАЛАНСА
 # =========================
@@ -933,129 +627,6 @@ def get_balance(req: BalanceReq):
             "currency": user['currency']
         }
         
-    finally:
-        cur.close()
-        con.close()
-
-class EstimateReq(BaseModel):
-    session_token: str
-    operation: str
-    units: int
-
-@app.post("/api/balance/estimate")
-def estimate_cost(req: EstimateReq):
-    con = db()
-    cur = con.cursor()
-    
-    try:
-        cur.execute("""
-            SELECT final_price, min_units 
-            FROM pricing 
-            WHERE operation_type = %s
-        """, (req.operation,))
-        
-        row = cur.fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="operation_not_found")
-        
-        final_price, min_units = row
-        units = max(req.units, min_units)
-        total_cost = final_price * units
-        
-        cur.execute("""
-            SELECT u.balance 
-            FROM users u
-            JOIN user_sessions s ON u.id = s.user_id
-            WHERE s.session_token = %s
-        """, (req.session_token,))
-        
-        balance = cur.fetchone()[0]
-        
-        return {
-            "total_cost": float(total_cost),
-            "current_balance": float(balance),
-            "sufficient": balance >= total_cost
-        }
-        
-    finally:
-        cur.close()
-        con.close()
-
-class ChargeReq(BaseModel):
-    session_token: str
-    operation: str
-    units: int
-    description: str = ""
-
-@app.post("/api/balance/charge")
-def charge(req: ChargeReq):
-    con = db()
-    cur = con.cursor()
-    
-    try:
-        cur.execute("BEGIN")
-        
-        cur.execute("""
-            SELECT final_price, min_units 
-            FROM pricing 
-            WHERE operation_type = %s
-        """, (req.operation,))
-        
-        row = cur.fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="operation_not_found")
-        
-        final_price, min_units = row
-        units = max(req.units, min_units)
-        total_cost = final_price * units
-        
-        cur.execute("""
-            SELECT u.id, u.balance, u.license_key
-            FROM users u
-            JOIN user_sessions s ON u.id = s.user_id
-            WHERE s.session_token = %s
-            FOR UPDATE
-        """, (req.session_token,))
-        
-        user = cur.fetchone()
-        if not user:
-            raise HTTPException(status_code=401, detail="invalid_session")
-        
-        user_id, balance, license_key = user
-        
-        if balance < total_cost:
-            raise HTTPException(status_code=403, detail="insufficient_funds")
-        
-        cur.execute("""
-            UPDATE users 
-            SET balance = balance - %s, total_spent = total_spent + %s
-            WHERE id = %s
-            RETURNING balance
-        """, (total_cost, total_cost, user_id))
-        
-        new_balance = cur.fetchone()[0]
-        
-        cur.execute("""
-            INSERT INTO usage_logs 
-            (user_id, license_key, operation_type, units_used, cost, details)
-            VALUES (%s, %s, %s, %s, %s, %s)
-        """, (user_id, license_key, req.operation, units, total_cost, 
-              json.dumps({"description": req.description})))
-        
-        cur.execute("COMMIT")
-        
-        return {
-            "success": True,
-            "charged": float(total_cost),
-            "new_balance": float(new_balance)
-        }
-        
-    except HTTPException:
-        cur.execute("ROLLBACK")
-        raise
-    except Exception as e:
-        cur.execute("ROLLBACK")
-        raise HTTPException(status_code=500, detail=str(e))
     finally:
         cur.close()
         con.close()
