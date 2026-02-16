@@ -102,19 +102,225 @@ def db():
         raise RuntimeError("DATABASE_URL not set")
     return psycopg2.connect(DATABASE_URL)
 
+def init_db():
+    """Создание всех таблиц"""
+    print("🚀 Создаю таблицы...")
+    con = db()
+    cur = con.cursor()
+    
+    try:
+        # Таблица лицензий
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS licenses (
+            key TEXT PRIMARY KEY,
+            hwid TEXT,
+            expires_at TIMESTAMPTZ NOT NULL,
+            revoked BOOLEAN NOT NULL DEFAULT FALSE,
+            note TEXT DEFAULT '',
+            plan TEXT DEFAULT 'custom',
+            max_devices INTEGER DEFAULT 1,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW(),
+            last_check_at TIMESTAMPTZ,
+            check_count BIGINT DEFAULT 0
+        );
+        """)
+        print("✓ licenses")
+        
+        # Таблица пользователей
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id BIGSERIAL PRIMARY KEY,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            license_key TEXT REFERENCES licenses(key) ON DELETE CASCADE,
+            balance DECIMAL(10,2) DEFAULT 0.00,
+            currency TEXT DEFAULT 'USD',
+            email_confirmed BOOLEAN DEFAULT FALSE,
+            email_confirmed_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            last_login TIMESTAMPTZ,
+            is_active BOOLEAN DEFAULT TRUE,
+            total_spent DECIMAL(10,2) DEFAULT 0.00
+        );
+        """)
+        print("✓ users")
+        
+        # Таблица устройств
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS user_devices (
+            id BIGSERIAL PRIMARY KEY,
+            user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+            device_fingerprint TEXT NOT NULL,
+            device_name TEXT,
+            last_ip INET,
+            last_login TIMESTAMPTZ DEFAULT NOW(),
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            UNIQUE(user_id, device_fingerprint)
+        );
+        """)
+        print("✓ user_devices")
+        
+        # Таблица сессий
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS user_sessions (
+            id BIGSERIAL PRIMARY KEY,
+            user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+            session_token TEXT UNIQUE NOT NULL,
+            device_id BIGINT REFERENCES user_devices(id),
+            expires_at TIMESTAMPTZ NOT NULL,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            last_active TIMESTAMPTZ DEFAULT NOW()
+        );
+        """)
+        print("✓ user_sessions")
+        
+        # Таблица подтверждения email
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS email_confirmations (
+            id BIGSERIAL PRIMARY KEY,
+            user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+            token TEXT UNIQUE NOT NULL,
+            expires_at TIMESTAMPTZ NOT NULL,
+            confirmed_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        """)
+        print("✓ email_confirmations")
+        
+        # Таблица сброса пароля
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS password_resets (
+            id BIGSERIAL PRIMARY KEY,
+            user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+            token TEXT UNIQUE NOT NULL,
+            expires_at TIMESTAMPTZ NOT NULL,
+            used BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        """)
+        print("✓ password_resets")
+        
+        # Таблица транзакций
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS transactions (
+            id BIGSERIAL PRIMARY KEY,
+            user_id BIGINT REFERENCES users(id),
+            license_key TEXT REFERENCES licenses(key),
+            amount DECIMAL(10,2) NOT NULL,
+            type TEXT NOT NULL,
+            description TEXT,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            metadata JSONB DEFAULT '{}'
+        );
+        """)
+        print("✓ transactions")
+        
+        # Тарифы
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS pricing (
+            id SERIAL PRIMARY KEY,
+            operation_type TEXT UNIQUE NOT NULL,
+            base_price DECIMAL(10,4) NOT NULL,
+            final_price DECIMAL(10,4) NOT NULL,
+            min_units INTEGER DEFAULT 1,
+            description TEXT
+        );
+        """)
+        
+        cur.execute("""
+        INSERT INTO pricing (operation_type, base_price, final_price, min_units, description)
+        VALUES 
+            ('parse', 0.0005, 0.0005, 100, 'Парсинг одного сообщения'),
+            ('ai_parse', 0.005, 0.0075, 10, 'AI-анализ одного сообщения'),
+            ('sender', 0.001, 0.001, 50, 'Отправка одного сообщения'),
+            ('invite', 0.002, 0.002, 20, 'Приглашение одного пользователя')
+        ON CONFLICT (operation_type) DO UPDATE SET
+            base_price = EXCLUDED.base_price,
+            final_price = EXCLUDED.final_price,
+            description = EXCLUDED.description;
+        """)
+        print("✓ pricing")
+        
+        # Логи использования
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS usage_logs (
+            id BIGSERIAL PRIMARY KEY,
+            user_id BIGINT REFERENCES users(id),
+            license_key TEXT REFERENCES licenses(key),
+            operation_type TEXT NOT NULL,
+            units_used INTEGER NOT NULL,
+            cost DECIMAL(10,2) NOT NULL,
+            details JSONB DEFAULT '{}',
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        """)
+        print("✓ usage_logs")
+        
+        # Платежные запросы
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS payment_requests (
+            id BIGSERIAL PRIMARY KEY,
+            user_id BIGINT REFERENCES users(id),
+            license_key TEXT REFERENCES licenses(key),
+            amount DECIMAL(10,2) NOT NULL,
+            payment_id TEXT UNIQUE,
+            status TEXT DEFAULT 'pending',
+            payment_url TEXT,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            completed_at TIMESTAMPTZ
+        );
+        """)
+        print("✓ payment_requests")
+        
+        # Аудит админа
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS admin_audit (
+            id BIGSERIAL PRIMARY KEY,
+            ts TIMESTAMPTZ DEFAULT NOW(),
+            action TEXT,
+            key TEXT,
+            hwid TEXT,
+            info TEXT DEFAULT ''
+        );
+        """)
+        print("✓ admin_audit")
+        
+        con.commit()
+        print("✅ ВСЕ ТАБЛИЦЫ СОЗДАНЫ!")
+        
+    except Exception as e:
+        print(f"❌ Ошибка: {e}")
+        con.rollback()
+        raise
+    finally:
+        cur.close()
+        con.close()
+
+@app.on_event("startup")
+def startup():
+    init_db()
+
 # =========================
-# API ПРОВЕРКИ ЛИЦЕНЗИИ
+# ИСПРАВЛЕННАЯ ПРОВЕРКА ЛИЦЕНЗИИ (БЕЗ HWID)
 # =========================
 class CheckReq(BaseModel):
     key: str
-    hwid: str
+    hwid: str  # оставляем для совместимости, но не используем
 
 @app.post("/api/check")
 def check(req: CheckReq):
+    """
+    Проверка лицензии при активации.
+    Теперь HWID не проверяется - только существование ключа и срок!
+    """
     con = db()
     cur = con.cursor()
+    
+    # Проверяем только ключ, без сравнения HWID
     cur.execute(
-        "SELECT hwid, expires_at, revoked FROM licenses WHERE key=%s",
+        "SELECT expires_at, revoked FROM licenses WHERE key=%s",
         (req.key,)
     )
     row = cur.fetchone()
@@ -122,8 +328,9 @@ def check(req: CheckReq):
     if not row:
         raise HTTPException(status_code=401, detail="key_not_found")
 
-    hwid, expires_at, revoked = row
+    expires_at, revoked = row
 
+    # Обновляем счётчик проверок
     cur.execute("""
         UPDATE licenses
         SET last_check_at=NOW(), check_count=check_count+1
@@ -137,12 +344,10 @@ def check(req: CheckReq):
     if revoked:
         raise HTTPException(status_code=403, detail="revoked")
 
-    if hwid != req.hwid:
-        raise HTTPException(status_code=403, detail="hwid_mismatch")
-
     if now() > expires_at:
         raise HTTPException(status_code=403, detail="expired")
 
+    # Успех! HWID не проверяем
     return {"ok": True, "expires_at": expires_at.isoformat()}
 
 # =========================
@@ -515,11 +720,9 @@ def admin_dashboard(request: Request):
     cur = con.cursor(cursor_factory=RealDictCursor)
     
     try:
-        # Получаем лицензии
         cur.execute("SELECT * FROM licenses ORDER BY updated_at DESC LIMIT 500")
         rows = cur.fetchall()
         
-        # Статистика по лицензиям
         now_ts = now()
         active = 0
         expired = 0
@@ -533,7 +736,6 @@ def admin_dashboard(request: Request):
             else:
                 expired += 1
         
-        # Статистика пользователей
         try:
             cur.execute("SELECT COUNT(*) as count FROM users")
             total_users = cur.fetchone()['count'] or 0
@@ -620,7 +822,6 @@ class DepositRequest(BaseModel):
 
 @app.post("/admin/api/deposit")
 def admin_deposit(request: Request, data: DepositRequest):
-    """Пополнение баланса пользователя админом"""
     if not is_admin(request):
         raise HTTPException(status_code=403, detail="Unauthorized")
     
@@ -630,7 +831,6 @@ def admin_deposit(request: Request, data: DepositRequest):
     try:
         cur.execute("BEGIN")
         
-        # Проверяем пользователя
         cur.execute("SELECT license_key FROM users WHERE id = %s", (data.user_id,))
         user = cur.fetchone()
         if not user:
@@ -638,7 +838,6 @@ def admin_deposit(request: Request, data: DepositRequest):
         
         license_key = user[0]
         
-        # Начисляем баланс
         cur.execute("""
             UPDATE users 
             SET balance = balance + %s 
@@ -648,7 +847,6 @@ def admin_deposit(request: Request, data: DepositRequest):
         
         new_balance = cur.fetchone()[0]
         
-        # Записываем транзакцию
         cur.execute("""
             INSERT INTO transactions 
             (user_id, license_key, amount, type, description, metadata)
@@ -678,11 +876,9 @@ class ResetPasswordRequest(BaseModel):
 
 @app.post("/admin/api/reset-password")
 def admin_reset_password(request: Request, data: ResetPasswordRequest):
-    """Сброс пароля пользователя админом"""
     if not is_admin(request):
         raise HTTPException(status_code=403, detail="Unauthorized")
     
-    # Генерируем токен сброса
     reset_token = generate_token()
     expires_at = now() + timedelta(hours=24)
     
@@ -696,7 +892,6 @@ def admin_reset_password(request: Request, data: ResetPasswordRequest):
         """, (data.user_id, reset_token, expires_at))
         con.commit()
         
-        # Отправляем письмо
         send_password_reset_email(data.email, reset_token)
         
         return {"success": True}
@@ -713,7 +908,6 @@ class UnlinkDevicesRequest(BaseModel):
 
 @app.post("/admin/api/unlink-devices")
 def admin_unlink_devices(request: Request, data: UnlinkDevicesRequest):
-    """Отвязать все устройства пользователя"""
     if not is_admin(request):
         raise HTTPException(status_code=403, detail="Unauthorized")
     
@@ -721,7 +915,6 @@ def admin_unlink_devices(request: Request, data: UnlinkDevicesRequest):
     cur = con.cursor()
     
     try:
-        # Получаем список устройств
         cur.execute("""
             SELECT id FROM user_devices 
             WHERE user_id = %s AND is_active = TRUE
@@ -730,14 +923,12 @@ def admin_unlink_devices(request: Request, data: UnlinkDevicesRequest):
         
         count = len(devices)
         
-        # Деактивируем все устройства
         cur.execute("""
             UPDATE user_devices 
             SET is_active = FALSE 
             WHERE user_id = %s
         """, (data.user_id,))
         
-        # Удаляем все сессии
         cur.execute("""
             DELETE FROM user_sessions 
             WHERE user_id = %s
@@ -759,7 +950,6 @@ class UnlinkSingleDeviceRequest(BaseModel):
 
 @app.post("/admin/api/unlink-device")
 def admin_unlink_device(request: Request, data: UnlinkSingleDeviceRequest):
-    """Отвязать конкретное устройство"""
     if not is_admin(request):
         raise HTTPException(status_code=403, detail="Unauthorized")
     
@@ -767,14 +957,12 @@ def admin_unlink_device(request: Request, data: UnlinkSingleDeviceRequest):
     cur = con.cursor()
     
     try:
-        # Деактивируем устройство
         cur.execute("""
             UPDATE user_devices 
             SET is_active = FALSE 
             WHERE id = %s
         """, (data.device_id,))
         
-        # Удаляем сессии этого устройства
         cur.execute("""
             DELETE FROM user_sessions 
             WHERE device_id = %s
@@ -797,7 +985,6 @@ class UpdateLimitRequest(BaseModel):
 
 @app.post("/admin/api/update-limit")
 def admin_update_limit(request: Request, data: UpdateLimitRequest):
-    """Изменить лимит устройств для лицензии"""
     if not is_admin(request):
         raise HTTPException(status_code=403, detail="Unauthorized")
     
@@ -1320,13 +1507,13 @@ def ai_score(req: AIScoreReq) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"AI error: {type(e).__name__}: {e}")
 
 # =========================
-# CRUD ДЛЯ ЛИЦЕНЗИЙ
+# CRUD ДЛЯ ЛИЦЕНЗИЙ (ИСПРАВЛЕНО - HWID НЕ ОБЯЗАТЕЛЕН)
 # =========================
 @app.post("/admin/upsert")
 def upsert_license(
     request: Request,
     key: str = Form(...),
-    hwid: str = Form(...),
+    hwid: str = Form(""),  # больше не обязателен
     days: int = Form(...),
     note: str = Form("")
 ):
@@ -1337,6 +1524,10 @@ def upsert_license(
 
     con = db()
     cur = con.cursor()
+    
+    # Если HWID не указан, ставим временное значение
+    hwid_value = hwid.strip() if hwid.strip() else "temp"
+    
     cur.execute("""
         INSERT INTO licenses(key, hwid, expires_at, revoked, note, updated_at)
         VALUES (%s,%s,%s,FALSE,%s,NOW())
@@ -1346,7 +1537,7 @@ def upsert_license(
             revoked=FALSE,
             note=EXCLUDED.note,
             updated_at=NOW()
-    """, (key.strip(), hwid.strip(), expires, note.strip()))
+    """, (key.strip(), hwid_value, expires, note.strip()))
     con.commit()
     cur.close()
     con.close()
@@ -1453,7 +1644,7 @@ def generate_key(request: Request, prefix: str = Form("")):
     key = f"{prefix}-{suffix}" if prefix else suffix
     
     return templates.TemplateResponse(
-        "admin.html",
+        "admin_licenses.html",
         {"request": request, "generated_key": key}
     )
 
@@ -1463,4 +1654,3 @@ def generate_key(request: Request, prefix: str = Form("")):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
-
