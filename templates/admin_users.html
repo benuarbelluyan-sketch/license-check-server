@@ -191,9 +191,9 @@
             <td><span class="mono text-muted">{{ u.last_login.strftime('%d.%m.%y %H:%M') if u.last_login else '—' }}</span></td>
             <td>
               <div class="row-actions">
+                <a href="/admin/user/{{ u.id }}" class="btn btn-primary btn-sm">→ Открыть</a>
                 <button class="btn btn-ghost btn-sm" onclick="openBalance({{ u.id }}, '{{ u.email }}', {{ u.balance or 0 }})">💰</button>
-                <button class="btn btn-warn btn-sm" onclick="openResetPwd({{ u.id }}, '{{ u.email }}')">🔑</button>
-                <button class="btn btn-danger btn-sm" onclick="unlinkDevices({{ u.id }}, '{{ u.email }}')">📵 Устройства</button>
+                <button class="btn btn-danger btn-sm" onclick="unlinkDevices({{ u.id }}, '{{ u.email }}')">📵</button>
               </div>
             </td>
           </tr>
