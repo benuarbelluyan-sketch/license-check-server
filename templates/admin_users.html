@@ -70,7 +70,7 @@
     <div class="table-header">
       <div class="table-title">Пользователи ({{ users | length }})</div>
       <form method="get" action="/admin/users" class="search-box" style="margin:0;">
-        <input type="text" name="q" class="search-input" value="{{ q or '' }}" placeholder="🔍 Поиск по email или ключу..." />
+        <input type="text" name="q" class="search-input" value="{{ q or '' }}" placeholder="🔍 Поиск по email, telegram или ключу..." />
       </form>
     </div>
 
@@ -80,7 +80,7 @@
         <thead>
           <tr>
             <th>#ID</th>
-            <th>Email</th>
+            <th>Email / Telegram</th>
             <th>Лицензия</th>
             <th>Баланс</th>
             <th>Устройства</th>
@@ -100,6 +100,9 @@
             <td style="font-weight:600; color:#718096;">#{{ u.id }}</td>
             <td>
               <div style="font-weight:500; margin-bottom:4px;">{{ u.email }}</div>
+              {% if u.telegram %}
+                <div style="font-size:11px; color:#718096; margin-bottom:4px;">📱 {{ u.telegram }}</div>
+              {% endif %}
               {% if u.email_confirmed %}
                 <span class="badge badge-verified">✓ подтверждён</span>
               {% else %}
