@@ -6,655 +6,143 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    
-    body {
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      background: #0a0c10;
-      color: #e5e9f0;
-      line-height: 1.5;
-    }
-
-    .app {
-      display: flex;
-      min-height: 100vh;
-    }
-
-    .sidebar {
-      width: 280px;
-      background: #0f1217;
-      border-right: 1px solid #1e242c;
-      padding: 24px 16px;
-      position: fixed;
-      height: 100vh;
-      overflow-y: auto;
-    }
-
-    .logo {
-      font-size: 20px;
-      font-weight: 700;
-      letter-spacing: -0.5px;
-      margin-bottom: 32px;
-      padding-left: 12px;
-    }
-
-    .logo span {
-      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .nav-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 12px 16px;
-      border-radius: 12px;
-      color: #9aa4b2;
-      margin-bottom: 4px;
-      transition: all 0.2s;
-      text-decoration: none;
-    }
-
-    .nav-item.active {
-      background: #1a1f2a;
-      color: #fff;
-    }
-
-    .nav-item i {
-      width: 20px;
-      font-size: 18px;
-    }
-
-    .nav-item:hover:not(.active) {
-      background: #151a24;
-      color: #e5e9f0;
-    }
-
-    .main {
-      flex: 1;
-      margin-left: 280px;
-      padding: 32px 40px;
-      background: #0a0c10;
-      min-height: 100vh;
-    }
-
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 32px;
-    }
-
-    .header h1 {
-      font-size: 28px;
-      font-weight: 600;
-      letter-spacing: -0.5px;
-    }
-
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .admin-badge {
-      background: #1a1f2a;
-      padding: 8px 16px;
-      border-radius: 40px;
-      font-size: 14px;
-      color: #9aa4b2;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .logout-btn {
-      background: #2d3340;
-      border: none;
-      color: #ff7b7b;
-      padding: 8px 20px;
-      border-radius: 40px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .logout-btn:hover {
-      background: #3a4050;
-    }
-
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 20px;
-      margin-bottom: 32px;
-    }
-
-    .stat-card {
-      background: #0f1217;
-      border: 1px solid #1e242c;
-      border-radius: 20px;
-      padding: 20px;
-    }
-
-    .stat-value {
-      font-size: 32px;
-      font-weight: 700;
-      margin-bottom: 4px;
-    }
-
-    .stat-label {
-      color: #9aa4b2;
-      font-size: 14px;
-    }
-
-    .action-bar {
-      display: flex;
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-
-    .search-box {
-      flex: 1;
-      display: flex;
-      gap: 8px;
-    }
-
-    .search-box input {
-      flex: 1;
-      background: #0f1217;
-      border: 1px solid #1e242c;
-      border-radius: 40px;
-      padding: 12px 20px;
-      color: #e5e9f0;
-      font-size: 14px;
-    }
-
-    .search-box input:focus {
-      outline: none;
-      border-color: #3b82f6;
-    }
-
-    .btn-primary {
-      background: #3b82f6;
-      border: none;
-      border-radius: 40px;
-      padding: 12px 32px;
-      color: white;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    .table-container {
-      background: #0f1217;
-      border: 1px solid #1e242c;
-      border-radius: 20px;
-      overflow-x: auto;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 14px;
-    }
-
-    th {
-      text-align: left;
-      padding: 18px 16px;
-      color: #9aa4b2;
-      font-weight: 500;
-      border-bottom: 1px solid #1e242c;
-    }
-
-    td {
-      padding: 16px;
-      border-bottom: 1px solid #1e242c;
-    }
-
-    tr:hover td {
-      background: #151a24;
-    }
-
-    .badge {
-      display: inline-block;
-      padding: 4px 10px;
-      border-radius: 40px;
-      font-size: 12px;
-      font-weight: 500;
-    }
-
-    .badge.confirmed {
-      background: rgba(124, 255, 178, 0.1);
-      color: #7CFFB2;
-      border: 1px solid rgba(124, 255, 178, 0.2);
-    }
-
-    .badge.pending {
-      background: rgba(255, 211, 123, 0.1);
-      color: #ffd37b;
-      border: 1px solid rgba(255, 211, 123, 0.2);
-    }
-
-    .mono {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 13px;
-    }
-
-    .actions {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-
-    .action-btn {
-      padding: 6px 12px;
-      border-radius: 30px;
-      font-size: 11px;
-      font-weight: 500;
-      border: none;
-      cursor: pointer;
-      transition: all 0.2s;
-      white-space: nowrap;
-    }
-
-    .action-btn.deposit {
-      background: rgba(124, 255, 178, 0.1);
-      color: #7CFFB2;
-      border: 1px solid rgba(124, 255, 178, 0.2);
-    }
-
-    .action-btn.deposit:hover {
-      background: #22c55e;
-      color: #fff;
-      border-color: #22c55e;
-    }
-
-    .action-btn.reset {
-      background: rgba(255, 211, 123, 0.1);
-      color: #ffd37b;
-      border: 1px solid rgba(255, 211, 123, 0.2);
-    }
-
-    .action-btn.reset:hover {
-      background: #f59e0b;
-      color: #fff;
-      border-color: #f59e0b;
-    }
-
-    .action-btn.email {
-      background: rgba(59, 130, 246, 0.1);
-      color: #3b82f6;
-      border: 1px solid rgba(59, 130, 246, 0.2);
-    }
-
-    .action-btn.email:hover {
-      background: #3b82f6;
-      color: #fff;
-      border-color: #3b82f6;
-    }
-
-    .action-btn.unlink {
-      background: rgba(255, 123, 123, 0.1);
-      color: #ff7b7b;
-      border: 1px solid rgba(255, 123, 123, 0.2);
-    }
-
-    .action-btn.unlink:hover {
-      background: #ff7b7b;
-      color: #fff;
-      border-color: #ff7b7b;
-    }
-
-    .modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.7);
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-    }
-
-    .modal.active {
-      display: flex;
-    }
-
-    .modal-content {
-      background: #0f1217;
-      border: 1px solid #1e242c;
-      border-radius: 20px;
-      padding: 32px;
-      max-width: 400px;
-      width: 90%;
-    }
-
-    .modal-content h3 {
-      margin-bottom: 20px;
-      font-size: 20px;
-    }
-
-    .modal-content input,
-    .modal-content select {
-      width: 100%;
-      background: #0a0c10;
-      border: 1px solid #1e242c;
-      border-radius: 12px;
-      padding: 12px 16px;
-      color: #e5e9f0;
-      margin-bottom: 16px;
-    }
-
-    .modal-content input:focus {
-      outline: none;
-      border-color: #3b82f6;
-    }
-
-    .modal-buttons {
-      display: flex;
-      gap: 12px;
-      justify-content: flex-end;
-    }
-
-    .footer-note {
-      margin-top: 20px;
-      color: #6b7a8f;
-      font-size: 13px;
-      text-align: center;
-    }
+    body { font-family: 'Inter', system-ui, sans-serif; background: #0a0c10; color: #e5e9f0; line-height: 1.5; }
+    .app { display: flex; min-height: 100vh; }
+    .sidebar { width: 220px; background: #0d1117; border-right: 1px solid #1e2530; padding: 24px 0; flex-shrink: 0; }
+    .sidebar-logo { padding: 0 20px 24px; font-weight: 700; font-size: 16px; color: #58a6ff; }
+    .sidebar-logo span { color: #e5e9f0; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; color: #8b949e; text-decoration: none; font-size: 14px; transition: all .15s; }
+    .nav-item:hover { background: #161b22; color: #e5e9f0; }
+    .nav-item.active { background: #161b22; color: #58a6ff; border-left: 2px solid #58a6ff; }
+    .main { flex: 1; padding: 28px 32px; }
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .page-title { font-size: 22px; font-weight: 700; }
+    .page-count { font-size: 13px; color: #8b949e; margin-top: 2px; }
+    .search-bar { display: flex; gap: 10px; margin-bottom: 20px; }
+    .search-bar input { flex: 1; background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 10px 14px; color: #e5e9f0; font-size: 14px; outline: none; }
+    .search-bar input:focus { border-color: #58a6ff; }
+    .search-bar button { background: #238636; border: none; border-radius: 8px; padding: 10px 18px; color: #fff; font-size: 14px; cursor: pointer; }
+    .table-wrap { background: #0d1117; border: 1px solid #1e2530; border-radius: 12px; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead { background: #161b22; }
+    th { padding: 12px 14px; text-align: left; color: #8b949e; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+    td { padding: 12px 14px; border-top: 1px solid #1e2530; vertical-align: middle; }
+    tr:hover td { background: #161b22; }
+    .badge { display: inline-block; padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .badge-active { background: #1a3a28; color: #3fb950; }
+    .badge-expired { background: #3a2020; color: #f85149; }
+    .badge-nokey { background: #1e2530; color: #8b949e; }
+    .badge-confirmed { background: #1a2e4a; color: #58a6ff; }
+    .badge-unconfirmed { background: #2a1f10; color: #d29922; }
+    .user-key { font-size: 11px; color: #8b949e; font-family: monospace; }
+    .btn-view { display: inline-flex; align-items: center; gap: 5px; background: #21262d; border: 1px solid #30363d; border-radius: 6px; padding: 5px 12px; color: #e5e9f0; font-size: 12px; text-decoration: none; transition: all .15s; }
+    .btn-view:hover { background: #30363d; border-color: #58a6ff; color: #58a6ff; }
+    .empty { text-align: center; padding: 60px; color: #8b949e; }
+    .logout-btn { background: none; border: 1px solid #30363d; border-radius: 6px; padding: 7px 14px; color: #8b949e; font-size: 13px; cursor: pointer; }
+    .logout-btn:hover { border-color: #f85149; color: #f85149; }
+    .days-ok { color: #3fb950; font-size: 11px; }
+    .days-warn { color: #d29922; font-size: 11px; }
+    .days-exp { color: #f85149; font-size: 11px; }
   </style>
 </head>
 <body>
 <div class="app">
-  <!-- Сайдбар -->
-  <div class="sidebar">
-    <div class="logo">
-      <span>TG Parser</span> Sender
-    </div>
-    
-    <a href="/admin" class="nav-item {% if active_tab == 'dashboard' %}active{% endif %}">
-      <i>📊</i> Дашборд
-    </a>
-    <a href="/admin/licenses" class="nav-item {% if active_tab == 'licenses' %}active{% endif %}">
-      <i>🔑</i> Лицензии
-    </a>
-    <a href="/admin/users" class="nav-item {% if active_tab == 'users' %}active{% endif %}">
-      <i>👥</i> Пользователи
-    </a>
-    <a href="/admin/devices" class="nav-item {% if active_tab == 'devices' %}active{% endif %}">
-      <i>💻</i> Устройства
-    </a>
-    <a href="/admin/transactions" class="nav-item {% if active_tab == 'transactions' %}active{% endif %}">
-      <i>💰</i> Транзакции
-    </a>
-    <a href="/admin/settings" class="nav-item {% if active_tab == 'settings' %}active{% endif %}">
-      <i>⚙️</i> Настройки
-    </a>
-  </div>
-
-  <!-- Основной контент -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">TG Parser <span>Admin</span></div>
+    <a href="/admin" class="nav-item"><span>📊</span> Дашборд</a>
+    <a href="/admin/users" class="nav-item active"><span>👥</span> Пользователи</a>
+    <a href="/admin/licenses" class="nav-item"><span>🔑</span> Лицензии</a>
+    <a href="/admin/devices" class="nav-item"><span>💻</span> Устройства</a>
+    <a href="/admin/transactions" class="nav-item"><span>💳</span> Транзакции</a>
+    <a href="/admin/settings" class="nav-item"><span>⚙️</span> Настройки</a>
+  </nav>
   <div class="main">
-    <div class="header">
-      <h1>Пользователи</h1>
-      <div class="header-right">
-        <div class="admin-badge">
-          <span>👑</span> Администратор
-        </div>
-        <form method="post" action="/admin/logout" style="margin:0;">
-          <button class="logout-btn" type="submit">Выйти</button>
-        </form>
+    <div class="page-header">
+      <div>
+        <div class="page-title">👥 Пользователи</div>
+        <div class="page-count">{{ users | length }} найдено</div>
       </div>
+      <form method="post" action="/admin/logout" style="margin:0;">
+        <button class="logout-btn" type="submit">Выйти</button>
+      </form>
     </div>
-
-    <!-- Поиск -->
-    <div class="action-bar">
-      <div class="search-box">
-        <input type="text" id="searchInput" placeholder="🔍 Поиск по email, ключу...">
-        <button class="btn-primary" onclick="filterTable()">Найти</button>
-      </div>
-    </div>
-
-    <!-- Таблица пользователей -->
-    <div class="table-container">
-      <table id="usersTable">
+    <form method="get" action="/admin/users" class="search-bar">
+      <input type="text" name="q" value="{{ q or '' }}" placeholder="🔍 Поиск по email или ключу..." />
+      <button type="submit">Найти</button>
+    </form>
+    <div class="table-wrap">
+      {% if users %}
+      <table>
         <thead>
           <tr>
-            <th>ID</th>
+            <th>#ID</th>
             <th>Email</th>
-            <th>Ключ</th>
+            <th>Ключ / Статус</th>
             <th>Баланс</th>
-            <th>Статус</th>
-            <th>Зарегистрирован</th>
-            <th>Действия</th>
+            <th>Устройства</th>
+            <th>Регистрация</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
-        {% for u in users %}
+          {% for u in users %}
+          {% if u.license_expires %}
+            {% set diff = (u.license_expires - now).total_seconds() %}
+            {% set days_left = (diff / 86400) | int %}
+          {% else %}
+            {% set days_left = -1 %}
+          {% endif %}
           <tr>
-            <td class="mono">#{{ u.id }}</td>
-            <td>{{ u.email }}</td>
-            <td class="mono">{{ u.license_key or '—' }}</td>
-            <td><span class="balance-{{ u.id }}">${{ "%.2f"|format(u.balance or 0) }}</span></td>
             <td>
+              <span style="font-weight:600; color:#8b949e;">#{{ u.id }}</span>
+            </td>
+            <td>
+              <div style="font-weight:500;">{{ u.email }}</div>
               {% if u.email_confirmed %}
-                <span class="badge confirmed">подтверждён</span>
+                <span class="badge badge-confirmed">✓ email подтверждён</span>
               {% else %}
-                <span class="badge pending">ожидает</span>
+                <span class="badge badge-unconfirmed">⚠ не подтверждён</span>
               {% endif %}
             </td>
-            <td>{{ u.created_at.strftime('%Y-%m-%d') if u.created_at else '—' }}</td>
             <td>
-              <div class="actions">
-                <!-- Кнопка пополнить баланс -->
-                <button class="action-btn deposit" onclick="showDepositModal({{ u.id }}, '{{ u.email }}', {{ u.balance or 0 }})">
-                  💰 Пополнить
-                </button>
-                
-                <!-- Кнопка сброса пароля -->
-                <button class="action-btn reset" onclick="resetPassword({{ u.id }}, '{{ u.email }}')">
-                  🔑 Сброс пароля
-                </button>
-                
-                <!-- Кнопка отправить письмо -->
-                <button class="action-btn email" onclick="sendEmail({{ u.id }}, '{{ u.email }}')">
-                  📧 Письмо
-                </button>
-                
-                <!-- Кнопка отвязать все устройства -->
-                <button class="action-btn unlink" onclick="unlinkDevices({{ u.id }}, '{{ u.email }}')">
-                  🔌 Отвязать всё
-                </button>
-              </div>
+              {% if u.license_key %}
+                <div class="user-key">{{ u.license_key }}</div>
+                {% if u.license_revoked %}
+                  <span class="badge badge-expired">🚫 отозвана</span>
+                {% elif days_left > 0 %}
+                  <span class="badge badge-active">активна</span>
+                  <span class="{% if days_left > 7 %}days-ok{% elif days_left > 2 %}days-warn{% else %}days-exp{% endif %}">
+                    {{ days_left }}д осталось
+                  </span>
+                {% else %}
+                  <span class="badge badge-expired">истекла</span>
+                {% endif %}
+              {% else %}
+                <span class="badge badge-nokey">нет ключа</span>
+              {% endif %}
+            </td>
+            <td style="font-weight:600; color:#3fb950;">${{ "%.2f" | format(u.balance | default(0) | float) }}</td>
+            <td style="color:#8b949e;">
+              {{ u.active_devices or 0 }}{% if u.max_devices %}<span style="color:#30363d;">/{{ u.max_devices }}</span>{% endif %}
+            </td>
+            <td style="color:#8b949e; font-size:12px;">
+              {% if u.created_at %}{{ u.created_at.strftime('%d.%m.%Y') }}{% endif %}
+            </td>
+            <td>
+              <a href="/admin/users/{{ u.id }}" class="btn-view">👤 Открыть</a>
             </td>
           </tr>
-        {% endfor %}
+          {% endfor %}
         </tbody>
       </table>
-    </div>
-
-    <div class="footer-note">
-      Показано максимум 500 записей
-    </div>
-  </div>
-</div>
-
-<!-- Модальное окно для пополнения баланса -->
-<div class="modal" id="depositModal">
-  <div class="modal-content">
-    <h3>💰 Пополнить баланс</h3>
-    <p id="depositUserInfo" style="color: #9aa4b2; margin-bottom: 16px;"></p>
-    
-    <input type="number" id="depositAmount" placeholder="Сумма (USD)" min="1" step="0.01" value="10">
-    
-    <select id="depositMethod">
-      <option value="manual">Ручное пополнение</option>
-      <option value="crypto">Крипта (USDT)</option>
-      <option value="card">Банковская карта</option>
-    </select>
-    
-    <input type="text" id="depositNote" placeholder="Комментарий (необязательно)">
-    
-    <div class="modal-buttons">
-      <button class="action-btn secondary" onclick="closeModal()">Отмена</button>
-      <button class="action-btn deposit" onclick="confirmDeposit()">✅ Пополнить</button>
+      {% else %}
+      <div class="empty">
+        <div style="font-size:40px; margin-bottom:12px;">👥</div>
+        <div>Пользователи не найдены</div>
+      </div>
+      {% endif %}
     </div>
   </div>
 </div>
-
-<script>
-  let currentUserId = null;
-  let currentUserEmail = null;
-  let currentUserBalance = null;
-
-  // Поиск по таблице
-  function filterTable() {
-    let input = document.getElementById('searchInput');
-    let filter = input.value.toLowerCase();
-    let table = document.getElementById('usersTable');
-    let tr = table.getElementsByTagName('tr');
-
-    for (let i = 1; i < tr.length; i++) {
-      let tdEmail = tr[i].getElementsByTagName('td')[1];
-      let tdKey = tr[i].getElementsByTagName('td')[2];
-      if (tdEmail || tdKey) {
-        let textValue = (tdEmail.textContent + tdKey.textContent).toLowerCase();
-        tr[i].style.display = textValue.includes(filter) ? '' : 'none';
-      }
-    }
-  }
-
-  // Модалка пополнения
-  function showDepositModal(userId, email, balance) {
-    currentUserId = userId;
-    currentUserEmail = email;
-    currentUserBalance = balance;
-    
-    document.getElementById('depositUserInfo').innerHTML = 
-      `Пользователь: <b>${email}</b><br>Текущий баланс: <b>$${balance.toFixed(2)}</b>`;
-    document.getElementById('depositModal').classList.add('active');
-  }
-
-  function closeModal() {
-    document.getElementById('depositModal').classList.remove('active');
-  }
-
-  // Подтверждение пополнения
-  function confirmDeposit() {
-    let amount = parseFloat(document.getElementById('depositAmount').value);
-    let method = document.getElementById('depositMethod').value;
-    let note = document.getElementById('depositNote').value;
-    
-    if (!amount || amount <= 0) {
-      alert('Введите корректную сумму');
-      return;
-    }
-
-    // Отправляем запрос на сервер
-    fetch('/admin/api/deposit', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        user_id: currentUserId,
-        amount: amount,
-        method: method,
-        note: note
-      })
-    })
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
-        // Обновляем баланс в таблице
-        let balanceSpan = document.querySelector(`.balance-${currentUserId}`);
-        if (balanceSpan) {
-          let newBalance = currentUserBalance + amount;
-          balanceSpan.textContent = `$${newBalance.toFixed(2)}`;
-        }
-        alert(`✅ Баланс пополнен на $${amount.toFixed(2)}`);
-        closeModal();
-      } else {
-        alert('❌ Ошибка: ' + data.error);
-      }
-    })
-    .catch(error => {
-      alert('❌ Ошибка: ' + error);
-    });
-  }
-
-  // Сброс пароля
-  function resetPassword(userId, email) {
-    if (!confirm(`Отправить ссылку для сброса пароля на ${email}?`)) return;
-    
-    fetch('/admin/api/reset-password', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        user_id: userId,
-        email: email
-      })
-    })
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
-        alert(`✅ Письмо со сбросом пароля отправлено на ${email}`);
-      } else {
-        alert('❌ Ошибка: ' + data.error);
-      }
-    });
-  }
-
-  // Отправка письма
-  function sendEmail(userId, email) {
-    let type = prompt('Какое письмо отправить?\n1 - Подтверждение email\n2 - Напоминание\n3 - Приветственное');
-    
-    fetch('/admin/api/send-email', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        user_id: userId,
-        email: email,
-        type: type
-      })
-    })
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
-        alert(`✅ Письмо отправлено на ${email}`);
-      } else {
-        alert('❌ Ошибка: ' + data.error);
-      }
-    });
-  }
-
-  // Отвязать все устройства
-  function unlinkDevices(userId, email) {
-    if (!confirm(`⚠️ Отвязать ВСЕ устройства пользователя ${email}?\nОн сможет заново привязать новые.`)) return;
-    
-    fetch('/admin/api/unlink-devices', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        user_id: userId
-      })
-    })
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
-        alert(`✅ Все устройства отвязаны. Отвязано: ${data.count} шт.`);
-      } else {
-        alert('❌ Ошибка: ' + data.error);
-      }
-    });
-  }
-</script>
 </body>
 </html>
