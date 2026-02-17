@@ -147,6 +147,7 @@ def init_db():
             email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
             license_key TEXT REFERENCES licenses(key) ON DELETE CASCADE,
+            telegram TEXT,
             balance DECIMAL(10,2) DEFAULT 0.00,
             currency TEXT DEFAULT 'USD',
             email_confirmed BOOLEAN DEFAULT FALSE,
@@ -406,6 +407,7 @@ class RegisterReq(BaseModel):
     email: str
     password: str
     license_key: str
+    telegram: str = ""
     device_fingerprint: str
     device_name: str = "Мой компьютер"
 
@@ -453,10 +455,10 @@ def register(req: RegisterReq, background_tasks: BackgroundTasks, request: Reque
         print("🔍 Creating user...")
         password_hash = hash_password(req.password)
         cur.execute("""
-            INSERT INTO users (email, password_hash, license_key, balance, total_spent)
-            VALUES (%s, %s, %s, 0.00, 0.00)
+            INSERT INTO users (email, password_hash, license_key, telegram, balance, total_spent)
+            VALUES (%s, %s, %s, %s, 0.00, 0.00)
             RETURNING id
-        """, (req.email, password_hash, req.license_key))
+        """, (req.email, password_hash, req.license_key, req.telegram or None))
         
         user_id = cur.fetchone()[0]
         print(f"✓ User created with ID: {user_id}")
@@ -1587,10 +1589,10 @@ def admin_users(request: Request, q: str = ""):
                        (SELECT COUNT(*) FROM user_devices d WHERE d.user_id = u.id AND d.is_active = TRUE) as active_devices
                 FROM users u
                 LEFT JOIN licenses l ON u.license_key = l.key
-                WHERE u.email ILIKE %s OR u.license_key ILIKE %s
+                WHERE u.email ILIKE %s OR u.license_key ILIKE %s OR u.telegram ILIKE %s
                 ORDER BY u.created_at DESC
                 LIMIT 200
-            """, (f'%{q}%', f'%{q}%'))
+            """, (f'%{q}%', f'%{q}%', f'%{q}%'))
         else:
             cur.execute("""
                 SELECT u.*, l.plan, l.expires_at as license_expires, l.max_devices,
@@ -1694,6 +1696,30 @@ def admin_update_email(request: Request, data: UpdateEmailRequest):
     cur = con.cursor()
     try:
         cur.execute("UPDATE users SET email = %s WHERE id = %s", (data.email, data.user_id))
+        con.commit()
+        return {"success": True}
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+# =========================
+# API: ОБНОВИТЬ TELEGRAM
+# =========================
+class UpdateTelegramRequest(BaseModel):
+    user_id: int
+    telegram: str
+
+@app.post("/admin/api/update-telegram")
+def admin_update_telegram(request: Request, data: UpdateTelegramRequest):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("UPDATE users SET telegram = %s WHERE id = %s", (data.telegram or None, data.user_id))
         con.commit()
         return {"success": True}
     except Exception as e:
