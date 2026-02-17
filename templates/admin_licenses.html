@@ -1,529 +1,690 @@
-<!DOCTYPE html>
-<html lang="ru">
+<!doctype html>
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Лицензии — Admin</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg:#07080a;--surface:#0d0f14;--surface2:#131720;--border:#1c2230;--border2:#252d3d;
-    --text:#e2e8f5;--muted:#5a6580;--muted2:#7a8aa8;--accent:#3b7aff;--accent2:#5c94ff;
-    --green:#22d87a;--red:#ff4e6a;--yellow:#ffb83a;--purple:#9f7aff;--cyan:#22d8d8;
-    --font:'Syne',sans-serif;--mono:'JetBrains Mono',monospace;
-    --sidebar:220px;--radius:14px;--radius-sm:8px;
-  }
-  *{margin:0;padding:0;box-sizing:border-box;}
-  body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex;min-height:100vh;}
-  .sidebar{width:var(--sidebar);min-height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:24px 0;position:fixed;left:0;top:0;bottom:0;z-index:100;}
-  .logo{padding:0 20px 24px;border-bottom:1px solid var(--border);margin-bottom:16px;}
-  .logo-name{font-size:17px;font-weight:800;letter-spacing:-0.5px;color:var(--text);line-height:1;}
-  .logo-name span{color:var(--accent2);}
-  .logo-sub{font-size:11px;color:var(--muted);margin-top:4px;font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;}
-  .nav{flex:1;padding:0 12px;display:flex;flex-direction:column;gap:2px;}
-  .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--radius-sm);color:var(--muted2);text-decoration:none;font-size:14px;font-weight:600;transition:all .15s;position:relative;}
-  .nav-item:hover{background:var(--surface2);color:var(--text);}
-  .nav-item.active{background:rgba(59,122,255,.12);color:var(--accent2);}
-  .nav-item.active::before{content:'';position:absolute;left:0;top:20%;bottom:20%;width:3px;background:var(--accent);border-radius:0 3px 3px 0;}
-  .nav-icon{font-size:16px;width:20px;text-align:center;}
-  .sidebar-footer{padding:16px 12px 0;border-top:1px solid var(--border);}
-  .admin-label{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);padding:8px 12px;font-family:var(--mono);}
-  .admin-dot{width:7px;height:7px;background:var(--green);border-radius:50%;}
-  .logout-btn{width:100%;background:transparent;border:1px solid var(--border2);color:var(--muted2);padding:9px 12px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all .15s;margin-top:8px;}
-  .logout-btn:hover{background:var(--red);border-color:var(--red);color:#fff;}
-  .main{margin-left:var(--sidebar);flex:1;min-height:100vh;display:flex;flex-direction:column;}
-  .topbar{height:60px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 28px;gap:16px;background:var(--surface);position:sticky;top:0;z-index:50;}
-  .page-title{font-size:18px;font-weight:800;letter-spacing:-0.5px;}
-  .topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
-  .content{padding:28px;flex:1;}
-  .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius-sm);font-size:12px;font-weight:700;cursor:pointer;border:none;font-family:var(--font);transition:all .15s;text-decoration:none;white-space:nowrap;}
-  .btn-primary{background:var(--accent);color:#fff;}
-  .btn-primary:hover{background:var(--accent2);}
-  .btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--muted2);}
-  .btn-ghost:hover{background:var(--surface2);color:var(--text);}
-  .btn-danger{background:rgba(255,78,106,.1);color:var(--red);border:1px solid rgba(255,78,106,.2);}
-  .btn-danger:hover{background:var(--red);color:#fff;border-color:var(--red);}
-  .btn-success{background:rgba(34,216,122,.1);color:var(--green);border:1px solid rgba(34,216,122,.2);}
-  .btn-success:hover{background:var(--green);color:#000;border-color:var(--green);}
-  .btn-warn{background:rgba(255,184,58,.1);color:var(--yellow);border:1px solid rgba(255,184,58,.2);}
-  .btn-warn:hover{background:var(--yellow);color:#000;border-color:var(--yellow);}
-  .btn-sm{padding:5px 10px;font-size:11px;}
-  .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
-  table{width:100%;border-collapse:collapse;font-size:13px;}
-  thead th{background:var(--surface2);padding:10px 16px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);font-family:var(--mono);border-bottom:1px solid var(--border);white-space:nowrap;}
-  tbody tr{border-bottom:1px solid var(--border);transition:background .1s;}
-  tbody tr:last-child{border-bottom:none;}
-  tbody tr:hover{background:rgba(19,23,32,.8);}
-  tbody td{padding:11px 16px;vertical-align:middle;}
-  .mono{font-family:var(--mono);font-size:12px;}
-  .text-muted{color:var(--muted2);}
-  .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;font-family:var(--mono);white-space:nowrap;}
-  .badge::before{content:'';width:5px;height:5px;border-radius:50%;}
-  .badge-green{background:rgba(34,216,122,.1);color:var(--green);border:1px solid rgba(34,216,122,.2);}
-  .badge-green::before{background:var(--green);}
-  .badge-red{background:rgba(255,78,106,.1);color:var(--red);border:1px solid rgba(255,78,106,.2);}
-  .badge-red::before{background:var(--red);}
-  .badge-yellow{background:rgba(255,184,58,.1);color:var(--yellow);border:1px solid rgba(255,184,58,.2);}
-  .badge-yellow::before{background:var(--yellow);}
-  .key-chip{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:3px 8px;color:var(--accent2);display:inline-flex;align-items:center;gap:4px;}
-  .copy-btn{background:none;border:none;cursor:pointer;color:var(--muted);font-size:12px;padding:2px 4px;border-radius:4px;transition:color .15s;}
-  .copy-btn:hover{color:var(--accent2);}
-  .expiry-ok{color:var(--green);}
-  .expiry-soon{color:var(--yellow);}
-  .expiry-expired{color:var(--red);}
-  .action-bar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
-  .search-wrap{position:relative;flex:1;max-width:280px;}
-  .search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none;}
-  .search-input{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:8px 12px 8px 34px;color:var(--text);font-size:13px;font-family:var(--font);outline:none;width:100%;transition:border-color .15s;}
-  .search-input:focus{border-color:var(--accent);}
-  .search-input::placeholder{color:var(--muted);}
-  .filter-tabs{display:flex;gap:3px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:3px;}
-  .filter-tab{padding:5px 11px;border-radius:5px;font-size:12px;font-weight:700;cursor:pointer;color:var(--muted2);border:none;background:transparent;font-family:var(--font);transition:all .15s;white-space:nowrap;}
-  .filter-tab:hover{color:var(--text);}
-  .filter-tab.active{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.3);}
+  <meta charset="utf-8" />
+  <title>Лицензии · TG Parser Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: #0a0c10;
+      color: #e5e9f0;
+      line-height: 1.5;
+    }
 
-  /* === DEVICE LIMIT EDITOR === */
-  .limit-cell{display:flex;align-items:center;gap:6px;}
-  .limit-display{display:flex;align-items:center;gap:8px;}
-  .limit-val{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--text);min-width:24px;text-align:center;}
-  .limit-stepper{display:flex;flex-direction:column;gap:2px;}
-  .step-btn{width:18px;height:12px;background:var(--surface2);border:1px solid var(--border2);border-radius:2px;cursor:pointer;color:var(--muted2);font-size:9px;display:flex;align-items:center;justify-content:center;transition:all .12s;line-height:1;}
-  .step-btn:hover{background:var(--accent);border-color:var(--accent);color:#fff;}
-  .limit-save{padding:3px 8px;background:rgba(34,216,122,.1);border:1px solid rgba(34,216,122,.2);border-radius:5px;color:var(--green);cursor:pointer;font-size:11px;font-weight:700;font-family:var(--font);transition:all .15s;display:none;}
-  .limit-save.visible{display:inline-flex;align-items:center;gap:4px;}
-  .limit-save:hover{background:var(--green);color:#000;border-color:var(--green);}
+    .app {
+      display: flex;
+      min-height: 100vh;
+    }
 
-  /* === CREATE CARD === */
-  .create-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:22px;margin-bottom:20px;overflow:hidden;}
-  .create-header{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;}
-  .create-title{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;}
-  .create-chevron{color:var(--muted);font-size:14px;transition:transform .2s;}
-  .create-chevron.open{transform:rotate(180deg);}
-  .create-body{margin-top:18px;}
-  .create-body.hidden{display:none;}
-  .form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;}
-  .full-width{grid-column:1/-1;}
-  .form-group{display:flex;flex-direction:column;gap:5px;}
-  .form-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);font-family:var(--mono);}
-  .form-input,.form-select{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:9px 12px;color:var(--text);font-size:13px;font-family:var(--font);outline:none;transition:border-color .15s;width:100%;}
-  .form-input:focus,.form-select:focus{border-color:var(--accent);}
-  .form-input::placeholder{color:var(--muted);}
-  .form-select option{background:var(--surface2);}
-  .form-footer{display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap;}
-  .gen-key-wrap{flex:1;max-width:260px;position:relative;}
-  .gen-key-input{padding-right:72px !important;}
-  .gen-btn{position:absolute;right:4px;top:50%;transform:translateY(-50%);padding:4px 10px;border-radius:5px;background:var(--surface2);border:1px solid var(--border2);color:var(--accent2);font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer;transition:all .15s;}
-  .gen-btn:hover{background:var(--accent);border-color:var(--accent);color:#fff;}
+    .sidebar {
+      width: 280px;
+      background: #0f1217;
+      border-right: 1px solid #1e242c;
+      padding: 24px 16px;
+      position: fixed;
+      height: 100vh;
+      overflow-y: auto;
+    }
 
-  /* === MODAL === */
-  .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:1000;align-items:center;justify-content:center;}
-  .modal-bg.open{display:flex;}
-  .modal{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);padding:28px;width:420px;max-width:95vw;animation:slideUp .2s ease;}
-  @keyframes slideUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
-  .modal-title{font-size:16px;font-weight:800;margin-bottom:6px;}
-  .modal-sub{font-size:13px;color:var(--muted2);margin-bottom:20px;}
-  .modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;}
+    .logo {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 32px;
+      padding-left: 12px;
+    }
 
-  .toast-wrap{position:fixed;bottom:24px;right:24px;z-index:2000;display:flex;flex-direction:column;gap:8px;}
-  .toast{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:12px 16px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;animation:toastIn .2s ease;min-width:240px;box-shadow:0 8px 24px rgba(0,0,0,.4);}
-  .toast.ok{border-color:rgba(34,216,122,.3);}
-  .toast.err{border-color:rgba(255,78,106,.3);}
-  @keyframes toastIn{from{opacity:0;transform:translateX(16px);}to{opacity:1;transform:translateX(0);}}
-  ::-webkit-scrollbar{width:6px;height:6px;}
-  ::-webkit-scrollbar-track{background:transparent;}
-  ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
-  .stat-row{display:flex;gap:10px;margin-bottom:20px;}
-  .mini-stat{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;position:relative;overflow:hidden;}
-  .mini-stat::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
-  .mini-stat.g::before{background:var(--green);}
-  .mini-stat.r::before{background:var(--red);}
-  .mini-stat.y::before{background:var(--yellow);}
-  .mini-stat.b::before{background:var(--accent);}
-  .mini-stat-val{font-size:26px;font-weight:800;letter-spacing:-1px;}
-  .mini-stat-val.g{color:var(--green);}
-  .mini-stat-val.r{color:var(--red);}
-  .mini-stat-val.y{color:var(--yellow);}
-  .mini-stat-val.b{color:var(--accent2);}
-  .mini-stat-label{font-size:11px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.8px;margin-top:2px;}
-  .row-actions{display:flex;gap:5px;align-items:center;}
-</style>
+    .logo span {
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      color: #9aa4b2;
+      margin-bottom: 4px;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .nav-item.active {
+      background: #1a1f2a;
+      color: #fff;
+    }
+
+    .nav-item i {
+      width: 20px;
+      font-size: 18px;
+    }
+
+    .nav-item:hover:not(.active) {
+      background: #151a24;
+      color: #e5e9f0;
+    }
+
+    .main {
+      flex: 1;
+      margin-left: 280px;
+      padding: 32px 40px;
+      background: #0a0c10;
+      min-height: 100vh;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+    }
+
+    .header h1 {
+      font-size: 28px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .admin-badge {
+      background: #1a1f2a;
+      padding: 8px 16px;
+      border-radius: 40px;
+      font-size: 14px;
+      color: #9aa4b2;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .logout-btn {
+      background: #2d3340;
+      border: none;
+      color: #ff7b7b;
+      padding: 8px 20px;
+      border-radius: 40px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .logout-btn:hover {
+      background: #3a4050;
+    }
+
+    .action-bar {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .search-box {
+      flex: 1;
+      min-width: 300px;
+      display: flex;
+      gap: 8px;
+    }
+
+    .search-box input {
+      flex: 1;
+      background: #0f1217;
+      border: 1px solid #1e242c;
+      border-radius: 40px;
+      padding: 12px 20px;
+      color: #e5e9f0;
+      font-size: 14px;
+    }
+
+    .search-box input:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+
+    .search-box select {
+      background: #0f1217;
+      border: 1px solid #1e242c;
+      border-radius: 40px;
+      padding: 0 20px;
+      color: #e5e9f0;
+    }
+
+    .btn-primary {
+      background: #3b82f6;
+      border: none;
+      border-radius: 40px;
+      padding: 12px 32px;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-primary:hover {
+      background: #2563eb;
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: #1e242c;
+      border: 1px solid #2d3540;
+      border-radius: 40px;
+      padding: 12px 24px;
+      color: #e5e9f0;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .btn-secondary:hover {
+      background: #2a3140;
+    }
+
+    .create-card {
+      background: #0f1217;
+      border: 1px solid #1e242c;
+      border-radius: 20px;
+      padding: 24px;
+      margin-bottom: 32px;
+    }
+
+    .create-card h3 {
+      margin-bottom: 20px;
+      font-size: 18px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      background: #0a0c10;
+      border: 1px solid #1e242c;
+      border-radius: 12px;
+      padding: 12px 16px;
+      color: #e5e9f0;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+
+    .generate-section {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      padding-top: 16px;
+      border-top: 1px solid #1e242c;
+    }
+
+    .table-container {
+      background: #0f1217;
+      border: 1px solid #1e242c;
+      border-radius: 20px;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th {
+      text-align: left;
+      padding: 18px 16px;
+      color: #9aa4b2;
+      font-weight: 500;
+      border-bottom: 1px solid #1e242c;
+    }
+
+    td {
+      padding: 16px;
+      border-bottom: 1px solid #1e242c;
+    }
+
+    tr:hover td {
+      background: #151a24;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 40px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .badge.active {
+      background: rgba(124, 255, 178, 0.1);
+      color: #7CFFB2;
+      border: 1px solid rgba(124, 255, 178, 0.2);
+    }
+
+    .badge.expired {
+      background: rgba(255, 211, 123, 0.1);
+      color: #ffd37b;
+      border: 1px solid rgba(255, 211, 123, 0.2);
+    }
+
+    .badge.revoked {
+      background: rgba(255, 123, 123, 0.1);
+      color: #ff7b7b;
+      border: 1px solid rgba(255, 123, 123, 0.2);
+    }
+
+    .actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .action-btn {
+      padding: 6px 12px;
+      border-radius: 30px;
+      font-size: 11px;
+      font-weight: 500;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .action-btn.ok {
+      background: rgba(34, 197, 94, 0.1);
+      color: #22c55e;
+      border: 1px solid rgba(34, 197, 94, 0.2);
+    }
+
+    .action-btn.ok:hover {
+      background: #22c55e;
+      color: #fff;
+    }
+
+    .action-btn.warn {
+      background: rgba(255, 123, 123, 0.1);
+      color: #ff7b7b;
+      border: 1px solid rgba(255, 123, 123, 0.2);
+    }
+
+    .action-btn.warn:hover {
+      background: #ff7b7b;
+      color: #fff;
+    }
+
+    .action-btn.secondary {
+      background: rgba(155, 164, 178, 0.1);
+      color: #9aa4b2;
+      border: 1px solid rgba(155, 164, 178, 0.2);
+    }
+
+    .action-btn.secondary:hover {
+      background: #2d3540;
+      color: #fff;
+    }
+
+    .action-btn.settings {
+      background: rgba(59, 130, 246, 0.1);
+      color: #3b82f6;
+      border: 1px solid rgba(59, 130, 246, 0.2);
+    }
+
+    .action-btn.settings:hover {
+      background: #3b82f6;
+      color: #fff;
+    }
+
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+    }
+
+    .footer-note {
+      margin-top: 20px;
+      color: #6b7a8f;
+      font-size: 13px;
+      text-align: center;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.7);
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: #0f1217;
+      border: 1px solid #1e242c;
+      border-radius: 20px;
+      padding: 32px;
+      max-width: 400px;
+      width: 90%;
+    }
+
+    .modal-content h3 {
+      margin-bottom: 20px;
+      font-size: 20px;
+    }
+
+    .modal-content select {
+      width: 100%;
+      background: #0a0c10;
+      border: 1px solid #1e242c;
+      border-radius: 12px;
+      padding: 12px 16px;
+      color: #e5e9f0;
+      margin-bottom: 20px;
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+  </style>
 </head>
 <body>
-
-<div class="sidebar">
-  <div class="logo">
-    <div class="logo-name"><span>TG</span> Parser Sender</div>
-    <div class="logo-sub">Admin Panel</div>
-  </div>
-  <nav class="nav">
+<div class="app">
+  <!-- Сайдбар -->
+  <div class="sidebar">
+    <div class="logo">
+      <span>TG Parser</span> Sender
+    </div>
+    
     <a href="/admin" class="nav-item {% if active_tab == 'dashboard' %}active{% endif %}">
-      <span class="nav-icon">◈</span> Дашборд
+      <i>📊</i> Дашборд
     </a>
     <a href="/admin/licenses" class="nav-item {% if active_tab == 'licenses' %}active{% endif %}">
-      <span class="nav-icon">⌗</span> Лицензии
+      <i>🔑</i> Лицензии
     </a>
     <a href="/admin/users" class="nav-item {% if active_tab == 'users' %}active{% endif %}">
-      <span class="nav-icon">◉</span> Пользователи
+      <i>👥</i> Пользователи
     </a>
     <a href="/admin/devices" class="nav-item {% if active_tab == 'devices' %}active{% endif %}">
-      <span class="nav-icon">⊟</span> Устройства
+      <i>💻</i> Устройства
     </a>
     <a href="/admin/transactions" class="nav-item {% if active_tab == 'transactions' %}active{% endif %}">
-      <span class="nav-icon">≋</span> Транзакции
+      <i>💰</i> Транзакции
     </a>
     <a href="/admin/settings" class="nav-item {% if active_tab == 'settings' %}active{% endif %}">
-      <span class="nav-icon">⌘</span> Настройки
+      <i>⚙️</i> Настройки
     </a>
-  </nav>
-  <div class="sidebar-footer">
-    <div class="admin-label"><span class="admin-dot"></span>admin online</div>
-    <form method="post" action="/admin/logout">
-      <button class="logout-btn" type="submit">↩ Выйти</button>
-    </form>
-  </div>
-</div>
-
-<div class="main">
-  <div class="topbar">
-    <span class="page-title">Лицензии</span>
-    <div class="topbar-right">
-      <a href="/admin/export" class="btn btn-ghost btn-sm">↓ CSV</a>
-      <button class="btn btn-primary btn-sm" onclick="toggleCreate()">+ Создать</button>
-    </div>
   </div>
 
-  <div class="content">
-
-    <!-- MINI STATS -->
-    <div class="stat-row">
-      <div class="mini-stat g">
-        <div class="mini-stat-val g" id="cnt-active">—</div>
-        <div class="mini-stat-label">Активных</div>
-      </div>
-      <div class="mini-stat r">
-        <div class="mini-stat-val r" id="cnt-expired">—</div>
-        <div class="mini-stat-label">Истекших</div>
-      </div>
-      <div class="mini-stat y">
-        <div class="mini-stat-val y" id="cnt-revoked">—</div>
-        <div class="mini-stat-label">Заблокировано</div>
-      </div>
-      <div class="mini-stat b">
-        <div class="mini-stat-val b" id="cnt-total">{{ rows|length }}</div>
-        <div class="mini-stat-label">Всего</div>
-      </div>
-    </div>
-
-    <!-- CREATE FORM (collapsible) -->
-    <div class="create-card" id="createCard" style="display:none;">
-      <div class="create-header" onclick="toggleCreate()">
-        <div class="create-title">✦ Новая лицензия</div>
-        <span class="create-chevron open" id="createChevron">▲</span>
-      </div>
-      <div class="create-body" id="createBody">
-        <form method="post" action="/admin/upsert">
-          <div class="form-grid">
-            <div class="form-group">
-              <label class="form-label">Ключ</label>
-              <div class="gen-key-wrap">
-                <input name="key" id="keyInp" class="form-input gen-key-input" placeholder="KEY-XXXXXXXX" required>
-                <button type="button" class="gen-btn" onclick="genKey()">⟳ Авто</button>
-              </div>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Дней действия</label>
-              <input name="days" type="number" class="form-input" placeholder="30" value="30" min="1" required>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Лимит девайсов</label>
-              <input name="max_devices" type="number" class="form-input" placeholder="1" value="1" min="1" max="99">
-            </div>
-            <div class="form-group">
-              <label class="form-label">HWID (если нужен)</label>
-              <input name="hwid" class="form-input" placeholder="Оставить пустым" value="temp">
-            </div>
-            <div class="form-group full-width">
-              <label class="form-label">Заметка (опционально)</label>
-              <input name="note" class="form-input" placeholder="Например: Клиент Иван, месяц">
-            </div>
-          </div>
-          <div class="form-footer">
-            <button type="submit" class="btn btn-primary">💾 Сохранить лицензию</button>
-            <button type="button" class="btn btn-ghost" onclick="toggleCreate()">Отмена</button>
-          </div>
+  <!-- Основной контент -->
+  <div class="main">
+    <div class="header">
+      <h1>Управление лицензиями</h1>
+      <div class="header-right">
+        <div class="admin-badge">
+          <span>👑</span> Администратор
+        </div>
+        <form method="post" action="/admin/logout" style="margin:0;">
+          <button class="logout-btn" type="submit">Выйти</button>
         </form>
       </div>
     </div>
 
-    <!-- ACTION BAR -->
+    <!-- Поиск и фильтр -->
     <div class="action-bar">
-      <div class="search-wrap">
-        <span class="search-icon">⌕</span>
-        <input type="text" class="search-input" placeholder="Поиск по ключу, заметке..." oninput="filterTable(this.value)">
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="🔍 Поиск по key, hwid, note...">
+        <select id="statusFilter">
+          <option value="all">Все статусы</option>
+          <option value="active">Active</option>
+          <option value="expired">Expired</option>
+          <option value="revoked">Revoked</option>
+        </select>
+        <button class="btn-primary" onclick="filterTable()">Найти</button>
       </div>
-      <div class="filter-tabs">
-        <button class="filter-tab active" data-f="all" onclick="setFilter('all',this)">Все</button>
-        <button class="filter-tab" data-f="active" onclick="setFilter('active',this)">Активные</button>
-        <button class="filter-tab" data-f="expired" onclick="setFilter('expired',this)">Истекшие</button>
-        <button class="filter-tab" data-f="revoked" onclick="setFilter('revoked',this)">Заблок.</button>
-      </div>
+      <a href="/admin/export" style="text-decoration:none;">
+        <button class="btn-secondary">📥 Экспорт CSV</button>
+      </a>
     </div>
 
-    <!-- TABLE -->
-    <div class="table-wrap">
-      <table id="licTable">
+    <!-- Создание лицензии -->
+    <div class="create-card">
+      <h3>✨ Создать новую лицензию</h3>
+      <form method="post" action="/admin/upsert">
+        <div class="form-grid">
+          <div class="form-group">
+            <input name="hwid" placeholder="HWID (можно оставить пустым)" value="temp">
+          </div>
+          <div class="form-group">
+            <input name="hwid" placeholder="HWID (оставь пусто)" value="temp">
+          </div>
+          <div class="form-group">
+            <input name="days" type="number" placeholder="Срок (дни)" value="30" required>
+          </div>
+          <div class="form-group">
+            <select name="plan">
+              <option value="custom">custom (базовый)</option>
+              <option value="m1">m1 (1 устройство)</option>
+              <option value="m3">m3 (2 устройства)</option>
+              <option value="m6">m6 (3 устройства)</option>
+              <option value="y1">y1 (5 устройств)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <input name="note" placeholder="Заметка (необязательно)">
+          </div>
+        </div>
+        <div class="generate-section">
+          <button class="btn-primary" type="submit">💾 Сохранить лицензию</button>
+          <span style="color:#9aa4b2;">или</span>
+          <button class="btn-secondary" type="button" onclick="generateKey()">🎲 Generate KEY</button>
+          <span style="color:#6b7a8f; font-size:13px; margin-left:auto;">
+            Совет: клиент присылает HWID → ты генеришь KEY
+          </span>
+        </div>
+      </form>
+    </div>
+
+    <!-- Таблица лицензий -->
+    <div class="table-container">
+      <table id="licensesTable">
         <thead>
           <tr>
-            <th>Ключ</th>
+            <th>KEY</th>
+            <th>HWID</th>
+            <th>Действует до</th>
             <th>Статус</th>
-            <th>Истекает</th>
-            <th style="min-width:160px">Девайсов <span style="color:var(--muted);font-size:9px;font-weight:400;letter-spacing:0">— редактируй напрямую</span></th>
+            <th>План</th>
+            <th>Лимит</th>
+            <th>Проверок</th>
             <th>Заметка</th>
-            <th>Создан</th>
-            <th style="min-width:180px">Действия</th>
+            <th>Действия</th>
           </tr>
         </thead>
         <tbody>
-          {% for row in rows %}
-          <tr data-key="{{ row.key }}"
-              data-status="{% if row.revoked %}revoked{% elif now > row.expires_at %}expired{% else %}active{% endif %}">
+        {% for r in rows %}
+          <tr>
+            <td class="mono"><b>{{ r.key }}</b></td>
+            <td class="mono">{{ r.hwid[:16] if r.hwid and r.hwid != 'temp' else '—' }}...</td>
+            <td class="mono">{{ r.expires_at.strftime('%Y-%m-%d') }}</td>
             <td>
-              <span class="key-chip">{{ row.key }}</span>
-              <button class="copy-btn" onclick="copyText('{{ row.key }}')" title="Скопировать">⎘</button>
-            </td>
-            <td>
-              {% if row.revoked %}
-                <span class="badge badge-red">Заблок.</span>
-              {% elif now > row.expires_at %}
-                <span class="badge badge-yellow">Истёк</span>
+              {% if r.revoked %}
+                <span class="badge revoked">revoked</span>
+              {% elif r.expires_at <= now %}
+                <span class="badge expired">expired</span>
               {% else %}
-                <span class="badge badge-green">Активен</span>
+                <span class="badge active">active</span>
               {% endif %}
             </td>
+            <td><span class="badge">{{ r.plan }}</span></td>
+            <td>{{ r.max_devices or 1 }} уст.</td>
+            <td>{{ r.check_count }}</td>
+            <td>{{ r.note or '—' }}</td>
             <td>
-              {% set days_left = (row.expires_at - now).days %}
-              {% if now > row.expires_at %}
-                <span class="expiry-expired mono">{{ row.expires_at.strftime('%d.%m.%Y') }}</span>
-              {% elif days_left < 7 %}
-                <span class="expiry-soon mono" title="{{ days_left }} дн. осталось">{{ row.expires_at.strftime('%d.%m.%Y') }}</span>
-              {% else %}
-                <span class="expiry-ok mono">{{ row.expires_at.strftime('%d.%m.%Y') }}</span>
-              {% endif %}
-            </td>
-            <!-- ★ INLINE LIMIT EDITOR ★ -->
-            <td>
-              <div class="limit-cell" id="lc-{{ row.key | replace('-', '_') }}">
-                <div class="limit-display">
-                  <div class="limit-stepper">
-                    <button class="step-btn" onclick="stepLimit('{{ row.key }}', 1)">▲</button>
-                    <button class="step-btn" onclick="stepLimit('{{ row.key }}', -1)">▼</button>
-                  </div>
-                  <span class="limit-val" id="lv-{{ row.key | replace('-', '_') }}">{{ row.max_devices }}</span>
-                </div>
-                <button class="limit-save" id="ls-{{ row.key | replace('-', '_') }}"
-                        onclick="saveLimit('{{ row.key }}')">✓ Сохранить</button>
-              </div>
-            </td>
-            <td>
-              {% if row.note %}
-                <span style="color:var(--muted2);font-size:12px;">{{ row.note }}</span>
-              {% else %}
-                <span style="color:var(--muted)">—</span>
-              {% endif %}
-            </td>
-            <td><span class="mono text-muted">{{ row.created_at.strftime('%d.%m.%y') if row.created_at else '—' }}</span></td>
-            <td>
-              <div class="row-actions">
-                <!-- Добавить дни -->
-                <button class="btn btn-ghost btn-sm" onclick="openAddDays('{{ row.key }}')" title="Продлить">+дни</button>
-                <!-- Revoke / Unrevoke -->
-                {% if row.revoked %}
-                  <form method="post" action="/admin/unrevoke" style="margin:0">
-                    <input type="hidden" name="key" value="{{ row.key }}">
-                    <button class="btn btn-success btn-sm">↩</button>
-                  </form>
+              <div class="actions">
+                <form method="post" action="/admin/add_days" style="display:inline;">
+                  <input type="hidden" name="key" value="{{ r.key }}">
+                  <input type="hidden" name="add" value="30">
+                  <button class="action-btn ok" type="submit">+30</button>
+                </form>
+                <form method="post" action="/admin/add_days" style="display:inline;">
+                  <input type="hidden" name="key" value="{{ r.key }}">
+                  <input type="hidden" name="add" value="90">
+                  <button class="action-btn secondary" type="submit">+90</button>
+                </form>
+                
+                <!-- Кнопка изменения лимита устройств -->
+                <button class="action-btn settings" onclick="showLimitModal('{{ r.key }}', {{ r.max_devices or 1 }})">
+                  ⚙️ Лимит
+                </button>
+                
+                {% if r.revoked %}
+                <form method="post" action="/admin/unrevoke" style="display:inline;">
+                  <input type="hidden" name="key" value="{{ r.key }}">
+                  <button class="action-btn secondary" type="submit">Unrevoke</button>
+                </form>
                 {% else %}
-                  <form method="post" action="/admin/revoke" style="margin:0">
-                    <input type="hidden" name="key" value="{{ row.key }}">
-                    <button class="btn btn-danger btn-sm">🚫</button>
-                  </form>
+                <form method="post" action="/admin/revoke" style="display:inline;" onsubmit="return confirm('Заблокировать ключ {{ r.key }}?');">
+                  <input type="hidden" name="key" value="{{ r.key }}">
+                  <button class="action-btn warn" type="submit">Revoke</button>
+                </form>
                 {% endif %}
-                <!-- Delete -->
-                <form method="post" action="/admin/delete" style="margin:0" onsubmit="return confirm('Удалить ключ {{ row.key }}?')">
-                  <input type="hidden" name="key" value="{{ row.key }}">
-                  <button class="btn btn-ghost btn-sm" title="Удалить" style="color:var(--red);">✕</button>
+                <form method="post" action="/admin/delete" style="display:inline;" onsubmit="return confirm('Удалить ключ {{ r.key }}? Это необратимо!');">
+                  <input type="hidden" name="key" value="{{ r.key }}">
+                  <button class="action-btn warn" type="submit">Delete</button>
                 </form>
               </div>
             </td>
           </tr>
-          {% else %}
-          <tr><td colspan="7" style="padding:40px;text-align:center;color:var(--muted);">Лицензий нет</td></tr>
-          {% endfor %}
+        {% endfor %}
         </tbody>
       </table>
     </div>
 
+    <div class="footer-note">
+      Показано максимум 500 записей • Используйте поиск и фильтры
+    </div>
   </div>
 </div>
 
-<!-- ADD DAYS MODAL -->
-<div class="modal-bg" id="addDaysModal">
-  <div class="modal">
-    <div class="modal-title">📅 Продлить лицензию</div>
-    <div class="modal-sub" id="addDaysKey">Ключ: —</div>
-    <form method="post" action="/admin/add_days" id="addDaysForm">
-      <input type="hidden" name="key" id="addDaysKeyInput">
-      <div class="form-group">
-        <label class="form-label">Добавить дней</label>
-        <input name="add" type="number" class="form-input" value="30" min="1" max="3650">
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-ghost" onclick="closeModal('addDaysModal')">Отмена</button>
-        <button type="submit" class="btn btn-primary">✓ Продлить</button>
-      </div>
-    </form>
+<!-- Модальное окно для изменения лимита устройств -->
+<div class="modal" id="limitModal">
+  <div class="modal-content">
+    <h3>⚙️ Изменить лимит устройств</h3>
+    <p id="limitKeyInfo" style="color: #9aa4b2; margin-bottom: 16px;"></p>
+    
+    <select id="newLimit">
+      <option value="1">1 устройство</option>
+      <option value="2">2 устройства</option>
+      <option value="3">3 устройства</option>
+      <option value="5">5 устройств</option>
+      <option value="10">10 устройств</option>
+    </select>
+    
+    <div class="modal-buttons">
+      <button class="action-btn secondary" onclick="closeLimitModal()">Отмена</button>
+      <button class="action-btn ok" onclick="confirmLimitChange()">✅ Сохранить</button>
+    </div>
   </div>
 </div>
-
-<div class="toast-wrap" id="toasts"></div>
 
 <script>
-  // ===== LIMIT EDITING =====
-  const limitState = {}; // key -> {original, current}
+  let currentLicenseKey = null;
 
-  {% for row in rows %}
-  limitState['{{ row.key }}'] = { original: {{ row.max_devices }}, current: {{ row.max_devices }} };
-  {% endfor %}
+  function filterTable() {
+    let input = document.getElementById('searchInput');
+    let filter = input.value.toLowerCase();
+    let statusFilter = document.getElementById('statusFilter').value;
+    let table = document.getElementById('licensesTable');
+    let tr = table.getElementsByTagName('tr');
 
-  function stepLimit(key, delta) {
-    const safeKey = key.replace(/-/g, '_');
-    const state = limitState[key];
-    const newVal = Math.max(1, Math.min(99, state.current + delta));
-    if (newVal === state.current) return;
-    state.current = newVal;
-    document.getElementById('lv-' + safeKey).textContent = newVal;
-    const saveBtn = document.getElementById('ls-' + safeKey);
-    if (newVal !== state.original) {
-      saveBtn.classList.add('visible');
-    } else {
-      saveBtn.classList.remove('visible');
-    }
-  }
-
-  async function saveLimit(key) {
-    const safeKey = key.replace(/-/g, '_');
-    const state = limitState[key];
-    const saveBtn = document.getElementById('ls-' + safeKey);
-    saveBtn.textContent = '...';
-    try {
-      const res = await fetch('/admin/api/update-limit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: key, max_devices: state.current })
-      });
-      const data = await res.json();
-      if (data.success) {
-        state.original = state.current;
-        saveBtn.classList.remove('visible');
-        showToast('✓ Лимит девайсов: ' + state.current, 'ok');
-      } else {
-        showToast('Ошибка: ' + (data.error || 'неизвестно'), 'err');
-        saveBtn.textContent = '✓ Сохранить';
+    for (let i = 1; i < tr.length; i++) {
+      let tdKey = tr[i].getElementsByTagName('td')[0];
+      let tdNote = tr[i].getElementsByTagName('td')[7];
+      let tdStatus = tr[i].getElementsByTagName('td')[3];
+      
+      let textMatch = (tdKey.textContent + tdNote.textContent).toLowerCase().includes(filter);
+      
+      let statusMatch = true;
+      if (statusFilter !== 'all') {
+        let statusSpan = tdStatus.querySelector('span');
+        let status = statusSpan ? statusSpan.className : '';
+        statusMatch = status.includes(statusFilter);
       }
-    } catch(e) {
-      showToast('Ошибка сети', 'err');
-      saveBtn.textContent = '✓ Сохранить';
+      
+      tr[i].style.display = (textMatch && statusMatch) ? '' : 'none';
     }
   }
 
-  // ===== STATS COUNTER =====
-  function calcStats() {
-    const rows = document.querySelectorAll('#licTable tbody tr[data-status]');
-    let active = 0, expired = 0, revoked = 0;
-    rows.forEach(r => {
-      const s = r.dataset.status;
-      if (s === 'active') active++;
-      else if (s === 'expired') expired++;
-      else if (s === 'revoked') revoked++;
+  function generateKey() {
+    let prefix = prompt('Введите префикс (например VIP) или оставьте пустым:');
+    let random = Math.random().toString(36).substring(7).toUpperCase();
+    let key = prefix ? `${prefix}-${random}` : random;
+    document.querySelector('input[name="key"]').value = key;
+  }
+
+  function showLimitModal(key, currentLimit) {
+    currentLicenseKey = key;
+    document.getElementById('limitKeyInfo').innerHTML = 
+      `Ключ: <b>${key}</b><br>Текущий лимит: <b>${currentLimit} устройств</b>`;
+    document.getElementById('newLimit').value = currentLimit;
+    document.getElementById('limitModal').classList.add('active');
+  }
+
+  function closeLimitModal() {
+    document.getElementById('limitModal').classList.remove('active');
+  }
+
+  function confirmLimitChange() {
+    let newLimit = document.getElementById('newLimit').value;
+    
+    fetch('/admin/api/update-limit', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        key: currentLicenseKey,
+        max_devices: parseInt(newLimit)
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert(`✅ Лимит изменён на ${newLimit} устройств`);
+        location.reload();
+      } else {
+        alert('❌ Ошибка: ' + data.error);
+      }
+    })
+    .catch(error => {
+      alert('❌ Ошибка: ' + error);
     });
-    document.getElementById('cnt-active').textContent = active;
-    document.getElementById('cnt-expired').textContent = expired;
-    document.getElementById('cnt-revoked').textContent = revoked;
-  }
-  calcStats();
-
-  // ===== FILTER =====
-  let currentFilter = 'all';
-  let currentSearch = '';
-
-  function setFilter(f, el) {
-    currentFilter = f;
-    document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
-    el.classList.add('active');
-    applyFilter();
-  }
-
-  function filterTable(q) {
-    currentSearch = q.toLowerCase();
-    applyFilter();
-  }
-
-  function applyFilter() {
-    const rows = document.querySelectorAll('#licTable tbody tr[data-status]');
-    rows.forEach(r => {
-      const status = r.dataset.status;
-      const text = r.textContent.toLowerCase();
-      const matchFilter = currentFilter === 'all' || status === currentFilter;
-      const matchSearch = !currentSearch || text.includes(currentSearch);
-      r.style.display = (matchFilter && matchSearch) ? '' : 'none';
-    });
-  }
-
-  // ===== CREATE TOGGLE =====
-  function toggleCreate() {
-    const card = document.getElementById('createCard');
-    const chevron = document.getElementById('createChevron');
-    if (card.style.display === 'none') {
-      card.style.display = 'block';
-    } else {
-      card.style.display = 'none';
-    }
-  }
-
-  // ===== GEN KEY =====
-  function genKey() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    const part = () => Array.from({length:4}, ()=>chars[Math.floor(Math.random()*chars.length)]).join('');
-    document.getElementById('keyInp').value = `KEY-${part()}-${part()}`;
-  }
-
-  // ===== MODAL =====
-  function openAddDays(key) {
-    document.getElementById('addDaysKey').textContent = 'Ключ: ' + key;
-    document.getElementById('addDaysKeyInput').value = key;
-    document.getElementById('addDaysModal').classList.add('open');
-  }
-  function closeModal(id) {
-    document.getElementById(id).classList.remove('open');
-  }
-  document.getElementById('addDaysModal').addEventListener('click', function(e){
-    if(e.target === this) closeModal('addDaysModal');
-  });
-
-  // ===== COPY =====
-  function copyText(text) {
-    navigator.clipboard.writeText(text).then(() => showToast('⎘ Скопировано: ' + text, 'ok'));
-  }
-
-  // ===== TOAST =====
-  function showToast(msg, type='ok') {
-    const wrap = document.getElementById('toasts');
-    const t = document.createElement('div');
-    t.className = 'toast ' + type;
-    t.textContent = msg;
-    wrap.appendChild(t);
-    setTimeout(() => t.remove(), 3000);
   }
 </script>
 </body>
