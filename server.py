@@ -25,7 +25,7 @@ from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
 
 # =========================
-# ÐÐžÐ’Ð«Ð• Ð˜ÐœÐŸÐžÐ Ð¢Ð« Ð”Ð›Ð¯ ÐŸÐžÐ§Ð¢Ð«
+# НОВЫЕ ИМПОРТЫ ДЛЯ ПОЧТЫ
 # =========================
 import sendgrid
 from sendgrid.helpers.mail import Mail, Email, To, Content
@@ -35,7 +35,7 @@ from openai import OpenAI
 app = FastAPI()
 
 # =========================
-# Ð“Ð›ÐžÐ‘ÐÐ›Ð¬ÐÐ«Ð™ ÐžÐ‘Ð ÐÐ‘ÐžÐ¢Ð§Ð˜Ðš
+# ГЛОБАЛЬНЫЙ ОБРАБОТЧИК
 # =========================
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
@@ -45,17 +45,17 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 # =========================
-# ÐÐÐ¡Ð¢Ð ÐžÐ™ÐšÐ˜
+# НАСТРОЙКИ
 # =========================
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
 ADMIN_PANEL_SECRET = os.environ.get("ADMIN_PANEL_SECRET", "change-me")
 
 # =========================
-# ÐÐÐ¡Ð¢Ð ÐžÐ™ÐšÐ˜ SENDGRID (ÐÐžÐ’Ð«Ð•)
+# НАСТРОЙКИ SENDGRID (НОВЫЕ)
 # =========================
 SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "")
-FROM_EMAIL = "noreply@tgparsersender.me"  # Ð­Ñ‚Ð¾Ñ‚ email Ñ‚Ñ‹ Ð¿Ð¾Ð´Ñ‚Ð²ÐµÑ€Ð´Ð¸Ð» Ð² SendGrid
+FROM_EMAIL = "noreply@tgparsersender.me"  # Этот email ты подтвердил в SendGrid
 FROM_NAME = "TG Parser Sender"
 
 # =========================
@@ -73,7 +73,7 @@ def get_openai_client():
     return _openai_client
 
 # =========================
-# Ð¡Ð•Ð¡Ð¡Ð˜Ð˜
+# СЕССИИ
 # =========================
 app.add_middleware(
     SessionMiddleware,
@@ -85,7 +85,7 @@ app.add_middleware(
 templates = Jinja2Templates(directory="templates")
 
 # =========================
-# Ð’Ð¡ÐŸÐžÐœÐžÐ“ÐÐ¢Ð•Ð›Ð¬ÐÐ«Ð• Ð¤Ð£ÐÐšÐ¦Ð˜Ð˜
+# ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 # =========================
 def now():
     return datetime.now(timezone.utc)
@@ -108,7 +108,7 @@ def generate_token() -> str:
     return secrets.token_urlsafe(32)
 
 # =========================
-# Ð‘ÐÐ—Ð Ð”ÐÐÐÐ«Ð¥
+# БАЗА ДАННЫХ
 # =========================
 def db():
     if not DATABASE_URL:
@@ -116,13 +116,13 @@ def db():
     return psycopg2.connect(DATABASE_URL)
 
 def init_db():
-    """Ð¡Ð¾Ð·Ð´Ð°Ð½Ð¸Ðµ Ð²ÑÐµÑ… Ñ‚Ð°Ð±Ð»Ð¸Ñ†"""
-    print("ðŸš€ Ð¡Ð¾Ð·Ð´Ð°ÑŽ Ñ‚Ð°Ð±Ð»Ð¸Ñ†Ñ‹...")
+    """Создание всех таблиц"""
+    print("🚀 Создаю таблицы...")
     con = db()
     cur = con.cursor()
     
     try:
-        # Ð¢Ð°Ð±Ð»Ð¸Ñ†Ð° Ð»Ð¸Ñ†ÐµÐ½Ð·Ð¸Ð¹
+        # Таблица лицензий
         cur.execute("""
         CREATE TABLE IF NOT EXISTS licenses (
             key TEXT PRIMARY KEY,
@@ -138,9 +138,9 @@ def init_db():
             check_count BIGINT DEFAULT 0
         );
         """)
-        print("âœ“ licenses")
+        print("✓ licenses")
         
-        # Ð¢Ð°Ð±Ð»Ð¸Ñ†Ð° Ð¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÐµÐ»ÐµÐ¹
+        # Таблица пользователей
         cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id BIGSERIAL PRIMARY KEY,
@@ -157,9 +157,9 @@ def init_db():
             total_spent DECIMAL(10,2) DEFAULT 0.00
         );
         """)
-        print("âœ“ users")
+        print("✓ users")
         
-        # Ð¢Ð°Ð±Ð»Ð¸Ñ†Ð° ÑƒÑÑ‚Ñ€Ð¾Ð¹ÑÑ‚Ð²
+        # Таблица устройств
         cur.execute("""
         CREATE TABLE IF NOT EXISTS user_devices (
             id BIGSERIAL PRIMARY KEY,
@@ -173,9 +173,9 @@ def init_db():
             UNIQUE(user_id, device_fingerprint)
         );
         """)
-        print("âœ“ user_devices")
+        print("✓ user_devices")
         
-        # Ð¢Ð°Ð±Ð»Ð¸Ñ†Ð° ÑÐµÑÑÐ¸Ð¹
+        # Таблица сессий
         cur.execute("""
         CREATE TABLE IF NOT EXISTS user_sessions (
             id BIGSERIAL PRIMARY KEY,
@@ -187,9 +187,9 @@ def init_db():
             last_active TIMESTAMPTZ DEFAULT NOW()
         );
         """)
-        print("âœ“ user_sessions")
+        print("✓ user_sessions")
         
-        # Ð¢Ð°Ð±Ð»Ð¸Ñ†Ð° Ð¿Ð¾Ð´Ñ‚Ð²ÐµÑ€Ð¶Ð´ÐµÐ½Ð¸Ñ email
+        # Таблица подтверждения email
         cur.execute("""
         CREATE TABLE IF NOT EXISTS email_confirmations (
             id BIGSERIAL PRIMARY KEY,
@@ -200,9 +200,9 @@ def init_db():
             created_at TIMESTAMPTZ DEFAULT NOW()
         );
         """)
-        print("âœ“ email_confirmations")
+        print("✓ email_confirmations")
         
-        # Ð¢Ð°Ð±Ð»Ð¸Ñ†Ð° ÑÐ±Ñ€Ð¾ÑÐ° Ð¿Ð°Ñ€Ð¾Ð»Ñ
+        # Таблица сброса пароля
         cur.execute("""
         CREATE TABLE IF NOT EXISTS password_resets (
             id BIGSERIAL PRIMARY KEY,
@@ -213,9 +213,9 @@ def init_db():
             created_at TIMESTAMPTZ DEFAULT NOW()
         );
         """)
-        print("âœ“ password_resets")
+        print("✓ password_resets")
         
-        # Ð¢Ð°Ð±Ð»Ð¸Ñ†Ð° Ñ‚Ñ€Ð°Ð½Ð·Ð°ÐºÑ†Ð¸Ð¹
+        # Таблица транзакций
         cur.execute("""
         CREATE TABLE IF NOT EXISTS transactions (
             id BIGSERIAL PRIMARY KEY,
@@ -228,9 +228,9 @@ def init_db():
             metadata JSONB DEFAULT '{}'
         );
         """)
-        print("âœ“ transactions")
+        print("✓ transactions")
         
-        # Ð¢Ð°Ñ€Ð¸Ñ„Ñ‹
+        # Тарифы
         cur.execute("""
         CREATE TABLE IF NOT EXISTS pricing (
             id SERIAL PRIMARY KEY,
@@ -245,18 +245,18 @@ def init_db():
         cur.execute("""
         INSERT INTO pricing (operation_type, base_price, final_price, min_units, description)
         VALUES 
-            ('parse', 0.0005, 0.0005, 100, 'ÐŸÐ°Ñ€ÑÐ¸Ð½Ð³ Ð¾Ð´Ð½Ð¾Ð³Ð¾ ÑÐ¾Ð¾Ð±Ñ‰ÐµÐ½Ð¸Ñ'),
-            ('ai_parse', 0.005, 0.0075, 10, 'AI-Ð°Ð½Ð°Ð»Ð¸Ð· Ð¾Ð´Ð½Ð¾Ð³Ð¾ ÑÐ¾Ð¾Ð±Ñ‰ÐµÐ½Ð¸Ñ'),
-            ('sender', 0.001, 0.001, 50, 'ÐžÑ‚Ð¿Ñ€Ð°Ð²ÐºÐ° Ð¾Ð´Ð½Ð¾Ð³Ð¾ ÑÐ¾Ð¾Ð±Ñ‰ÐµÐ½Ð¸Ñ'),
-            ('invite', 0.002, 0.002, 20, 'ÐŸÑ€Ð¸Ð³Ð»Ð°ÑˆÐµÐ½Ð¸Ðµ Ð¾Ð´Ð½Ð¾Ð³Ð¾ Ð¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÐµÐ»Ñ')
+            ('parse', 0.0005, 0.0005, 100, 'Парсинг одного сообщения'),
+            ('ai_parse', 0.005, 0.0075, 10, 'AI-анализ одного сообщения'),
+            ('sender', 0.001, 0.001, 50, 'Отправка одного сообщения'),
+            ('invite', 0.002, 0.002, 20, 'Приглашение одного пользователя')
         ON CONFLICT (operation_type) DO UPDATE SET
             base_price = EXCLUDED.base_price,
             final_price = EXCLUDED.final_price,
             description = EXCLUDED.description;
         """)
-        print("âœ“ pricing")
+        print("✓ pricing")
         
-        # Ð›Ð¾Ð³Ð¸ Ð¸ÑÐ¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ð½Ð¸Ñ
+        # Логи использования
         cur.execute("""
         CREATE TABLE IF NOT EXISTS usage_logs (
             id BIGSERIAL PRIMARY KEY,
@@ -269,9 +269,9 @@ def init_db():
             created_at TIMESTAMPTZ DEFAULT NOW()
         );
         """)
-        print("âœ“ usage_logs")
+        print("✓ usage_logs")
         
-        # ÐŸÐ»Ð°Ñ‚ÐµÐ¶Ð½Ñ‹Ðµ Ð·Ð°Ð¿Ñ€Ð¾ÑÑ‹
+        # Платежные запросы
         cur.execute("""
         CREATE TABLE IF NOT EXISTS payment_requests (
             id BIGSERIAL PRIMARY KEY,
@@ -285,9 +285,9 @@ def init_db():
             completed_at TIMESTAMPTZ
         );
         """)
-        print("âœ“ payment_requests")
+        print("✓ payment_requests")
         
-        # ÐÑƒÐ´Ð¸Ñ‚ Ð°Ð´Ð¼Ð¸Ð½Ð°
+        # Аудит админа
         cur.execute("""
         CREATE TABLE IF NOT EXISTS admin_audit (
             id BIGSERIAL PRIMARY KEY,
@@ -298,32 +298,32 @@ def init_db():
             info TEXT DEFAULT ''
         );
         """)
-        print("âœ“ admin_audit")
+        print("✓ admin_audit")
         
-        # ========== ÐœÐ˜Ð“Ð ÐÐ¦Ð˜Ð˜ ==========
-        print("ðŸ”§ ÐŸÑ€Ð¸Ð¼ÐµÐ½ÑÑŽ Ð¼Ð¸Ð³Ñ€Ð°Ñ†Ð¸Ð¸...")
+        # ========== МИГРАЦИИ ==========
+        print("🔧 Применяю миграции...")
         
-        # ÐŸÑ€Ð¾Ð²ÐµÑ€ÑÐµÐ¼ Ð½Ð°Ð»Ð¸Ñ‡Ð¸Ðµ ÐºÐ¾Ð»Ð¾Ð½ÐºÐ¸ last_login Ð² users
+        # Проверяем наличие колонки last_login в users
         cur.execute("""
             SELECT column_name 
             FROM information_schema.columns 
             WHERE table_name='users' AND column_name='last_login';
         """)
         if not cur.fetchone():
-            print("  â†’ Ð”Ð¾Ð±Ð°Ð²Ð»ÑÑŽ ÐºÐ¾Ð»Ð¾Ð½ÐºÑƒ last_login Ð² users...")
+            print("  → Добавляю колонку last_login в users...")
             cur.execute("""
                 ALTER TABLE users 
                 ADD COLUMN last_login TIMESTAMPTZ;
             """)
-            print("  âœ“ ÐšÐ¾Ð»Ð¾Ð½ÐºÐ° last_login Ð´Ð¾Ð±Ð°Ð²Ð»ÐµÐ½Ð°")
+            print("  ✓ Колонка last_login добавлена")
         else:
-            print("  âœ“ ÐšÐ¾Ð»Ð¾Ð½ÐºÐ° last_login ÑƒÐ¶Ðµ ÑÑƒÑ‰ÐµÑÑ‚Ð²ÑƒÐµÑ‚")
+            print("  ✓ Колонка last_login уже существует")
         
         con.commit()
-        print("âœ… Ð’Ð¡Ð• Ð¢ÐÐ‘Ð›Ð˜Ð¦Ð« Ð¡ÐžÐ—Ð”ÐÐÐ«!")
+        print("✅ ВСЕ ТАБЛИЦЫ СОЗДАНЫ!")
         
     except Exception as e:
-        print(f"âŒ ÐžÑˆÐ¸Ð±ÐºÐ°: {e}")
+        print(f"❌ Ошибка: {e}")
         con.rollback()
         raise
     finally:
@@ -335,7 +335,7 @@ def startup():
     init_db()
 
 # =========================
-# ÐŸÐ ÐžÐ’Ð•Ð ÐšÐ Ð›Ð˜Ð¦Ð•ÐÐ—Ð˜Ð˜
+# ПРОВЕРКА ЛИЦЕНЗИИ
 # =========================
 class CheckReq(BaseModel):
     key: str
@@ -344,11 +344,11 @@ class CheckReq(BaseModel):
 @app.post("/api/check")
 def check(req: CheckReq):
     """
-    ÐŸÑ€Ð¾Ð²ÐµÑ€ÐºÐ° Ð»Ð¸Ñ†ÐµÐ½Ð·Ð¸Ð¸ Ð¿Ñ€Ð¸ Ð°ÐºÑ‚Ð¸Ð²Ð°Ñ†Ð¸Ð¸.
-    Ð›ÐžÐ“Ð˜ÐšÐ:
-    - ÐºÐ»ÑŽÑ‡ Ð´Ð¾Ð»Ð¶ÐµÐ½ ÑÑƒÑ‰ÐµÑÑ‚Ð²Ð¾Ð²Ð°Ñ‚ÑŒ, Ð±Ñ‹Ñ‚ÑŒ Ð½Ðµ revoked Ð¸ Ð½Ðµ expired
-    - HWID "Ð¿Ñ€Ð¸Ð²ÑÐ·Ñ‹Ð²Ð°ÐµÑ‚ÑÑ" Ð¿Ñ€Ð¸ Ð¿ÐµÑ€Ð²Ð¾Ð¹ ÑƒÑÐ¿ÐµÑˆÐ½Ð¾Ð¹ Ð¿Ñ€Ð¾Ð²ÐµÑ€ÐºÐµ, ÐµÑÐ»Ð¸ Ð² Ð»Ð¸Ñ†ÐµÐ½Ð·Ð¸Ð¸ HWID Ð¿ÑƒÑÑ‚Ð¾Ð¹/temporary
-    - Ð¿Ð¾ÑÐ»Ðµ Ð¿Ñ€Ð¸Ð²ÑÐ·ÐºÐ¸ HWID Ð´Ð¾Ð»Ð¶ÐµÐ½ ÑÐ¾Ð²Ð¿Ð°Ð´Ð°Ñ‚ÑŒ (Ð·Ð°Ñ‰Ð¸Ñ‚Ð° Ð¾Ñ‚ ÑˆÐ°Ñ€Ð¸Ð½Ð³Ð° ÐºÐ»ÑŽÑ‡ÐµÐ¹)
+    Проверка лицензии при активации.
+    ЛОГИКА:
+    - ключ должен существовать, быть не revoked и не expired
+    - HWID "привязывается" при первой успешной проверке, если в лицензии HWID пустой/temporary
+    - после привязки HWID должен совпадать (защита от шаринга ключей)
     """
     con = db()
     cur = con.cursor()
@@ -363,17 +363,17 @@ def check(req: CheckReq):
 
         lic_hwid, expires_at, revoked = row
 
-        # Ð£ÑÐ¿ÐµÑ…/Ð¾ÑˆÐ¸Ð±ÐºÐ¸ Ð¿Ð¾ ÑÑ€Ð¾ÐºÑƒ Ð¸ ÑÑ‚Ð°Ñ‚ÑƒÑÑƒ
+        # Успех/ошибки по сроку и статусу
         if revoked:
             raise HTTPException(status_code=403, detail="revoked")
         if now() > expires_at:
             raise HTTPException(status_code=403, detail="expired")
 
-        # ÐÐ¾Ñ€Ð¼Ð°Ð»Ð¸Ð·ÑƒÐµÐ¼ HWID
+        # Нормализуем HWID
         incoming_hwid = (req.hwid or "").strip().upper()
         stored_hwid = (lic_hwid or "").strip().upper()
 
-        # Ð•ÑÐ»Ð¸ HWID ÐµÑ‰Ñ‘ Ð½Ðµ Ð¿Ñ€Ð¸Ð²ÑÐ·Ð°Ð½ â€” Ð¿Ñ€Ð¸Ð²ÑÐ·Ñ‹Ð²Ð°ÐµÐ¼ (Ñ€Ð°Ð·Ñ€ÐµÑˆÐ°ÐµÐ¼ Ð·Ð½Ð°Ñ‡ÐµÐ½Ð¸Ñ Ð²Ñ€Ð¾Ð´Ðµ "TEMP")
+        # Если HWID ещё не привязан — привязываем (разрешаем значения вроде "TEMP")
         if not stored_hwid or stored_hwid in {"TEMP", "NONE", "NULL", "-"}:
             if incoming_hwid:
                 cur.execute(
@@ -382,11 +382,11 @@ def check(req: CheckReq):
                 )
                 stored_hwid = incoming_hwid
         else:
-            # Ð•ÑÐ»Ð¸ HWID ÑƒÐ¶Ðµ Ð¿Ñ€Ð¸Ð²ÑÐ·Ð°Ð½ â€” Ñ‚Ñ€ÐµÐ±ÑƒÐµÐ¼ ÑÐ¾Ð²Ð¿Ð°Ð´ÐµÐ½Ð¸Ðµ (ÐµÑÐ»Ð¸ ÐºÐ»Ð¸ÐµÐ½Ñ‚ Ð¿ÐµÑ€ÐµÐ´Ð°Ð» hwid)
+            # Если HWID уже привязан — требуем совпадение (если клиент передал hwid)
             if incoming_hwid and incoming_hwid != stored_hwid:
                 raise HTTPException(status_code=403, detail="hwid_mismatch")
 
-        # ÐžÐ±Ð½Ð¾Ð²Ð»ÑÐµÐ¼ ÑÑ‡Ñ‘Ñ‚Ñ‡Ð¸Ðº Ð¿Ñ€Ð¾Ð²ÐµÑ€Ð¾Ðº
+        # Обновляем счётчик проверок
         cur.execute("""
             UPDATE licenses
             SET last_check_at=NOW(), check_count=check_count+1
@@ -400,26 +400,26 @@ def check(req: CheckReq):
         con.close()
 
 # =========================
-# Ð Ð•Ð“Ð˜Ð¡Ð¢Ð ÐÐ¦Ð˜Ð¯ (Ð¡ ÐŸÐžÐ”Ð ÐžÐ‘ÐÐ«ÐœÐ˜ Ð›ÐžÐ“ÐÐœÐ˜)
+# РЕГИСТРАЦИЯ (С ПОДРОБНЫМИ ЛОГАМИ)
 # =========================
 class RegisterReq(BaseModel):
     email: str
     password: str
     license_key: str
     device_fingerprint: str
-    device_name: str = "ÐœÐ¾Ð¹ ÐºÐ¾Ð¼Ð¿ÑŒÑŽÑ‚ÐµÑ€"
+    device_name: str = "Мой компьютер"
 
 @app.post("/api/auth/register")
 def register(req: RegisterReq, background_tasks: BackgroundTasks, request: Request):
-    print(f"ðŸš€ REGISTER ATTEMPT: {req.email} with key {req.license_key}")
-    print(f"ðŸ“± Device fingerprint: {req.device_fingerprint}")
+    print(f"🚀 REGISTER ATTEMPT: {req.email} with key {req.license_key}")
+    print(f"📱 Device fingerprint: {req.device_fingerprint}")
     
     con = db()
     cur = con.cursor()
     
     try:
-        # ÐŸÑ€Ð¾Ð²ÐµÑ€ÑÐµÐ¼ Ð»Ð¸Ñ†ÐµÐ½Ð·Ð¸ÑŽ
-        print("ðŸ” Checking license...")
+        # Проверяем лицензию
+        print("🔍 Checking license...")
         cur.execute("""
             SELECT key, max_devices, expires_at, revoked 
             FROM licenses 
@@ -428,29 +428,29 @@ def register(req: RegisterReq, background_tasks: BackgroundTasks, request: Reque
         
         license = cur.fetchone()
         if not license:
-            print("âŒ License not found")
+            print("❌ License not found")
             raise HTTPException(status_code=404, detail="license_not_found")
         
         key, max_devices, expires_at, revoked = license
-        print(f"âœ“ License found: {key}, expires: {expires_at}, revoked: {revoked}, max_devices: {max_devices}")
+        print(f"✓ License found: {key}, expires: {expires_at}, revoked: {revoked}, max_devices: {max_devices}")
         
         if revoked:
-            print("âŒ License revoked")
+            print("❌ License revoked")
             raise HTTPException(status_code=403, detail="license_revoked")
         
         if now() > expires_at:
-            print("âŒ License expired")
+            print("❌ License expired")
             raise HTTPException(status_code=403, detail="license_expired")
         
-        # ÐŸÑ€Ð¾Ð²ÐµÑ€ÑÐµÐ¼ email
-        print("ðŸ” Checking email...")
+        # Проверяем email
+        print("🔍 Checking email...")
         cur.execute("SELECT id FROM users WHERE email = %s", (req.email,))
         if cur.fetchone():
-            print("âŒ Email already registered")
+            print("❌ Email already registered")
             raise HTTPException(status_code=400, detail="email_already_registered")
         
-        # Ð¡Ð¾Ð·Ð´Ð°ÐµÐ¼ Ð¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÐµÐ»Ñ
-        print("ðŸ” Creating user...")
+        # Создаем пользователя
+        print("🔍 Creating user...")
         password_hash = hash_password(req.password)
         cur.execute("""
             INSERT INTO users (email, password_hash, license_key, balance, total_spent)
@@ -459,10 +459,10 @@ def register(req: RegisterReq, background_tasks: BackgroundTasks, request: Reque
         """, (req.email, password_hash, req.license_key))
         
         user_id = cur.fetchone()[0]
-        print(f"âœ“ User created with ID: {user_id}")
+        print(f"✓ User created with ID: {user_id}")
         
-        # Ð”Ð¾Ð±Ð°Ð²Ð»ÑÐµÐ¼ ÑƒÑÑ‚Ñ€Ð¾Ð¹ÑÑ‚Ð²Ð¾
-        print("ðŸ” Adding device...")
+        # Добавляем устройство
+        print("🔍 Adding device...")
         client_ip = request.client.host if request.client else "0.0.0.0"
         cur.execute("""
             INSERT INTO user_devices (user_id, device_fingerprint, device_name, last_ip)
@@ -471,10 +471,10 @@ def register(req: RegisterReq, background_tasks: BackgroundTasks, request: Reque
         """, (user_id, req.device_fingerprint, req.device_name, client_ip))
         
         device_id = cur.fetchone()[0]
-        print(f"âœ“ Device added with ID: {device_id}")
+        print(f"✓ Device added with ID: {device_id}")
         
-        # Ð¡Ð¾Ð·Ð´Ð°ÐµÐ¼ ÑÐµÑÑÐ¸ÑŽ
-        print("ðŸ” Creating session...")
+        # Создаем сессию
+        print("🔍 Creating session...")
         session_token = generate_token()
         expires_at_session = now() + timedelta(days=30)
         
@@ -482,10 +482,10 @@ def register(req: RegisterReq, background_tasks: BackgroundTasks, request: Reque
             INSERT INTO user_sessions (user_id, session_token, device_id, expires_at)
             VALUES (%s, %s, %s, %s)
         """, (user_id, session_token, device_id, expires_at_session))
-        print(f"âœ“ Session created with token: {session_token[:10]}...")
+        print(f"✓ Session created with token: {session_token[:10]}...")
         
-        # Ð¡Ð¾Ð·Ð´Ð°ÐµÐ¼ Ð¿Ð¾Ð´Ñ‚Ð²ÐµÑ€Ð¶Ð´ÐµÐ½Ð¸Ðµ email
-        print("ðŸ” Creating email confirmation...")
+        # Создаем подтверждение email
+        print("🔍 Creating email confirmation...")
         confirm_token = generate_token()
         confirm_expires = now() + timedelta(hours=24)
         
@@ -493,19 +493,19 @@ def register(req: RegisterReq, background_tasks: BackgroundTasks, request: Reque
             INSERT INTO email_confirmations (user_id, token, expires_at)
             VALUES (%s, %s, %s)
         """, (user_id, confirm_token, confirm_expires))
-        print(f"âœ“ Email confirmation created with token: {confirm_token[:10]}...")
+        print(f"✓ Email confirmation created with token: {confirm_token[:10]}...")
         
         con.commit()
-        print("âœ… All changes committed!")
+        print("✅ All changes committed!")
         
-        # ÐžÑ‚Ð¿Ñ€Ð°Ð²Ð»ÑÐµÐ¼ Ð¿Ð¸ÑÑŒÐ¼Ð¾
-        print("ðŸ“§ Sending confirmation email...")
+        # Отправляем письмо
+        print("📧 Sending confirmation email...")
         background_tasks.add_task(
             send_confirmation_email,
             req.email,
             confirm_token
         )
-        print("ðŸ“§ Email task added")
+        print("📧 Email task added")
         
         return {
             "success": True,
@@ -516,12 +516,12 @@ def register(req: RegisterReq, background_tasks: BackgroundTasks, request: Reque
         }
         
     except HTTPException:
-        print("âŒ HTTPException occurred")
+        print("❌ HTTPException occurred")
         con.rollback()
         raise
     except Exception as e:
-        print(f"âŒ UNEXPECTED ERROR: {str(e)}")
-        print(f"âŒ Error type: {type(e).__name__}")
+        print(f"❌ UNEXPECTED ERROR: {str(e)}")
+        print(f"❌ Error type: {type(e).__name__}")
         import traceback
         traceback.print_exc()
         con.rollback()
@@ -529,20 +529,20 @@ def register(req: RegisterReq, background_tasks: BackgroundTasks, request: Reque
     finally:
         cur.close()
         con.close()
-        print("ðŸ”š Register function finished")
+        print("🔚 Register function finished")
 
 # =========================
-# Ð’Ð¥ÐžÐ”
+# ВХОД
 # =========================
 class LoginReq(BaseModel):
     email: str
     password: str
     device_fingerprint: str
-    device_name: str = "ÐœÐ¾Ð¹ ÐºÐ¾Ð¼Ð¿ÑŒÑŽÑ‚ÐµÑ€"
+    device_name: str = "Мой компьютер"
 
 @app.post("/api/auth/login")
 def login(req: LoginReq, request: Request):
-    print(f"ðŸš€ LOGIN ATTEMPT: {req.email}")
+    print(f"🚀 LOGIN ATTEMPT: {req.email}")
     
     con = db()
     cur = con.cursor(cursor_factory=RealDictCursor)
@@ -557,19 +557,19 @@ def login(req: LoginReq, request: Request):
         
         user = cur.fetchone()
         if not user:
-            print("âŒ User not found")
+            print("❌ User not found")
             raise HTTPException(status_code=401, detail="invalid_credentials")
         
-        print(f"âœ“ User found: {user['email']}")
+        print(f"✓ User found: {user['email']}")
         
         if not verify_password(req.password, user['password_hash']):
-            print("âŒ Invalid password")
+            print("❌ Invalid password")
             raise HTTPException(status_code=401, detail="invalid_credentials")
         
-        print("âœ“ Password correct")
+        print("✓ Password correct")
         
         if not user['email_confirmed']:
-            print("âŒ Email not confirmed")
+            print("❌ Email not confirmed")
             confirm_token = generate_token()
             confirm_expires = now() + timedelta(hours=24)
             
@@ -584,11 +584,11 @@ def login(req: LoginReq, request: Request):
                 detail={
                     "error": "email_not_confirmed",
                     "email": user['email'],
-                    "message": "ÐŸÐ¾Ð´Ñ‚Ð²ÐµÑ€Ð´Ð¸Ñ‚Ðµ email"
+                    "message": "Подтвердите email"
                 }
             )
         
-        print("ðŸ” Checking device...")
+        print("🔍 Checking device...")
         cur.execute("""
             SELECT * FROM user_devices 
             WHERE user_id = %s AND device_fingerprint = %s
@@ -598,7 +598,7 @@ def login(req: LoginReq, request: Request):
         client_ip = request.client.host if request.client else "0.0.0.0"
         
         if device:
-            print(f"âœ“ Existing device found: {device['device_name']}")
+            print(f"✓ Existing device found: {device['device_name']}")
             device_id = device['id']
             cur.execute("""
                 UPDATE user_devices 
@@ -606,7 +606,7 @@ def login(req: LoginReq, request: Request):
                 WHERE id = %s
             """, (client_ip, device_id))
         else:
-            print("ðŸ” New device, checking limit...")
+            print("🔍 New device, checking limit...")
             cur.execute("""
                 SELECT COUNT(*) FROM user_devices 
                 WHERE user_id = %s AND is_active = TRUE
@@ -616,7 +616,7 @@ def login(req: LoginReq, request: Request):
             print(f"Active devices: {device_count}, max: {user['max_devices']}")
             
             if device_count >= user['max_devices']:
-                print("âŒ Device limit exceeded")
+                print("❌ Device limit exceeded")
                 cur.execute("""
                     SELECT * FROM user_devices 
                     WHERE user_id = %s
@@ -641,7 +641,7 @@ def login(req: LoginReq, request: Request):
                     }
                 )
             
-            print("âœ“ Adding new device...")
+            print("✓ Adding new device...")
             cur.execute("""
                 INSERT INTO user_devices (user_id, device_fingerprint, device_name, last_ip)
                 VALUES (%s, %s, %s, %s)
@@ -649,9 +649,9 @@ def login(req: LoginReq, request: Request):
             """, (user['id'], req.device_fingerprint, req.device_name, client_ip))
             
             device_id = cur.fetchone()['id']
-            print(f"âœ“ New device added with ID: {device_id}")
+            print(f"✓ New device added with ID: {device_id}")
         
-        print("ðŸ” Creating session...")
+        print("🔍 Creating session...")
         session_token = generate_token()
         expires_at_session = now() + timedelta(days=30)
         
@@ -665,7 +665,7 @@ def login(req: LoginReq, request: Request):
         """, (user['id'],))
         
         con.commit()
-        print(f"âœ“ Session created: {session_token[:10]}...")
+        print(f"✓ Session created: {session_token[:10]}...")
         
         cur.execute("""
             SELECT * FROM user_devices 
@@ -700,7 +700,7 @@ def login(req: LoginReq, request: Request):
         con.rollback()
         raise
     except Exception as e:
-        print(f"âŒ UNEXPECTED ERROR: {str(e)}")
+        print(f"❌ UNEXPECTED ERROR: {str(e)}")
         con.rollback()
         raise HTTPException(status_code=500, detail=str(e))
     finally:
@@ -708,28 +708,28 @@ def login(req: LoginReq, request: Request):
         con.close()
 
 # =========================
-# Ð’Ð¥ÐžÐ” (Ð¡ ÐšÐ›Ð®Ð§ÐžÐœ) â€” ÐºÐ°Ðº Ð² Ð¿Ñ€Ð¾Ð´ÑƒÐºÑ‚Ðµ: ÐºÐ»ÑŽÑ‡ Ð²Ð²Ð¾Ð´Ð¸Ñ‚ÑÑ Ð²Ð¼ÐµÑÑ‚Ðµ Ñ Ð»Ð¾Ð³Ð¸Ð½Ð¾Ð¼
+# ВХОД (С КЛЮЧОМ) — как в продукте: ключ вводится вместе с логином
 # =========================
 class LoginWithKeyReq(BaseModel):
     email: str
     password: str
     license_key: str
     device_fingerprint: str
-    device_name: str = "ÐœÐ¾Ð¹ ÐºÐ¾Ð¼Ð¿ÑŒÑŽÑ‚ÐµÑ€"
+    device_name: str = "Мой компьютер"
 
 @app.post("/api/auth/login_with_key")
 def login_with_key(req: LoginWithKeyReq, background_tasks: BackgroundTasks, request: Request):
     """
-    Ð’Ñ…Ð¾Ð´ Ñ ÐºÐ»ÑŽÑ‡Ð¾Ð¼:
-    - Ð¿Ñ€Ð¾Ð²ÐµÑ€ÑÐµÑ‚ Ð¿Ð°Ñ€Ð¾Ð»ÑŒ
-    - Ð¿Ñ€Ð¾Ð²ÐµÑ€ÑÐµÑ‚/Ð¿Ñ€Ð¸Ð²ÑÐ·Ñ‹Ð²Ð°ÐµÑ‚ ÐºÐ»ÑŽÑ‡ Ðº Ð¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÐµÐ»ÑŽ (1 ÐºÐ»ÑŽÑ‡ = 1 Ð¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÐµÐ»ÑŒ)
-    - Ñ€ÐµÐ³Ð¸ÑÑ‚Ñ€Ð¸Ñ€ÑƒÐµÑ‚ ÑƒÑÑ‚Ñ€Ð¾Ð¹ÑÑ‚Ð²Ð¾ Ñ Ð»Ð¸Ð¼Ð¸Ñ‚Ð¾Ð¼ max_devices (Ð¸Ð· licenses)
-    - ÐµÑÐ»Ð¸ email Ð½Ðµ Ð¿Ð¾Ð´Ñ‚Ð²ÐµÑ€Ð¶Ð´ÐµÐ½: ÑÐ¾Ð·Ð´Ð°Ñ‘Ñ‚ Ñ‚Ð¾ÐºÐµÐ½ Ð¿Ð¾Ð´Ñ‚Ð²ÐµÑ€Ð¶Ð´ÐµÐ½Ð¸Ñ, Ð¾Ñ‚Ð¿Ñ€Ð°Ð²Ð»ÑÐµÑ‚ Ð¿Ð¸ÑÑŒÐ¼Ð¾, ÐÐž Ð²ÑÑ‘ Ñ€Ð°Ð²Ð½Ð¾ Ð²Ð¾Ð·Ð²Ñ€Ð°Ñ‰Ð°ÐµÑ‚ session_token
+    Вход с ключом:
+    - проверяет пароль
+    - проверяет/привязывает ключ к пользователю (1 ключ = 1 пользователь)
+    - регистрирует устройство с лимитом max_devices (из licenses)
+    - если email не подтвержден: создаёт токен подтверждения, отправляет письмо, НО всё равно возвращает session_token
     """
     con = db()
     cur = con.cursor(cursor_factory=RealDictCursor)
     try:
-        # 1) ÐÐ°Ð¹Ð´Ñ‘Ð¼ Ð¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÐµÐ»Ñ
+        # 1) Найдём пользователя
         cur.execute("SELECT * FROM users WHERE email=%s", (req.email,))
         user = cur.fetchone()
         if not user:
@@ -738,7 +738,7 @@ def login_with_key(req: LoginWithKeyReq, background_tasks: BackgroundTasks, requ
         if not verify_password(req.password, user["password_hash"]):
             raise HTTPException(status_code=401, detail="invalid_credentials")
 
-        # 2) ÐŸÑ€Ð¾Ð²ÐµÑ€Ð¸Ð¼ Ð»Ð¸Ñ†ÐµÐ½Ð·Ð¸ÑŽ Ð¿Ð¾ ÐºÐ»ÑŽÑ‡Ñƒ
+        # 2) Проверим лицензию по ключу
         cur.execute("SELECT key, expires_at, revoked, max_devices FROM licenses WHERE key=%s", (req.license_key,))
         lic = cur.fetchone()
         if not lic:
@@ -748,14 +748,14 @@ def login_with_key(req: LoginWithKeyReq, background_tasks: BackgroundTasks, requ
         if now() > lic["expires_at"]:
             raise HTTPException(status_code=403, detail="license_expired")
 
-        # 3) ÐŸÑ€Ð¸Ð²ÑÐ·ÐºÐ° ÐºÐ»ÑŽÑ‡Ð° Ðº Ð¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÐµÐ»ÑŽ (ÐµÑÐ»Ð¸ ÑƒÐ¶Ðµ Ð¿Ñ€Ð¸Ð²ÑÐ·Ð°Ð½ â€” Ð´Ð¾Ð»Ð¶ÐµÐ½ ÑÐ¾Ð²Ð¿Ð°Ð´Ð°Ñ‚ÑŒ)
+        # 3) Привязка ключа к пользователю (если уже привязан — должен совпадать)
         current_key = (user.get("license_key") or "").strip()
         incoming_key = (req.license_key or "").strip()
         if current_key and current_key != incoming_key:
             raise HTTPException(status_code=403, detail="license_key_mismatch")
 
         if not current_key:
-            # ÑƒÐ±ÐµÐ´Ð¸Ð¼ÑÑ, Ñ‡Ñ‚Ð¾ ÐºÐ»ÑŽÑ‡ Ð½Ðµ Ð·Ð°Ð½ÑÑ‚ Ð´Ñ€ÑƒÐ³Ð¸Ð¼ Ð¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÐµÐ»ÐµÐ¼
+            # убедимся, что ключ не занят другим пользователем
             cur.execute("SELECT id FROM users WHERE license_key=%s AND id<>%s", (incoming_key, user["id"]))
             if cur.fetchone():
                 raise HTTPException(status_code=403, detail="license_key_already_used")
@@ -763,7 +763,7 @@ def login_with_key(req: LoginWithKeyReq, background_tasks: BackgroundTasks, requ
             cur.execute("UPDATE users SET license_key=%s WHERE id=%s", (incoming_key, user["id"]))
             user["license_key"] = incoming_key
 
-        # 4) Ð Ð°Ð±Ð¾Ñ‚Ð° Ñ ÑƒÑÑ‚Ñ€Ð¾Ð¹ÑÑ‚Ð²Ð¾Ð¼ (Ð»Ð¸Ð¼Ð¸Ñ‚)
+        # 4) Работа с устройством (лимит)
         client_ip = request.client.host if request.client else "0.0.0.0"
         max_devices = int(lic["max_devices"] or 1)
 
@@ -796,7 +796,7 @@ def login_with_key(req: LoginWithKeyReq, background_tasks: BackgroundTasks, requ
             """, (user["id"], req.device_fingerprint, req.device_name, client_ip))
             device_id = cur.fetchone()["id"]
 
-        # 5) Ð¡ÐµÑÑÐ¸Ñ
+        # 5) Сессия
         session_token = generate_token()
         expires_at_session = now() + timedelta(days=30)
 
@@ -806,7 +806,7 @@ def login_with_key(req: LoginWithKeyReq, background_tasks: BackgroundTasks, requ
         """, (user["id"], session_token, device_id, expires_at_session))
         cur.execute("UPDATE users SET last_login=NOW() WHERE id=%s", (user["id"],))
 
-        # 6) Ð•ÑÐ»Ð¸ Ð¿Ð¾Ñ‡Ñ‚Ð° Ð½Ðµ Ð¿Ð¾Ð´Ñ‚Ð²ÐµÑ€Ð¶Ð´ÐµÐ½Ð° â€” ÑÐ¾Ð·Ð´Ð°Ð´Ð¸Ð¼/Ð¾Ð±Ð½Ð¾Ð²Ð¸Ð¼ Ñ‚Ð¾ÐºÐµÐ½ Ð¸ Ð¾Ñ‚Ð¿Ñ€Ð°Ð²Ð¸Ð¼ Ð¿Ð¸ÑÑŒÐ¼Ð¾
+        # 6) Если почта не подтверждена — создадим/обновим токен и отправим письмо
         need_confirmation = not bool(user.get("email_confirmed"))
         if need_confirmation:
             confirm_token = generate_token()
@@ -815,7 +815,7 @@ def login_with_key(req: LoginWithKeyReq, background_tasks: BackgroundTasks, requ
                 INSERT INTO email_confirmations (user_id, token, expires_at)
                 VALUES (%s, %s, %s)
             """, (user["id"], confirm_token, confirm_expires))
-            # Ð¾Ñ‚Ð¿Ñ€Ð°Ð²ÐºÐ° Ð¿Ð¸ÑÑŒÐ¼Ð° Ð°ÑÐ¸Ð½Ñ…Ñ€Ð¾Ð½Ð½Ð¾
+            # отправка письма асинхронно
             background_tasks.add_task(send_confirmation_email, user["email"], confirm_token)
 
         con.commit()
@@ -845,7 +845,7 @@ def login_with_key(req: LoginWithKeyReq, background_tasks: BackgroundTasks, requ
 
 
 # =========================
-# ME â€” ÑÑ‚Ð°Ñ‚ÑƒÑ ÑÐµÑÑÐ¸Ð¸/Ð¿Ð¾Ñ‡Ñ‚Ñ‹/ÐºÐ»ÑŽÑ‡Ð° (Ð´Ð»Ñ Ð¾ÐºÐ½Ð° "Ð¯ Ð¿Ð¾Ð´Ñ‚Ð²ÐµÑ€Ð´Ð¸Ð»")
+# ME — статус сессии/почты/ключа (для окна "Я подтвердил")
 # =========================
 def _get_session_user(cur, session_token: str):
     cur.execute("""
@@ -876,7 +876,7 @@ def auth_me(authorization: str = Header(None)):
         if now() > row["expires_at"]:
             raise HTTPException(status_code=401, detail="session_expired")
 
-        # Ð¿Ð¾Ð´Ñ‚ÑÐ³Ð¸Ð²Ð°ÐµÐ¼ Ð»Ð¸Ñ†ÐµÐ½Ð·Ð¸ÑŽ
+        # подтягиваем лицензию
         lic = None
         if row.get("license_key"):
             cur.execute("SELECT key, expires_at, revoked, max_devices, plan FROM licenses WHERE key=%s", (row["license_key"],))
@@ -908,7 +908,7 @@ def auth_me(authorization: str = Header(None)):
 
 
 # =========================
-# ÐŸÐµÑ€ÐµÐ¾Ñ‚Ð¿Ñ€Ð°Ð²Ð¸Ñ‚ÑŒ Ð¿Ð¸ÑÑŒÐ¼Ð¾ Ð¿Ð¾Ð´Ñ‚Ð²ÐµÑ€Ð¶Ð´ÐµÐ½Ð¸Ñ
+# Переотправить письмо подтверждения
 # =========================
 class ResendConfirmReq(BaseModel):
     email: str
@@ -921,7 +921,7 @@ def resend_confirmation(req: ResendConfirmReq, background_tasks: BackgroundTasks
         cur.execute("SELECT id, email, email_confirmed FROM users WHERE email=%s", (req.email,))
         u = cur.fetchone()
         if not u:
-            # Ð½Ðµ Ð¿Ð°Ð»Ð¸Ð¼ ÑÑƒÑ‰ÐµÑÑ‚Ð²Ð¾Ð²Ð°Ð½Ð¸Ðµ email
+            # не палим существование email
             return {"success": True}
         if u["email_confirmed"]:
             return {"success": True}
@@ -972,8 +972,8 @@ def confirm_email(token: str):
             return HTMLResponse("""
                 <html>
                 <body style="font-family: Arial; text-align: center; padding: 50px;">
-                    <h2>âŒ Ð¡ÑÑ‹Ð»ÐºÐ° Ð½ÐµÐ´ÐµÐ¹ÑÑ‚Ð²Ð¸Ñ‚ÐµÐ»ÑŒÐ½Ð°</h2>
-                    <p>Ð’Ð¾Ð·Ð¼Ð¾Ð¶Ð½Ð¾, Ð¾Ð½Ð° ÑƒÐ¶Ðµ Ð¸ÑÐ¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ð½Ð° Ð¸Ð»Ð¸ Ð¸ÑÑ‚ÐµÐºÐ»Ð°.</p>
+                    <h2>❌ Ссылка недействительна</h2>
+                    <p>Возможно, она уже использована или истекла.</p>
                 </body>
                 </html>
             """)
@@ -984,8 +984,8 @@ def confirm_email(token: str):
             return HTMLResponse("""
                 <html>
                 <body style="font-family: Arial; text-align: center; padding: 50px;">
-                    <h2>â° Ð¡ÑÑ‹Ð»ÐºÐ° Ð¸ÑÑ‚ÐµÐºÐ»Ð°</h2>
-                    <p>Ð—Ð°Ð¿Ñ€Ð¾ÑÐ¸Ñ‚Ðµ Ð½Ð¾Ð²Ð¾Ðµ Ð¿Ð¸ÑÑŒÐ¼Ð¾ Ð² Ð¿Ñ€Ð¾Ð³Ñ€Ð°Ð¼Ð¼Ðµ.</p>
+                    <h2>⏰ Ссылка истекла</h2>
+                    <p>Запросите новое письмо в программе.</p>
                 </body>
                 </html>
             """)
@@ -1007,9 +1007,9 @@ def confirm_email(token: str):
         return HTMLResponse("""
             <html>
             <body style="font-family: Arial; text-align: center; padding: 50px;">
-                <h2>âœ… Email Ð¿Ð¾Ð´Ñ‚Ð²ÐµÑ€Ð¶Ð´Ñ‘Ð½!</h2>
-                <p>Ð¢ÐµÐ¿ÐµÑ€ÑŒ Ð²Ñ‹ Ð¼Ð¾Ð¶ÐµÑ‚Ðµ Ð²Ð¾Ð¹Ñ‚Ð¸ Ð² Ð¿Ñ€Ð¾Ð³Ñ€Ð°Ð¼Ð¼Ñƒ.</p>
-                <p>Ð’ÐµÑ€Ð½Ð¸Ñ‚ÐµÑÑŒ Ð² Ð¿Ñ€Ð¸Ð»Ð¾Ð¶ÐµÐ½Ð¸Ðµ Ð¸ Ð½Ð°Ð¶Ð¼Ð¸Ñ‚Ðµ "Ð’Ð¾Ð¹Ñ‚Ð¸".</p>
+                <h2>✅ Email подтверждён!</h2>
+                <p>Теперь вы можете войти в программу.</p>
+                <p>Вернитесь в приложение и нажмите "Войти".</p>
             </body>
             </html>
         """)
@@ -1018,7 +1018,7 @@ def confirm_email(token: str):
         return HTMLResponse(f"""
             <html>
             <body style="font-family: Arial; text-align: center; padding: 50px;">
-                <h2>âŒ ÐžÑˆÐ¸Ð±ÐºÐ°</h2>
+                <h2>❌ Ошибка</h2>
                 <p>{str(e)}</p>
             </body>
             </html>
@@ -1028,15 +1028,15 @@ def confirm_email(token: str):
         con.close()
 
 # =========================
-# ÐšÐ ÐÐ¡Ð˜Ð’Ð«Ð• ÐŸÐ˜Ð¡Ð¬ÐœÐ (ÐÐžÐ’Ð«Ð•)
+# КРАСИВЫЕ ПИСЬМА (НОВЫЕ)
 # =========================
 def send_confirmation_email(email: str, token: str):
-    """ÐžÑ‚Ð¿Ñ€Ð°Ð²ÐºÐ° ÐºÑ€Ð°ÑÐ¸Ð²Ð¾Ð³Ð¾ Ð¿Ð¸ÑÑŒÐ¼Ð° Ñ Ð¿Ð¾Ð´Ñ‚Ð²ÐµÑ€Ð¶Ð´ÐµÐ½Ð¸ÐµÐ¼"""
+    """Отправка красивого письма с подтверждением"""
     confirm_url = f"https://license-check-server-xatc.onrender.com/api/auth/confirm?token={token}"
     
-    # Ð•ÑÐ»Ð¸ Ð½ÐµÑ‚ API ÐºÐ»ÑŽÑ‡Ð° - Ð¿ÐµÑ‡Ð°Ñ‚Ð°ÐµÐ¼ Ð² ÐºÐ¾Ð½ÑÐ¾Ð»ÑŒ (Ð´Ð»Ñ Ð¾Ñ‚Ð»Ð°Ð´ÐºÐ¸)
+    # Если нет API ключа - печатаем в консоль (для отладки)
     if not SENDGRID_API_KEY:
-        print(f"ðŸ“§ [Ð¢Ð•Ð¡Ð¢] ÐŸÐ¸ÑÑŒÐ¼Ð¾ Ð´Ð»Ñ {email}: {confirm_url}")
+        print(f"📧 [ТЕСТ] Письмо для {email}: {confirm_url}")
         return
     
     html_content = f"""
@@ -1045,61 +1045,61 @@ def send_confirmation_email(email: str, token: str):
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>ÐŸÐ¾Ð´Ñ‚Ð²ÐµÑ€Ð¶Ð´ÐµÐ½Ð¸Ðµ email</title>
+        <title>Подтверждение email</title>
     </head>
     <body style="margin:0; padding:0; font-family: 'Segoe UI', Arial, sans-serif; background:#f5f7fa;">
         <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin:0 auto; background:white; border-radius:16px; margin-top:40px; box-shadow:0 4px 12px rgba(0,0,0,0.05);">
-            <!-- Ð¨Ð°Ð¿ÐºÐ° -->
+            <!-- Шапка -->
             <tr>
                 <td style="padding:40px 40px 20px 40px; text-align:center; background:linear-gradient(135deg, #3b82f6, #8b5cf6); border-radius:16px 16px 0 0;">
                     <h1 style="color:white; margin:0; font-size:28px; font-weight:600;">TG Parser Sender</h1>
-                    <p style="color:rgba(255,255,255,0.9); margin:10px 0 0 0; font-size:16px;">ÐŸÑ€Ð¾Ñ„ÐµÑÑÐ¸Ð¾Ð½Ð°Ð»ÑŒÐ½Ñ‹Ð¹ Ð¿Ð°Ñ€ÑÐ¸Ð½Ð³ Telegram</p>
+                    <p style="color:rgba(255,255,255,0.9); margin:10px 0 0 0; font-size:16px;">Профессиональный парсинг Telegram</p>
                 </td>
             </tr>
             
-            <!-- ÐžÑÐ½Ð¾Ð²Ð½Ð¾Ð¹ ÐºÐ¾Ð½Ñ‚ÐµÐ½Ñ‚ -->
+            <!-- Основной контент -->
             <tr>
                 <td style="padding:40px;">
-                    <h2 style="color:#1e293b; margin:0 0 20px 0; font-size:24px;">ÐŸÐ¾Ð´Ñ‚Ð²ÐµÑ€Ð¶Ð´ÐµÐ½Ð¸Ðµ email</h2>
+                    <h2 style="color:#1e293b; margin:0 0 20px 0; font-size:24px;">Подтверждение email</h2>
                     <p style="color:#475569; line-height:1.6; margin:0 0 30px 0; font-size:16px;">
-                        Ð—Ð´Ñ€Ð°Ð²ÑÑ‚Ð²ÑƒÐ¹Ñ‚Ðµ!<br><br>
-                        Ð”Ð»Ñ Ð·Ð°Ð²ÐµÑ€ÑˆÐµÐ½Ð¸Ñ Ñ€ÐµÐ³Ð¸ÑÑ‚Ñ€Ð°Ñ†Ð¸Ð¸ Ð² <strong>TG Parser Sender</strong> Ð¿Ð¾Ð´Ñ‚Ð²ÐµÑ€Ð´Ð¸Ñ‚Ðµ Ð²Ð°Ñˆ email Ð°Ð´Ñ€ÐµÑ.
+                        Здравствуйте!<br><br>
+                        Для завершения регистрации в <strong>TG Parser Sender</strong> подтвердите ваш email адрес.
                     </p>
                     
-                    <!-- ÐšÐ½Ð¾Ð¿ÐºÐ° -->
+                    <!-- Кнопка -->
                     <table cellpadding="0" cellspacing="0" style="margin:30px auto;">
                         <tr>
                             <td style="background:#4CAF50; border-radius:40px; padding:14px 40px;">
-                                <a href="{confirm_url}" style="color:white; text-decoration:none; font-size:16px; font-weight:600; letter-spacing:0.5px;">âœ… ÐŸÐžÐ”Ð¢Ð’Ð•Ð Ð”Ð˜Ð¢Ð¬ EMAIL</a>
+                                <a href="{confirm_url}" style="color:white; text-decoration:none; font-size:16px; font-weight:600; letter-spacing:0.5px;">✅ ПОДТВЕРДИТЬ EMAIL</a>
                             </td>
                         </tr>
                     </table>
                     
-                    <!-- ÐÐ»ÑŒÑ‚ÐµÑ€Ð½Ð°Ñ‚Ð¸Ð²Ð½Ð°Ñ ÑÑÑ‹Ð»ÐºÐ° -->
+                    <!-- Альтернативная ссылка -->
                     <p style="color:#64748b; font-size:14px; margin:30px 0 0 0; text-align:center;">
-                        Ð˜Ð»Ð¸ Ð¿ÐµÑ€ÐµÐ¹Ð´Ð¸Ñ‚Ðµ Ð¿Ð¾ ÑÑÑ‹Ð»ÐºÐµ:<br>
+                        Или перейдите по ссылке:<br>
                         <a href="{confirm_url}" style="color:#3b82f6; word-break:break-all;">{confirm_url}</a>
                     </p>
                     
-                    <!-- Ð¡Ñ€Ð¾Ðº Ð´ÐµÐ¹ÑÑ‚Ð²Ð¸Ñ -->
+                    <!-- Срок действия -->
                     <p style="color:#94a3b8; font-size:13px; margin:30px 0 0 0; text-align:center; border-top:1px solid #e2e8f0; padding-top:30px;">
-                        Ð¡ÑÑ‹Ð»ÐºÐ° Ð´ÐµÐ¹ÑÑ‚Ð²Ð¸Ñ‚ÐµÐ»ÑŒÐ½Ð° 24 Ñ‡Ð°ÑÐ°.<br>
-                        Ð•ÑÐ»Ð¸ Ð²Ñ‹ Ð½Ðµ Ñ€ÐµÐ³Ð¸ÑÑ‚Ñ€Ð¸Ñ€Ð¾Ð²Ð°Ð»Ð¸ÑÑŒ, Ð¿Ñ€Ð¾ÑÑ‚Ð¾ Ð¿Ñ€Ð¾Ð¸Ð³Ð½Ð¾Ñ€Ð¸Ñ€ÑƒÐ¹Ñ‚Ðµ ÑÑ‚Ð¾ Ð¿Ð¸ÑÑŒÐ¼Ð¾.
+                        Ссылка действительна 24 часа.<br>
+                        Если вы не регистрировались, просто проигнорируйте это письмо.
                     </p>
                 </td>
             </tr>
             
-            <!-- ÐŸÐ¾Ð´Ð²Ð°Ð» -->
+            <!-- Подвал -->
             <tr>
                 <td style="padding:30px 40px; background:#f8fafc; border-radius:0 0 16px 16px;">
                     <table width="100%">
                         <tr>
                             <td style="text-align:center;">
                                 <p style="color:#64748b; margin:0 0 10px 0; font-size:14px;">
-                                    Ð¡ ÑƒÐ²Ð°Ð¶ÐµÐ½Ð¸ÐµÐ¼, ÐºÐ¾Ð¼Ð°Ð½Ð´Ð° TG Parser Sender
+                                    С уважением, команда TG Parser Sender
                                 </p>
                                 <p style="color:#94a3b8; margin:0; font-size:13px;">
-                                    ðŸ“§ support@tgparsersender.me | ðŸ“± @Ben_bell97
+                                    📧 support@tgparsersender.me | 📱 @Ben_bell97
                                 </p>
                             </td>
                         </tr>
@@ -1114,23 +1114,23 @@ def send_confirmation_email(email: str, token: str):
     message = Mail(
         from_email=Email(FROM_EMAIL, FROM_NAME),
         to_emails=To(email),
-        subject="ÐŸÐ¾Ð´Ñ‚Ð²ÐµÑ€Ð¶Ð´ÐµÐ½Ð¸Ðµ email Â· TG Parser Sender",
+        subject="Подтверждение email · TG Parser Sender",
         html_content=Content("text/html", html_content)
     )
     
     try:
         sg = sendgrid.SendGridAPIClient(api_key=SENDGRID_API_KEY)
         response = sg.send(message)
-        print(f"ðŸ“§ ÐšÑ€Ð°ÑÐ¸Ð²Ð¾Ðµ Ð¿Ð¸ÑÑŒÐ¼Ð¾ Ð¾Ñ‚Ð¿Ñ€Ð°Ð²Ð»ÐµÐ½Ð¾ Ð½Ð° {email}, ÑÑ‚Ð°Ñ‚ÑƒÑ: {response.status_code}")
+        print(f"📧 Красивое письмо отправлено на {email}, статус: {response.status_code}")
     except Exception as e:
-        print(f"âŒ ÐžÑˆÐ¸Ð±ÐºÐ° Ð¾Ñ‚Ð¿Ñ€Ð°Ð²ÐºÐ¸ Ð¿Ð¸ÑÑŒÐ¼Ð°: {e}")
+        print(f"❌ Ошибка отправки письма: {e}")
 
 def send_password_reset_email(email: str, token: str):
-    """ÐžÑ‚Ð¿Ñ€Ð°Ð²ÐºÐ° ÐºÑ€Ð°ÑÐ¸Ð²Ð¾Ð³Ð¾ Ð¿Ð¸ÑÑŒÐ¼Ð° Ð´Ð»Ñ ÑÐ±Ñ€Ð¾ÑÐ° Ð¿Ð°Ñ€Ð¾Ð»Ñ"""
+    """Отправка красивого письма для сброса пароля"""
     reset_url = f"https://license-check-server-xatc.onrender.com/reset-password?token={token}"
     
     if not SENDGRID_API_KEY:
-        print(f"ðŸ“§ [Ð¢Ð•Ð¡Ð¢] ÐŸÐ¸ÑÑŒÐ¼Ð¾ Ð´Ð»Ñ ÑÐ±Ñ€Ð¾ÑÐ° Ð¿Ð°Ñ€Ð¾Ð»Ñ {email}: {reset_url}")
+        print(f"📧 [ТЕСТ] Письмо для сброса пароля {email}: {reset_url}")
         return
     
     html_content = f"""
@@ -1139,60 +1139,60 @@ def send_password_reset_email(email: str, token: str):
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Ð¡Ð±Ñ€Ð¾Ñ Ð¿Ð°Ñ€Ð¾Ð»Ñ</title>
+        <title>Сброс пароля</title>
     </head>
     <body style="margin:0; padding:0; font-family: 'Segoe UI', Arial, sans-serif; background:#f5f7fa;">
         <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin:0 auto; background:white; border-radius:16px; margin-top:40px; box-shadow:0 4px 12px rgba(0,0,0,0.05);">
-            <!-- Ð¨Ð°Ð¿ÐºÐ° -->
+            <!-- Шапка -->
             <tr>
                 <td style="padding:40px 40px 20px 40px; text-align:center; background:linear-gradient(135deg, #ef4444, #f97316); border-radius:16px 16px 0 0;">
                     <h1 style="color:white; margin:0; font-size:28px; font-weight:600;">TG Parser Sender</h1>
-                    <p style="color:rgba(255,255,255,0.9); margin:10px 0 0 0; font-size:16px;">Ð’Ð¾ÑÑÑ‚Ð°Ð½Ð¾Ð²Ð»ÐµÐ½Ð¸Ðµ Ð´Ð¾ÑÑ‚ÑƒÐ¿Ð°</p>
+                    <p style="color:rgba(255,255,255,0.9); margin:10px 0 0 0; font-size:16px;">Восстановление доступа</p>
                 </td>
             </tr>
             
-            <!-- ÐžÑÐ½Ð¾Ð²Ð½Ð¾Ð¹ ÐºÐ¾Ð½Ñ‚ÐµÐ½Ñ‚ -->
+            <!-- Основной контент -->
             <tr>
                 <td style="padding:40px;">
-                    <h2 style="color:#1e293b; margin:0 0 20px 0; font-size:24px;">Ð¡Ð±Ñ€Ð¾Ñ Ð¿Ð°Ñ€Ð¾Ð»Ñ</h2>
+                    <h2 style="color:#1e293b; margin:0 0 20px 0; font-size:24px;">Сброс пароля</h2>
                     <p style="color:#475569; line-height:1.6; margin:0 0 30px 0; font-size:16px;">
-                        ÐœÑ‹ Ð¿Ð¾Ð»ÑƒÑ‡Ð¸Ð»Ð¸ Ð·Ð°Ð¿Ñ€Ð¾Ñ Ð½Ð° ÑÐ±Ñ€Ð¾Ñ Ð¿Ð°Ñ€Ð¾Ð»Ñ Ð´Ð»Ñ Ð²Ð°ÑˆÐµÐ³Ð¾ Ð°ÐºÐºÐ°ÑƒÐ½Ñ‚Ð°.
+                        Мы получили запрос на сброс пароля для вашего аккаунта.
                     </p>
                     
-                    <!-- ÐšÐ½Ð¾Ð¿ÐºÐ° -->
+                    <!-- Кнопка -->
                     <table cellpadding="0" cellspacing="0" style="margin:30px auto;">
                         <tr>
                             <td style="background:#3b82f6; border-radius:40px; padding:14px 40px;">
-                                <a href="{reset_url}" style="color:white; text-decoration:none; font-size:16px; font-weight:600; letter-spacing:0.5px;">ðŸ”„ Ð¡Ð‘Ð ÐžÐ¡Ð˜Ð¢Ð¬ ÐŸÐÐ ÐžÐ›Ð¬</a>
+                                <a href="{reset_url}" style="color:white; text-decoration:none; font-size:16px; font-weight:600; letter-spacing:0.5px;">🔄 СБРОСИТЬ ПАРОЛЬ</a>
                             </td>
                         </tr>
                     </table>
                     
-                    <!-- ÐÐ»ÑŒÑ‚ÐµÑ€Ð½Ð°Ñ‚Ð¸Ð²Ð½Ð°Ñ ÑÑÑ‹Ð»ÐºÐ° -->
+                    <!-- Альтернативная ссылка -->
                     <p style="color:#64748b; font-size:14px; margin:30px 0 0 0; text-align:center;">
-                        Ð˜Ð»Ð¸ Ð¿ÐµÑ€ÐµÐ¹Ð´Ð¸Ñ‚Ðµ Ð¿Ð¾ ÑÑÑ‹Ð»ÐºÐµ:<br>
+                        Или перейдите по ссылке:<br>
                         <a href="{reset_url}" style="color:#3b82f6; word-break:break-all;">{reset_url}</a>
                     </p>
                     
-                    <!-- ÐŸÑ€ÐµÐ´ÑƒÐ¿Ñ€ÐµÐ¶Ð´ÐµÐ½Ð¸Ðµ -->
+                    <!-- Предупреждение -->
                     <p style="color:#94a3b8; font-size:13px; margin:30px 0 0 0; text-align:center; border-top:1px solid #e2e8f0; padding-top:30px;">
-                        Ð¡ÑÑ‹Ð»ÐºÐ° Ð´ÐµÐ¹ÑÑ‚Ð²Ð¸Ñ‚ÐµÐ»ÑŒÐ½Ð° 1 Ñ‡Ð°Ñ.<br>
-                        Ð•ÑÐ»Ð¸ Ð²Ñ‹ Ð½Ðµ Ð·Ð°Ð¿Ñ€Ð°ÑˆÐ¸Ð²Ð°Ð»Ð¸ ÑÐ±Ñ€Ð¾Ñ Ð¿Ð°Ñ€Ð¾Ð»Ñ, Ð¿Ñ€Ð¾Ð¸Ð³Ð½Ð¾Ñ€Ð¸Ñ€ÑƒÐ¹Ñ‚Ðµ ÑÑ‚Ð¾ Ð¿Ð¸ÑÑŒÐ¼Ð¾.
+                        Ссылка действительна 1 час.<br>
+                        Если вы не запрашивали сброс пароля, проигнорируйте это письмо.
                     </p>
                 </td>
             </tr>
             
-            <!-- ÐŸÐ¾Ð´Ð²Ð°Ð» -->
+            <!-- Подвал -->
             <tr>
                 <td style="padding:30px 40px; background:#f8fafc; border-radius:0 0 16px 16px;">
                     <table width="100%">
                         <tr>
                             <td style="text-align:center;">
                                 <p style="color:#64748b; margin:0 0 10px 0; font-size:14px;">
-                                    Ð¡ ÑƒÐ²Ð°Ð¶ÐµÐ½Ð¸ÐµÐ¼, ÐºÐ¾Ð¼Ð°Ð½Ð´Ð° TG Parser Sender
+                                    С уважением, команда TG Parser Sender
                                 </p>
                                 <p style="color:#94a3b8; margin:0; font-size:13px;">
-                                    ðŸ“§ support@tgparsersender.me | ðŸ“± @Ben_bell97
+                                    📧 support@tgparsersender.me | 📱 @Ben_bell97
                                 </p>
                             </td>
                         </tr>
@@ -1207,19 +1207,19 @@ def send_password_reset_email(email: str, token: str):
     message = Mail(
         from_email=Email(FROM_EMAIL, FROM_NAME),
         to_emails=To(email),
-        subject="Ð¡Ð±Ñ€Ð¾Ñ Ð¿Ð°Ñ€Ð¾Ð»Ñ Â· TG Parser Sender",
+        subject="Сброс пароля · TG Parser Sender",
         html_content=Content("text/html", html_content)
     )
     
     try:
         sg = sendgrid.SendGridAPIClient(api_key=SENDGRID_API_KEY)
         response = sg.send(message)
-        print(f"ðŸ“§ ÐšÑ€Ð°ÑÐ¸Ð²Ð¾Ðµ Ð¿Ð¸ÑÑŒÐ¼Ð¾ Ð´Ð»Ñ ÑÐ±Ñ€Ð¾ÑÐ° Ð¿Ð°Ñ€Ð¾Ð»Ñ Ð¾Ñ‚Ð¿Ñ€Ð°Ð²Ð»ÐµÐ½Ð¾ Ð½Ð° {email}, ÑÑ‚Ð°Ñ‚ÑƒÑ: {response.status_code}")
+        print(f"📧 Красивое письмо для сброса пароля отправлено на {email}, статус: {response.status_code}")
     except Exception as e:
-        print(f"âŒ ÐžÑˆÐ¸Ð±ÐºÐ° Ð¾Ñ‚Ð¿Ñ€Ð°Ð²ÐºÐ¸ Ð¿Ð¸ÑÑŒÐ¼Ð°: {e}")
+        print(f"❌ Ошибка отправки письма: {e}")
 
 # =========================
-# ÐÐ”ÐœÐ˜Ð ÐŸÐÐÐ•Ð›Ð¬ - Ð”ÐÐ¨Ð‘ÐžÐ Ð”
+# АДМИН ПАНЕЛЬ - ДАШБОРД
 # =========================
 @app.get("/admin/login", response_class=HTMLResponse)
 def login_page(request: Request):
@@ -1230,7 +1230,7 @@ def login(request: Request, token: str = Form(...)):
     if token != ADMIN_TOKEN:
         return templates.TemplateResponse(
             "login.html",
-            {"request": request, "error": "ÐÐµÐ²ÐµÑ€Ð½Ñ‹Ð¹ Ñ‚Ð¾ÐºÐµÐ½"}
+            {"request": request, "error": "Неверный токен"}
         )
     
     request.session["is_admin"] = True
@@ -1316,7 +1316,7 @@ def admin_dashboard(request: Request):
         }
         
     except Exception as e:
-        print(f"ÐžÑˆÐ¸Ð±ÐºÐ° Ð² Ð°Ð´Ð¼Ð¸Ð½ÐºÐµ: {e}")
+        print(f"Ошибка в админке: {e}")
         rows = []
         stats = {
             "total": 0, "active": 0, "expired": 0, "revoked": 0,
@@ -1341,7 +1341,7 @@ def admin_dashboard(request: Request):
     )
 
 # =========================
-# ÐÐžÐ’Ð«Ð• API Ð”Ð›Ð¯ ÐÐ”ÐœÐ˜ÐÐšÐ˜
+# НОВЫЕ API ДЛЯ АДМИНКИ
 # =========================
 
 class DepositRequest(BaseModel):
@@ -1385,7 +1385,7 @@ def admin_deposit(request: Request, data: DepositRequest):
             data.user_id, 
             license_key, 
             data.amount, 
-            f"Ð ÑƒÑ‡Ð½Ð¾Ðµ Ð¿Ð¾Ð¿Ð¾Ð»Ð½ÐµÐ½Ð¸Ðµ: {data.note}" if data.note else "Ð ÑƒÑ‡Ð½Ð¾Ðµ Ð¿Ð¾Ð¿Ð¾Ð»Ð½ÐµÐ½Ð¸Ðµ",
+            f"Ручное пополнение: {data.note}" if data.note else "Ручное пополнение",
             json.dumps({"method": data.method, "admin": True})
         ))
         
@@ -1539,7 +1539,7 @@ def admin_update_limit(request: Request, data: UpdateLimitRequest):
         con.close()
 
 # =========================
-# Ð¡Ð¢Ð ÐÐÐ˜Ð¦Ð Ð›Ð˜Ð¦Ð•ÐÐ—Ð˜Ð™
+# СТРАНИЦА ЛИЦЕНЗИЙ
 # =========================
 @app.get("/admin/licenses", response_class=HTMLResponse)
 def admin_licenses(request: Request):
@@ -1569,7 +1569,7 @@ def admin_licenses(request: Request):
     )
 
 # =========================
-# Ð¡Ð¢Ð ÐÐÐ˜Ð¦Ð ÐŸÐžÐ›Ð¬Ð—ÐžÐ’ÐÐ¢Ð•Ð›Ð•Ð™
+# СТРАНИЦА ПОЛЬЗОВАТЕЛЕЙ
 # =========================
 @app.get("/admin/users", response_class=HTMLResponse)
 def admin_users(request: Request):
@@ -1604,7 +1604,7 @@ def admin_users(request: Request):
     )
 
 # =========================
-# Ð¡Ð¢Ð ÐÐÐ˜Ð¦Ð Ð£Ð¡Ð¢Ð ÐžÐ™Ð¡Ð¢Ð’
+# СТРАНИЦА УСТРОЙСТВ
 # =========================
 @app.get("/admin/devices", response_class=HTMLResponse)
 def admin_devices(request: Request):
@@ -1640,7 +1640,7 @@ def admin_devices(request: Request):
     )
 
 # =========================
-# Ð¡Ð¢Ð ÐÐÐ˜Ð¦Ð Ð¢Ð ÐÐÐ—ÐÐšÐ¦Ð˜Ð™
+# СТРАНИЦА ТРАНЗАКЦИЙ
 # =========================
 @app.get("/admin/transactions", response_class=HTMLResponse)
 def admin_transactions(request: Request):
@@ -1675,7 +1675,7 @@ def admin_transactions(request: Request):
     )
 
 # =========================
-# Ð¡Ð¢Ð ÐÐÐ˜Ð¦Ð ÐÐÐ¡Ð¢Ð ÐžÐ•Ðš
+# СТРАНИЦА НАСТРОЕК
 # =========================
 @app.get("/admin/settings", response_class=HTMLResponse)
 def admin_settings(request: Request):
@@ -1691,7 +1691,7 @@ def admin_settings(request: Request):
     )
 
 # =========================
-# API Ð£Ð¡Ð¢Ð ÐžÐ™Ð¡Ð¢Ð’
+# API УСТРОЙСТВ
 # =========================
 class DeviceReq(BaseModel):
     session_token: str
@@ -1798,7 +1798,7 @@ def remove_device(device_id: int, session_token: str):
         con.close()
 
 # =========================
-# API Ð‘ÐÐ›ÐÐÐ¡Ð
+# API БАЛАНСА
 # =========================
 class BalanceReq(BaseModel):
     session_token: str
@@ -1984,12 +1984,12 @@ def ai_score(req: AIScoreReq) -> Dict[str, Any]:
         items = [{"id": it.id, "text": (it.text or "")[:1200]} for it in req.items]
         
         system_prompt = (
-            "Ð¢Ñ‹ Ð°Ð½Ð°Ð»Ð¸Ð·Ð¸Ñ€ÑƒÐµÑˆÑŒ ÑÐ¾Ð¾Ð±Ñ‰ÐµÐ½Ð¸Ñ Ð¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÐµÐ»ÐµÐ¹ Telegram Ð½Ð° Ñ€ÑƒÑÑÐºÐ¾Ð¼ ÑÐ·Ñ‹ÐºÐµ.\n"
-            "Ð¯ Ð´Ð°Ð¼ Ð¿Ñ€Ð¾Ð¼Ñ‚ (ÐºÐ¾Ð³Ð¾ Ð¸Ñ‰ÐµÐ¼) Ð¸ Ñ‚ÐµÐºÑÑ‚Ñ‹ ÑÐ¾Ð¾Ð±Ñ‰ÐµÐ½Ð¸Ð¹ Ð»ÑŽÐ´ÐµÐ¹.\n"
-            "Ð’ÐµÑ€Ð½Ð¸ Ð¡Ð¢Ð ÐžÐ“Ðž Ð²Ð°Ð»Ð¸Ð´Ð½Ñ‹Ð¹ JSON (Ð±ÐµÐ· markdown, Ð±ÐµÐ· Ð¿Ð¾ÑÑÐ½ÐµÐ½Ð¸Ð¹) ÑÑ‚Ñ€Ð¾Ð³Ð¾ Ð² Ñ„Ð¾Ñ€Ð¼Ð°Ñ‚Ðµ:\n"
-            "{ \"results\": [ {\"id\":\"...\",\"score\":0-100,\"pass\":true/false,\"reason\":\"ÐºÐ¾Ñ€Ð¾Ñ‚ÐºÐ¾ 5-12 ÑÐ»Ð¾Ð²\",\"flags\":[\"bot_like|spam_like|toxic|low_quality\"...]}, ... ] }\n"
-            "ÐŸÑ€Ð°Ð²Ð¸Ð»Ð¾ pass: true ÐµÑÐ»Ð¸ score >= min_score Ð¸ Ð½ÐµÑ‚ flags bot_like/spam_like/toxic.\n"
-            "Reason Ð½Ð° Ñ€ÑƒÑÑÐºÐ¾Ð¼."
+            "Ты анализируешь сообщения пользователей Telegram на русском языке.\n"
+            "Я дам промт (кого ищем) и тексты сообщений людей.\n"
+            "Верни СТРОГО валидный JSON (без markdown, без пояснений) строго в формате:\n"
+            "{ \"results\": [ {\"id\":\"...\",\"score\":0-100,\"pass\":true/false,\"reason\":\"коротко 5-12 слов\",\"flags\":[\"bot_like|spam_like|toxic|low_quality\"...]}, ... ] }\n"
+            "Правило pass: true если score >= min_score и нет flags bot_like/spam_like/toxic.\n"
+            "Reason на русском."
         )
         
         payload = {
@@ -2026,7 +2026,7 @@ def ai_score(req: AIScoreReq) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"AI error: {type(e).__name__}: {e}")
 
 # =========================
-# CRUD Ð”Ð›Ð¯ Ð›Ð˜Ð¦Ð•ÐÐ—Ð˜Ð™
+# CRUD ДЛЯ ЛИЦЕНЗИЙ
 # =========================
 @app.post("/admin/upsert")
 def upsert_license(
@@ -2167,7 +2167,7 @@ def generate_key(request: Request, prefix: str = Form("")):
     )
 
 # =========================
-# Ð—ÐÐŸÐ£Ð¡Ðš
+# ЗАПУСК
 # =========================
 if __name__ == "__main__":
     import uvicorn
