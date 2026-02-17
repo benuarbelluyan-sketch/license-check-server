@@ -1509,6 +1509,33 @@ def admin_unlink_device(request: Request, data: UnlinkSingleDeviceRequest):
         cur.close()
         con.close()
 
+class SetBalanceRequest(BaseModel):
+    user_id: int
+    balance: float
+
+@app.post("/admin/api/set-balance")
+def admin_set_balance(request: Request, data: SetBalanceRequest):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    con = db()
+    cur = con.cursor()
+    
+    try:
+        cur.execute("""
+            UPDATE users 
+            SET balance = %s 
+            WHERE id = %s
+        """, (data.balance, data.user_id))
+        con.commit()
+        return {"success": True}
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
 class UpdateLimitRequest(BaseModel):
     key: str
     max_devices: int
