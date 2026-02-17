@@ -1336,15 +1336,7 @@ def admin_dashboard(request: Request):
             "rows": rows,
             "stats": stats,
             "now": now_ts,
-            "active_tab": "dashboard",
-            "active": stats["active"],
-            "expired": stats["expired"],
-            "revoked": stats["revoked"],
-            "total_users": stats["total_users"],
-            "confirmed_users": stats["confirmed_users"],
-            "total_balance": stats["total_balance"],
-            "total_revenue": stats["total_revenue"],
-            "total_devices": stats["total_devices"],
+            "active_tab": "dashboard"
         }
     )
 
@@ -1635,6 +1627,164 @@ def admin_users(request: Request):
             "active_tab": "users"
         }
     )
+
+
+# =========================
+# ДЕТАЛЬНАЯ СТРАНИЦА ПОЛЬЗОВАТЕЛЯ
+# =========================
+@app.get("/admin/user/{user_id}", response_class=HTMLResponse)
+def admin_user_detail(request: Request, user_id: int):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+    
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    
+    try:
+        # Пользователь + лицензия
+        cur.execute("""
+            SELECT u.*, 
+                   l.expires_at as license_expires,
+                   l.revoked as license_revoked,
+                   l.max_devices,
+                   l.plan,
+                   l.created_at as license_created,
+                   l.check_count,
+                   l.last_check_at,
+                   l.hwid as license_hwid
+            FROM users u
+            LEFT JOIN licenses l ON u.license_key = l.key
+            WHERE u.id = %s
+        """, (user_id,))
+        user = cur.fetchone()
+        if not user:
+            return RedirectResponse("/admin/users", status_code=303)
+        
+        # Устройства
+        cur.execute("""
+            SELECT * FROM user_devices 
+            WHERE user_id = %s 
+            ORDER BY last_login DESC NULLS LAST
+        """, (user_id,))
+        devices = cur.fetchall()
+        
+        # Транзакции
+        cur.execute("""
+            SELECT * FROM transactions 
+            WHERE user_id = %s 
+            ORDER BY created_at DESC 
+            LIMIT 50
+        """, (user_id,))
+        transactions = cur.fetchall()
+        
+        # Логи использования
+        cur.execute("""
+            SELECT * FROM usage_logs 
+            WHERE user_id = %s 
+            ORDER BY created_at DESC 
+            LIMIT 30
+        """, (user_id,))
+        usage_logs = cur.fetchall()
+        
+        return templates.TemplateResponse(
+            "admin_user_detail.html",
+            {
+                "request": request,
+                "user": user,
+                "devices": devices,
+                "transactions": transactions,
+                "usage_logs": usage_logs,
+                "now": now(),
+                "active_tab": "users"
+            }
+        )
+    except Exception as e:
+        print(f"Error in user detail: {e}")
+        return RedirectResponse("/admin/users", status_code=303)
+    finally:
+        cur.close()
+        con.close()
+
+# =========================
+# API: CONFIRM EMAIL
+# =========================
+class ConfirmEmailRequest(BaseModel):
+    user_id: int
+
+@app.post("/admin/api/confirm-email")
+def admin_confirm_email(request: Request, data: ConfirmEmailRequest):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("""
+            UPDATE users 
+            SET email_confirmed = TRUE, email_confirmed_at = NOW()
+            WHERE id = %s
+        """, (data.user_id,))
+        con.commit()
+        return {"success": True}
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+# =========================
+# API: UPDATE EMAIL
+# =========================
+class UpdateEmailRequest(BaseModel):
+    user_id: int
+    email: str
+
+@app.post("/admin/api/update-email")
+def admin_update_email(request: Request, data: UpdateEmailRequest):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("UPDATE users SET email = %s WHERE id = %s", (data.email, data.user_id))
+        con.commit()
+        return {"success": True}
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+# =========================
+# API: EXTEND LICENSE
+# =========================
+class ExtendLicenseRequest(BaseModel):
+    key: str
+    days: int
+
+@app.post("/admin/api/extend-license")
+def admin_extend_license(request: Request, data: ExtendLicenseRequest):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("""
+            UPDATE licenses
+            SET expires_at = GREATEST(expires_at, NOW()) + (%s || ' days')::interval,
+                revoked = FALSE,
+                updated_at = NOW()
+            WHERE key = %s
+        """, (data.days, data.key))
+        con.commit()
+        return {"success": True}
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
 
 # =========================
 # СТРАНИЦА УСТРОЙСТВ
