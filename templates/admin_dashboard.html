@@ -487,10 +487,10 @@
 
       <div class="stat-card">
         <div class="stat-icon">💰</div>
-        <div class="stat-value">${{ "%.2f"|format(stats.total_balance | default(0)) }}</div>
+        <div class="stat-value">${{ "%.2f"|format(stats.total_balance) }}</div>
         <div class="stat-label">Баланс</div>
         <div class="stat-detail">
-          потрачено: ${{ "%.2f"|format(stats.total_revenue | default(0)) }}
+          потрачено: ${{ "%.2f"|format(stats.total_revenue) }}
         </div>
       </div>
 
