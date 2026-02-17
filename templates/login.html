@@ -5,138 +5,157 @@
   <title>Admin Login · TG Parser</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      background: #0a0c10;
-      color: #e5e9f0;
-      height: 100vh;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
+      padding: 20px;
     }
 
     .login-card {
-      background: #0f1217;
-      border: 1px solid #1e242c;
+      background: #fff;
       border-radius: 24px;
-      padding: 40px;
+      padding: 48px;
+      max-width: 440px;
       width: 100%;
-      max-width: 400px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
     }
 
     .logo {
-      font-size: 24px;
-      font-weight: 700;
-      letter-spacing: -0.5px;
-      margin-bottom: 32px;
       text-align: center;
+      margin-bottom: 32px;
     }
-
-    .logo span {
-      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    .logo-icon {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      margin: 0 auto 16px;
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+    }
+    .logo-text {
+      font-size: 28px;
+      font-weight: 700;
+      color: #1a202c;
+    }
+    .logo-text span {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
-
-    h2 {
-      font-size: 20px;
-      margin-bottom: 24px;
+    .subtitle {
       text-align: center;
-      color: #fff;
+      color: #718096;
+      font-size: 14px;
+      margin-bottom: 32px;
     }
 
     .form-group {
-      margin-bottom: 20px;
+      margin-bottom: 24px;
     }
-
-    label {
+    .form-label {
       display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #4a5568;
       margin-bottom: 8px;
-      color: #9aa4b2;
-      font-size: 14px;
     }
-
-    input {
+    .form-input {
       width: 100%;
-      background: #0a0c10;
-      border: 1px solid #1e242c;
+      background: #f7fafc;
+      border: 2px solid #e2e8f0;
       border-radius: 12px;
       padding: 14px 16px;
-      color: #e5e9f0;
       font-size: 15px;
-      transition: all 0.2s;
+      color: #1a202c;
+      transition: all 0.3s;
+      font-family: inherit;
     }
-
-    input:focus {
+    .form-input:focus {
       outline: none;
-      border-color: #3b82f6;
-      box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+      border-color: #667eea;
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
     }
 
-    button {
+    .btn-login {
       width: 100%;
-      background: #3b82f6;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       border: none;
       border-radius: 12px;
       padding: 14px;
-      color: white;
+      color: #fff;
+      font-size: 15px;
       font-weight: 600;
-      font-size: 16px;
       cursor: pointer;
-      transition: all 0.2s;
-      margin-top: 12px;
+      transition: all 0.3s;
+      box-shadow: 0 4px 14px rgba(102, 126, 234, 0.4);
+    }
+    .btn-login:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+    }
+    .btn-login:active {
+      transform: translateY(0);
     }
 
-    button:hover {
-      background: #2563eb;
-      transform: translateY(-1px);
-    }
-
-    .error {
-      background: rgba(255, 123, 123, 0.1);
-      border: 1px solid rgba(255, 123, 123, 0.3);
-      border-radius: 10px;
-      padding: 12px;
-      color: #ff7b7b;
-      font-size: 14px;
-      margin-top: 20px;
-      text-align: center;
-    }
-
-    .hint {
-      margin-top: 24px;
-      color: #6b7a8f;
+    .error-msg {
+      background: #fed7d7;
+      color: #742a2a;
+      border: 2px solid #fc8181;
+      border-radius: 12px;
+      padding: 12px 16px;
       font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .footer {
+      margin-top: 32px;
       text-align: center;
+      font-size: 12px;
+      color: #a0aec0;
     }
   </style>
 </head>
 <body>
   <div class="login-card">
     <div class="logo">
-      <span>TG Parser</span> Sender
+      <div class="logo-icon">🔐</div>
+      <div class="logo-text">TG Parser <span>Admin</span></div>
     </div>
-    
-    <h2>Вход в админ-панель</h2>
-    
+    <div class="subtitle">Войдите используя токен администратора</div>
+
+    {% if error %}
+    <div class="error-msg">
+      ⚠️ {{ error }}
+    </div>
+    {% endif %}
+
     <form method="post" action="/admin/login">
       <div class="form-group">
-        <label>ADMIN_TOKEN</label>
-        <input type="password" name="token" placeholder="вставьте токен из Render" required />
+        <label class="form-label">Токен администратора</label>
+        <input type="password" name="token" class="form-input" placeholder="Введите токен..." required autofocus />
       </div>
-      
-      <button type="submit">Войти</button>
+      <button type="submit" class="btn-login">Войти в панель</button>
     </form>
-    
-    {% if error %}
-    <div class="error">{{ error }}</div>
-    {% endif %}
-    
-    <div class="hint">
-      Токен: Render → Service → Environment → ADMIN_TOKEN
+
+    <div class="footer">
+      TG Parser Sender © 2024
     </div>
   </div>
 </body>
