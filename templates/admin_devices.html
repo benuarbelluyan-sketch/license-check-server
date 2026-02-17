@@ -5,306 +5,83 @@
   <title>Устройства · TG Parser Admin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    
-    body {
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      background: #0a0c10;
-      color: #e5e9f0;
-      line-height: 1.5;
-    }
-
-    .app {
-      display: flex;
-      min-height: 100vh;
-    }
-
-    .sidebar {
-      width: 280px;
-      background: #0f1217;
-      border-right: 1px solid #1e242c;
-      padding: 24px 16px;
-      position: fixed;
-      height: 100vh;
-      overflow-y: auto;
-    }
-
-    .logo {
-      font-size: 20px;
-      font-weight: 700;
-      letter-spacing: -0.5px;
-      margin-bottom: 32px;
-      padding-left: 12px;
-    }
-
-    .logo span {
-      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .nav-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 12px 16px;
-      border-radius: 12px;
-      color: #9aa4b2;
-      margin-bottom: 4px;
-      transition: all 0.2s;
-      text-decoration: none;
-    }
-
-    .nav-item.active {
-      background: #1a1f2a;
-      color: #fff;
-    }
-
-    .nav-item i {
-      width: 20px;
-      font-size: 18px;
-    }
-
-    .nav-item:hover:not(.active) {
-      background: #151a24;
-      color: #e5e9f0;
-    }
-
-    .main {
-      flex: 1;
-      margin-left: 280px;
-      padding: 32px 40px;
-      background: #0a0c10;
-      min-height: 100vh;
-    }
-
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 32px;
-    }
-
-    .header h1 {
-      font-size: 28px;
-      font-weight: 600;
-      letter-spacing: -0.5px;
-    }
-
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .admin-badge {
-      background: #1a1f2a;
-      padding: 8px 16px;
-      border-radius: 40px;
-      font-size: 14px;
-      color: #9aa4b2;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .logout-btn {
-      background: #2d3340;
-      border: none;
-      color: #ff7b7b;
-      padding: 8px 20px;
-      border-radius: 40px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .logout-btn:hover {
-      background: #3a4050;
-    }
-
-    .action-bar {
-      display: flex;
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-
-    .search-box {
-      flex: 1;
-      display: flex;
-      gap: 8px;
-    }
-
-    .search-box input {
-      flex: 1;
-      background: #0f1217;
-      border: 1px solid #1e242c;
-      border-radius: 40px;
-      padding: 12px 20px;
-      color: #e5e9f0;
-      font-size: 14px;
-    }
-
-    .search-box input:focus {
-      outline: none;
-      border-color: #3b82f6;
-    }
-
-    .btn-primary {
-      background: #3b82f6;
-      border: none;
-      border-radius: 40px;
-      padding: 12px 32px;
-      color: white;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    .table-container {
-      background: #0f1217;
-      border: 1px solid #1e242c;
-      border-radius: 20px;
-      overflow-x: auto;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 14px;
-    }
-
-    th {
-      text-align: left;
-      padding: 18px 16px;
-      color: #9aa4b2;
-      font-weight: 500;
-      border-bottom: 1px solid #1e242c;
-    }
-
-    td {
-      padding: 16px;
-      border-bottom: 1px solid #1e242c;
-    }
-
-    tr:hover td {
-      background: #151a24;
-    }
-
-    .badge {
-      display: inline-block;
-      padding: 4px 10px;
-      border-radius: 40px;
-      font-size: 12px;
-      font-weight: 500;
-      background: rgba(124, 255, 178, 0.1);
-      color: #7CFFB2;
-      border: 1px solid rgba(124, 255, 178, 0.2);
-    }
-
-    .mono {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 13px;
-    }
-
-    .fingerprint {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 12px;
-      color: #9aa4b2;
-    }
-
-    .footer-note {
-      margin-top: 20px;
-      color: #6b7a8f;
-      font-size: 13px;
-      text-align: center;
-    }
+    body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+    .container { max-width: 1400px; margin: 0 auto; padding: 40px 24px; }
+    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; }
+    .logo { display: flex; align-items: center; gap: 12px; }
+    .logo-icon { width: 48px; height: 48px; background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; border: 1px solid rgba(255,255,255,0.3); }
+    .logo-text { font-size: 20px; font-weight: 700; color: #fff; }
+    .logout-btn { background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3); border-radius: 12px; padding: 10px 20px; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+    .logout-btn:hover { background: rgba(255,255,255,0.3); }
+    .nav { background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); border-radius: 16px; padding: 8px; display: flex; gap: 4px; margin-bottom: 32px; overflow-x: auto; }
+    .nav-item { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 10px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s; white-space: nowrap; }
+    .nav-item:hover { background: rgba(255,255,255,0.15); color: #fff; }
+    .nav-item.active { background: #fff; color: #667eea; box-shadow: 0 4px 14px rgba(0,0,0,0.1); }
+    .table-card { background: #fff; border-radius: 20px; padding: 28px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    .table-header { margin-bottom: 24px; }
+    .table-title { font-size: 18px; font-weight: 700; color: #1a202c; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead { background: #f7fafc; }
+    th { padding: 12px 16px; text-align: left; color: #718096; font-weight: 600; font-size: 12px; text-transform: uppercase; }
+    td { padding: 16px; border-top: 1px solid #f7fafc; vertical-align: middle; }
+    tr:hover td { background: #f7fafc; }
+    .empty { text-align: center; padding: 60px; color: #a0aec0; }
   </style>
 </head>
 <body>
-<div class="app">
-  <!-- Сайдбар -->
-  <div class="sidebar">
+<div class="container">
+  <div class="header">
     <div class="logo">
-      <span>TG Parser</span> Sender
+      <div class="logo-icon">💻</div>
+      <div class="logo-text">TG Parser Admin</div>
     </div>
-    
-    <a href="/admin" class="nav-item {% if active_tab == 'dashboard' %}active{% endif %}">
-      <i>📊</i> Дашборд
-    </a>
-    <a href="/admin/licenses" class="nav-item {% if active_tab == 'licenses' %}active{% endif %}">
-      <i>🔑</i> Лицензии
-    </a>
-    <a href="/admin/users" class="nav-item {% if active_tab == 'users' %}active{% endif %}">
-      <i>👥</i> Пользователи
-    </a>
-    <a href="/admin/devices" class="nav-item {% if active_tab == 'devices' %}active{% endif %}">
-      <i>💻</i> Устройства
-    </a>
-    <a href="/admin/transactions" class="nav-item {% if active_tab == 'transactions' %}active{% endif %}">
-      <i>💰</i> Транзакции
-    </a>
-    <a href="/admin/settings" class="nav-item {% if active_tab == 'settings' %}active{% endif %}">
-      <i>⚙️</i> Настройки
-    </a>
+    <form method="post" action="/admin/logout" style="margin:0;">
+      <button class="logout-btn" type="submit">Выйти</button>
+    </form>
   </div>
-
-  <!-- Основной контент -->
-  <div class="main">
-    <div class="header">
-      <h1>Устройства</h1>
-      <div class="header-right">
-        <div class="admin-badge">
-          <span>👑</span> Администратор
-        </div>
-        <form method="post" action="/admin/logout" style="margin:0;">
-          <button class="logout-btn" type="submit">Выйти</button>
-        </form>
-      </div>
+  <nav class="nav">
+    <a href="/admin" class="nav-item">📊 Дашборд</a>
+    <a href="/admin/users" class="nav-item">👥 Пользователи</a>
+    <a href="/admin/licenses" class="nav-item">🔑 Лицензии</a>
+    <a href="/admin/devices" class="nav-item active">💻 Устройства</a>
+    <a href="/admin/transactions" class="nav-item">💳 Транзакции</a>
+    <a href="/admin/settings" class="nav-item">⚙️ Настройки</a>
+  </nav>
+  <div class="table-card">
+    <div class="table-header">
+      <div class="table-title">Устройства ({{ devices | length }})</div>
     </div>
-
-    <!-- Поиск -->
-    <div class="action-bar">
-      <div class="search-box">
-        <input type="text" placeholder="🔍 Поиск по имени устройства, email...">
-        <button class="btn-primary">Найти</button>
-      </div>
-    </div>
-
-    <!-- Таблица устройств -->
-    <div class="table-container">
-      <table>
-        <thead>
-          <tr>
-            <th>Пользователь</th>
-            <th>Ключ</th>
-            <th>Устройство</th>
-            <th>Fingerprint</th>
-            <th>IP</th>
-            <th>Последний вход</th>
-            <th>Добавлено</th>
-          </tr>
-        </thead>
-        <tbody>
+    {% if devices %}
+    <table>
+      <thead>
+        <tr>
+          <th>Email</th>
+          <th>Ключ</th>
+          <th>Устройство</th>
+          <th>IP</th>
+          <th>Последний вход</th>
+        </tr>
+      </thead>
+      <tbody>
         {% for d in devices %}
-          <tr>
-            <td>{{ d.email }}</td>
-            <td class="mono">{{ d.license_key or '—' }}</td>
-            <td>
-              <span class="badge">{{ d.device_name or 'Без имени' }}</span>
-            </td>
-            <td class="fingerprint">{{ d.device_fingerprint[:16] }}...</td>
-            <td>{{ d.last_ip or '—' }}</td>
-            <td>{{ d.last_login.strftime('%Y-%m-%d %H:%M') if d.last_login else '—' }}</td>
-            <td>{{ d.created_at.strftime('%Y-%m-%d') if d.created_at else '—' }}</td>
-          </tr>
+        <tr>
+          <td style="font-weight:500;">{{ d.email }}</td>
+          <td style="font-family:monospace; font-size:11px; color:#718096;">{{ d.license_key }}</td>
+          <td style="color:#4a5568;">{{ d.device_name or d.device_fingerprint[:24] ~ '...' }}</td>
+          <td style="color:#718096;">{{ d.last_ip or '—' }}</td>
+          <td style="color:#a0aec0; font-size:12px;">{{ d.last_login.strftime('%d.%m.%Y %H:%M') if d.last_login else '—' }}</td>
+        </tr>
         {% endfor %}
-        </tbody>
-      </table>
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">
+      <div style="font-size:48px; opacity:0.3; margin-bottom:12px;">💻</div>
+      <div>Нет устройств</div>
     </div>
-
-    <div class="footer-note">
-      Показано максимум 500 записей
-    </div>
+    {% endif %}
   </div>
 </div>
 </body>
