@@ -1572,7 +1572,7 @@ def admin_licenses(request: Request):
 # СТРАНИЦА ПОЛЬЗОВАТЕЛЕЙ
 # =========================
 @app.get("/admin/users", response_class=HTMLResponse)
-def admin_users(request: Request):
+def admin_users(request: Request, q: str = ""):
     if not is_admin(request):
         return RedirectResponse("/admin/login", status_code=303)
     
@@ -1580,15 +1580,30 @@ def admin_users(request: Request):
     cur = con.cursor(cursor_factory=RealDictCursor)
     
     try:
-        cur.execute("""
-            SELECT u.*, l.plan, l.expires_at as license_expires 
-            FROM users u
-            LEFT JOIN licenses l ON u.license_key = l.key
-            ORDER BY u.created_at DESC
-            LIMIT 500
-        """)
+        if q:
+            cur.execute("""
+                SELECT u.*, l.plan, l.expires_at as license_expires, l.max_devices,
+                       l.revoked as license_revoked,
+                       (SELECT COUNT(*) FROM user_devices d WHERE d.user_id = u.id AND d.is_active = TRUE) as active_devices
+                FROM users u
+                LEFT JOIN licenses l ON u.license_key = l.key
+                WHERE u.email ILIKE %s OR u.license_key ILIKE %s
+                ORDER BY u.created_at DESC
+                LIMIT 200
+            """, (f'%{q}%', f'%{q}%'))
+        else:
+            cur.execute("""
+                SELECT u.*, l.plan, l.expires_at as license_expires, l.max_devices,
+                       l.revoked as license_revoked,
+                       (SELECT COUNT(*) FROM user_devices d WHERE d.user_id = u.id AND d.is_active = TRUE) as active_devices
+                FROM users u
+                LEFT JOIN licenses l ON u.license_key = l.key
+                ORDER BY u.created_at DESC
+                LIMIT 200
+            """)
         users = cur.fetchall()
-    except:
+    except Exception as e:
+        print(f"admin_users error: {e}")
         users = []
     finally:
         cur.close()
@@ -1599,9 +1614,221 @@ def admin_users(request: Request):
         {
             "request": request,
             "users": users,
-            "active_tab": "users"
+            "active_tab": "users",
+            "q": q,
+            "now": now()
         }
     )
+
+# =========================
+# КАРТОЧКА ПОЛЬЗОВАТЕЛЯ
+# =========================
+@app.get("/admin/users/{user_id}", response_class=HTMLResponse)
+def admin_user_detail(request: Request, user_id: int):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+    
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    
+    try:
+        # Данные пользователя + лицензия
+        cur.execute("""
+            SELECT u.*, l.plan, l.expires_at as license_expires, l.max_devices,
+                   l.revoked as license_revoked, l.hwid
+            FROM users u
+            LEFT JOIN licenses l ON u.license_key = l.key
+            WHERE u.id = %s
+        """, (user_id,))
+        user = cur.fetchone()
+        if not user:
+            return HTMLResponse("Пользователь не найден", status_code=404)
+        
+        # Устройства
+        cur.execute("""
+            SELECT * FROM user_devices
+            WHERE user_id = %s
+            ORDER BY last_login DESC
+        """, (user_id,))
+        devices = cur.fetchall()
+        
+        # Транзакции
+        cur.execute("""
+            SELECT * FROM transactions
+            WHERE user_id = %s
+            ORDER BY created_at DESC
+            LIMIT 50
+        """, (user_id,))
+        transactions = cur.fetchall()
+        
+    except Exception as e:
+        return HTMLResponse(f"Ошибка: {e}", status_code=500)
+    finally:
+        cur.close()
+        con.close()
+    
+    return templates.TemplateResponse(
+        "admin_user_detail.html",
+        {
+            "request": request,
+            "user": user,
+            "devices": devices,
+            "transactions": transactions,
+            "active_tab": "users",
+            "now": now()
+        }
+    )
+
+# =========================
+# API: ОБНОВИТЬ EMAIL
+# =========================
+class UpdateEmailRequest(BaseModel):
+    user_id: int
+    email: str
+
+@app.post("/admin/api/update-email")
+def admin_update_email(request: Request, data: UpdateEmailRequest):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("UPDATE users SET email = %s WHERE id = %s", (data.email, data.user_id))
+        con.commit()
+        return {"success": True}
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+# =========================
+# API: ПОДТВЕРДИТЬ EMAIL
+# =========================
+class ConfirmEmailRequest(BaseModel):
+    user_id: int
+
+@app.post("/admin/api/confirm-email")
+def admin_confirm_email(request: Request, data: ConfirmEmailRequest):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("""
+            UPDATE users SET email_confirmed = TRUE, email_confirmed_at = NOW()
+            WHERE id = %s
+        """, (data.user_id,))
+        con.commit()
+        return {"success": True}
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+# =========================
+# API: ПРОДЛИТЬ ПОДПИСКУ
+# =========================
+class ExtendLicenseRequest(BaseModel):
+    user_id: int
+    days: int
+
+@app.post("/admin/api/extend-license")
+def admin_extend_license(request: Request, data: ExtendLicenseRequest):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("SELECT license_key FROM users WHERE id = %s", (data.user_id,))
+        user = cur.fetchone()
+        if not user or not user['license_key']:
+            raise HTTPException(status_code=404, detail="License not found")
+        key = user['license_key']
+        cur.execute("""
+            UPDATE licenses
+            SET expires_at = GREATEST(expires_at, NOW()) + INTERVAL '%s days',
+                updated_at = NOW()
+            WHERE key = %s
+            RETURNING expires_at
+        """, (data.days, key))
+        result = cur.fetchone()
+        con.commit()
+        return {"success": True, "expires_at": str(result['expires_at'])}
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+# =========================
+# API: ОТОЗВАТЬ / ВОССТАНОВИТЬ ЛИЦЕНЗИЮ
+# =========================
+class RevokeLicenseRequest(BaseModel):
+    user_id: int
+    revoked: bool
+
+@app.post("/admin/api/revoke-license")
+def admin_revoke_license(request: Request, data: RevokeLicenseRequest):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("SELECT license_key FROM users WHERE id = %s", (data.user_id,))
+        user = cur.fetchone()
+        if not user or not user['license_key']:
+            raise HTTPException(status_code=404, detail="License not found")
+        cur.execute("UPDATE licenses SET revoked = %s WHERE key = %s", (data.revoked, user['license_key']))
+        con.commit()
+        return {"success": True}
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+# =========================
+# API: ДОБАВИТЬ ТРАНЗАКЦИЮ ВРУЧНУЮ
+# =========================
+class ManualTransactionRequest(BaseModel):
+    user_id: int
+    amount: float
+    type: str
+    description: str
+
+@app.post("/admin/api/add-transaction")
+def admin_add_transaction(request: Request, data: ManualTransactionRequest):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("SELECT license_key, balance FROM users WHERE id = %s", (data.user_id,))
+        user = cur.fetchone()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        # Обновляем баланс
+        cur.execute("UPDATE users SET balance = balance + %s WHERE id = %s RETURNING balance", (data.amount, data.user_id))
+        new_balance = cur.fetchone()['balance']
+        # Пишем транзакцию
+        cur.execute("""
+            INSERT INTO transactions (user_id, license_key, amount, type, description, metadata)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (data.user_id, user['license_key'], data.amount, data.type, data.description, json.dumps({"admin": True})))
+        con.commit()
+        return {"success": True, "new_balance": float(new_balance)}
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
 
 # =========================
 # СТРАНИЦА УСТРОЙСТВ
