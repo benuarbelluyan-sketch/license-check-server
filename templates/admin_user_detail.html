@@ -347,15 +347,20 @@
     <div class="card">
       <div class="card-header">
         <div class="card-icon">📧</div>
-        <div class="card-title">Email управление</div>
+        <div class="card-title">Email и контакты</div>
       </div>
       <div class="form-group">
         <label class="form-label">Email адрес</label>
         <input type="email" class="form-input" id="email-input" value="{{ user.email }}" />
       </div>
+      <div class="form-group">
+        <label class="form-label">Telegram</label>
+        <input type="text" class="form-input" id="telegram-input" value="{{ user.telegram or '' }}" placeholder="@username" />
+      </div>
       <div class="btn-row">
-        <button class="btn btn-primary" onclick="updateEmail()">💾 Сохранить</button>
-        <button class="btn btn-success" onclick="confirmEmail()">✓ Подтвердить</button>
+        <button class="btn btn-primary" onclick="updateEmail()">💾 Сохранить email</button>
+        <button class="btn btn-primary" onclick="updateTelegram()">💾 Сохранить telegram</button>
+        <button class="btn btn-success" onclick="confirmEmail()">✓ Подтвердить email</button>
       </div>
     </div>
 
@@ -579,6 +584,13 @@ async function updateEmail() {
   if (!email) return toast('Введите email', true);
   const res = await api('/admin/api/update-email', {user_id: USER_ID, email});
   if (res.success) toast('✅ Email успешно обновлён');
+  else toast('❌ Ошибка: ' + (res.detail || 'неизвестная'), true);
+}
+
+async function updateTelegram() {
+  const telegram = document.getElementById('telegram-input').value.trim();
+  const res = await api('/admin/api/update-telegram', {user_id: USER_ID, telegram});
+  if (res.success) toast('✅ Telegram успешно обновлён');
   else toast('❌ Ошибка: ' + (res.detail || 'неизвестная'), true);
 }
 
