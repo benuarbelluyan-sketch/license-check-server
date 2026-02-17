@@ -5,343 +5,47 @@
   <title>Настройки · TG Parser Admin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    
-    body {
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      background: #0a0c10;
-      color: #e5e9f0;
-      line-height: 1.5;
-    }
-
-    .app {
-      display: flex;
-      min-height: 100vh;
-    }
-
-    .sidebar {
-      width: 280px;
-      background: #0f1217;
-      border-right: 1px solid #1e242c;
-      padding: 24px 16px;
-      position: fixed;
-      height: 100vh;
-      overflow-y: auto;
-    }
-
-    .logo {
-      font-size: 20px;
-      font-weight: 700;
-      letter-spacing: -0.5px;
-      margin-bottom: 32px;
-      padding-left: 12px;
-    }
-
-    .logo span {
-      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .nav-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 12px 16px;
-      border-radius: 12px;
-      color: #9aa4b2;
-      margin-bottom: 4px;
-      transition: all 0.2s;
-      text-decoration: none;
-    }
-
-    .nav-item.active {
-      background: #1a1f2a;
-      color: #fff;
-    }
-
-    .nav-item i {
-      width: 20px;
-      font-size: 18px;
-    }
-
-    .nav-item:hover:not(.active) {
-      background: #151a24;
-      color: #e5e9f0;
-    }
-
-    .main {
-      flex: 1;
-      margin-left: 280px;
-      padding: 32px 40px;
-      background: #0a0c10;
-      min-height: 100vh;
-    }
-
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 32px;
-    }
-
-    .header h1 {
-      font-size: 28px;
-      font-weight: 600;
-      letter-spacing: -0.5px;
-    }
-
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .admin-badge {
-      background: #1a1f2a;
-      padding: 8px 16px;
-      border-radius: 40px;
-      font-size: 14px;
-      color: #9aa4b2;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .logout-btn {
-      background: #2d3340;
-      border: none;
-      color: #ff7b7b;
-      padding: 8px 20px;
-      border-radius: 40px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .logout-btn:hover {
-      background: #3a4050;
-    }
-
-    .settings-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-      gap: 24px;
-    }
-
-    .settings-card {
-      background: #0f1217;
-      border: 1px solid #1e242c;
-      border-radius: 20px;
-      padding: 24px;
-    }
-
-    .settings-card h2 {
-      font-size: 18px;
-      margin-bottom: 20px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid #1e242c;
-    }
-
-    .settings-group {
-      margin-bottom: 24px;
-    }
-
-    .settings-group label {
-      display: block;
-      margin-bottom: 8px;
-      color: #9aa4b2;
-      font-size: 14px;
-    }
-
-    .settings-group input,
-    .settings-group select {
-      width: 100%;
-      background: #0a0c10;
-      border: 1px solid #1e242c;
-      border-radius: 12px;
-      padding: 12px 16px;
-      color: #e5e9f0;
-      margin-bottom: 16px;
-    }
-
-    .settings-group input:focus {
-      outline: none;
-      border-color: #3b82f6;
-    }
-
-    .info-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 12px 0;
-      border-bottom: 1px solid #1e242c;
-    }
-
-    .info-row:last-child {
-      border-bottom: none;
-    }
-
-    .info-label {
-      color: #9aa4b2;
-    }
-
-    .info-value {
-      font-weight: 500;
-      color: #fff;
-    }
-
-    .btn-save {
-      background: #3b82f6;
-      border: none;
-      border-radius: 40px;
-      padding: 12px 32px;
-      color: white;
-      font-weight: 600;
-      cursor: pointer;
-      width: 100%;
-      margin-top: 16px;
-    }
-
-    .btn-save:hover {
-      background: #2563eb;
-    }
-
-    .danger-zone {
-      border-color: rgba(255, 123, 123, 0.3);
-    }
-
-    .danger-zone h2 {
-      color: #ff7b7b;
-      border-bottom-color: rgba(255, 123, 123, 0.3);
-    }
-
-    .btn-danger {
-      background: transparent;
-      border: 1px solid #ff7b7b;
-      border-radius: 40px;
-      padding: 12px 32px;
-      color: #ff7b7b;
-      font-weight: 600;
-      cursor: pointer;
-      width: 100%;
-    }
-
-    .btn-danger:hover {
-      background: rgba(255, 123, 123, 0.1);
-    }
+    body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+    .container { max-width: 1400px; margin: 0 auto; padding: 40px 24px; }
+    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; }
+    .logo { display: flex; align-items: center; gap: 12px; }
+    .logo-icon { width: 48px; height: 48px; background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; border: 1px solid rgba(255,255,255,0.3); }
+    .logo-text { font-size: 20px; font-weight: 700; color: #fff; }
+    .logout-btn { background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3); border-radius: 12px; padding: 10px 20px; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+    .logout-btn:hover { background: rgba(255,255,255,0.3); }
+    .nav { background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); border-radius: 16px; padding: 8px; display: flex; gap: 4px; margin-bottom: 32px; overflow-x: auto; }
+    .nav-item { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 10px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s; white-space: nowrap; }
+    .nav-item:hover { background: rgba(255,255,255,0.15); color: #fff; }
+    .nav-item.active { background: #fff; color: #667eea; box-shadow: 0 4px 14px rgba(0,0,0,0.1); }
+    .card { background: #fff; border-radius: 20px; padding: 32px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); text-align: center; }
+    .icon { font-size: 64px; margin-bottom: 16px; }
   </style>
 </head>
 <body>
-<div class="app">
-  <!-- Сайдбар -->
-  <div class="sidebar">
+<div class="container">
+  <div class="header">
     <div class="logo">
-      <span>TG Parser</span> Sender
+      <div class="logo-icon">⚙️</div>
+      <div class="logo-text">TG Parser Admin</div>
     </div>
-    
-    <a href="/admin" class="nav-item {% if active_tab == 'dashboard' %}active{% endif %}">
-      <i>📊</i> Дашборд
-    </a>
-    <a href="/admin/licenses" class="nav-item {% if active_tab == 'licenses' %}active{% endif %}">
-      <i>🔑</i> Лицензии
-    </a>
-    <a href="/admin/users" class="nav-item {% if active_tab == 'users' %}active{% endif %}">
-      <i>👥</i> Пользователи
-    </a>
-    <a href="/admin/devices" class="nav-item {% if active_tab == 'devices' %}active{% endif %}">
-      <i>💻</i> Устройства
-    </a>
-    <a href="/admin/transactions" class="nav-item {% if active_tab == 'transactions' %}active{% endif %}">
-      <i>💰</i> Транзакции
-    </a>
-    <a href="/admin/settings" class="nav-item {% if active_tab == 'settings' %}active{% endif %}">
-      <i>⚙️</i> Настройки
-    </a>
+    <form method="post" action="/admin/logout" style="margin:0;">
+      <button class="logout-btn" type="submit">Выйти</button>
+    </form>
   </div>
-
-  <!-- Основной контент -->
-  <div class="main">
-    <div class="header">
-      <h1>Настройки</h1>
-      <div class="header-right">
-        <div class="admin-badge">
-          <span>👑</span> Администратор
-        </div>
-        <form method="post" action="/admin/logout" style="margin:0;">
-          <button class="logout-btn" type="submit">Выйти</button>
-        </form>
-      </div>
-    </div>
-
-    <div class="settings-grid">
-      <!-- Основные настройки -->
-      <div class="settings-card">
-        <h2>⚙️ Основные настройки</h2>
-        
-        <div class="settings-group">
-          <label>ADMIN_TOKEN</label>
-          <input type="password" value="••••••••••••••••" readonly>
-        </div>
-
-        <div class="settings-group">
-          <label>Лимит устройств по умолчанию</label>
-          <select>
-            <option value="1" selected>1 устройство</option>
-            <option value="2">2 устройства</option>
-            <option value="3">3 устройства</option>
-            <option value="5">5 устройств</option>
-          </select>
-        </div>
-
-        <div class="settings-group">
-          <label>Время жизни сессии (дни)</label>
-          <input type="number" value="30">
-        </div>
-
-        <button class="btn-save">Сохранить изменения</button>
-      </div>
-
-      <!-- Информация о системе -->
-      <div class="settings-card">
-        <h2>ℹ️ Информация о системе</h2>
-        
-        <div class="info-row">
-          <span class="info-label">Версия</span>
-          <span class="info-value">2.0.0</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Сервер</span>
-          <span class="info-value">Render</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">База данных</span>
-          <span class="info-value">PostgreSQL</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Последний запуск</span>
-          <span class="info-value">{{ now().strftime('%Y-%m-%d %H:%M') if now else '—' }}</span>
-        </div>
-      </div>
-
-      <!-- Опасная зона -->
-      <div class="settings-card danger-zone">
-        <h2>⚠️ Опасная зона</h2>
-        
-        <div style="margin-bottom: 20px; color: #9aa4b2; font-size: 14px;">
-          Действия в этом разделе необратимы. Будьте осторожны!
-        </div>
-
-        <button class="btn-danger" onclick="return confirm('Вы уверены? Это действие нельзя отменить!')">
-          Очистить все неактивные сессии
-        </button>
-
-        <div style="height: 12px;"></div>
-
-        <button class="btn-danger" onclick="return confirm('Вы уверены? Все неактивные устройства будут удалены!')">
-          Очистить неактивные устройства
-        </button>
-      </div>
-    </div>
+  <nav class="nav">
+    <a href="/admin" class="nav-item">📊 Дашборд</a>
+    <a href="/admin/users" class="nav-item">👥 Пользователи</a>
+    <a href="/admin/licenses" class="nav-item">🔑 Лицензии</a>
+    <a href="/admin/devices" class="nav-item">💻 Устройства</a>
+    <a href="/admin/transactions" class="nav-item">💳 Транзакции</a>
+    <a href="/admin/settings" class="nav-item active">⚙️ Настройки</a>
+  </nav>
+  <div class="card">
+    <div class="icon">⚙️</div>
+    <h2 style="color:#1a202c; margin-bottom:8px;">Настройки</h2>
+    <p style="color:#718096;">Скоро здесь появятся настройки системы</p>
   </div>
 </div>
 </body>
