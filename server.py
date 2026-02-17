@@ -1336,7 +1336,15 @@ def admin_dashboard(request: Request):
             "rows": rows,
             "stats": stats,
             "now": now_ts,
-            "active_tab": "dashboard"
+            "active_tab": "dashboard",
+            "active": stats["active"],
+            "expired": stats["expired"],
+            "revoked": stats["revoked"],
+            "total_users": stats["total_users"],
+            "confirmed_users": stats["confirmed_users"],
+            "total_balance": stats["total_balance"],
+            "total_revenue": stats["total_revenue"],
+            "total_devices": stats["total_devices"],
         }
     )
 
@@ -1517,10 +1525,8 @@ class SetBalanceRequest(BaseModel):
 def admin_set_balance(request: Request, data: SetBalanceRequest):
     if not is_admin(request):
         raise HTTPException(status_code=403, detail="Unauthorized")
-    
     con = db()
     cur = con.cursor()
-    
     try:
         cur.execute("""
             UPDATE users 
