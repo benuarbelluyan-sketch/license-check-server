@@ -1,200 +1,311 @@
-<!DOCTYPE html>
-<html lang="ru">
+<!doctype html>
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Устройства — Admin</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-  :root{--bg:#07080a;--surface:#0d0f14;--surface2:#131720;--border:#1c2230;--border2:#252d3d;--text:#e2e8f5;--muted:#5a6580;--muted2:#7a8aa8;--accent:#3b7aff;--accent2:#5c94ff;--green:#22d87a;--red:#ff4e6a;--yellow:#ffb83a;--purple:#9f7aff;--cyan:#22d8d8;--font:'Syne',sans-serif;--mono:'JetBrains Mono',monospace;--sidebar:220px;--radius:14px;--radius-sm:8px;}
-  *{margin:0;padding:0;box-sizing:border-box;}
-  body{font-family:var(--font);background:var(--bg);color:var(--text);display:flex;min-height:100vh;}
-  .sidebar{width:var(--sidebar);min-height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:24px 0;position:fixed;left:0;top:0;bottom:0;z-index:100;}
-  .logo{padding:0 20px 24px;border-bottom:1px solid var(--border);margin-bottom:16px;}
-  .logo-name{font-size:17px;font-weight:800;letter-spacing:-0.5px;color:var(--text);line-height:1;}
-  .logo-name span{color:var(--accent2);}
-  .logo-sub{font-size:11px;color:var(--muted);margin-top:4px;font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;}
-  .nav{flex:1;padding:0 12px;display:flex;flex-direction:column;gap:2px;}
-  .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--radius-sm);color:var(--muted2);text-decoration:none;font-size:14px;font-weight:600;transition:all .15s;position:relative;}
-  .nav-item:hover{background:var(--surface2);color:var(--text);}
-  .nav-item.active{background:rgba(59,122,255,.12);color:var(--accent2);}
-  .nav-item.active::before{content:'';position:absolute;left:0;top:20%;bottom:20%;width:3px;background:var(--accent);border-radius:0 3px 3px 0;}
-  .sidebar-footer{padding:16px 12px 0;border-top:1px solid var(--border);}
-  .admin-label{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);padding:8px 12px;font-family:var(--mono);}
-  .admin-dot{width:7px;height:7px;background:var(--green);border-radius:50%;}
-  .logout-btn{width:100%;background:transparent;border:1px solid var(--border2);color:var(--muted2);padding:9px 12px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all .15s;margin-top:8px;}
-  .logout-btn:hover{background:var(--red);border-color:var(--red);color:#fff;}
-  .main{margin-left:var(--sidebar);flex:1;min-height:100vh;display:flex;flex-direction:column;}
-  .topbar{height:60px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 28px;gap:16px;background:var(--surface);position:sticky;top:0;z-index:50;}
-  .page-title{font-size:18px;font-weight:800;letter-spacing:-0.5px;}
-  .topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
-  .content{padding:28px;flex:1;}
-  .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius-sm);font-size:12px;font-weight:700;cursor:pointer;border:none;font-family:var(--font);transition:all .15s;text-decoration:none;white-space:nowrap;}
-  .btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--muted2);}
-  .btn-ghost:hover{background:var(--surface2);color:var(--text);}
-  .btn-danger{background:rgba(255,78,106,.1);color:var(--red);border:1px solid rgba(255,78,106,.2);}
-  .btn-danger:hover{background:var(--red);color:#fff;border-color:var(--red);}
-  .btn-sm{padding:5px 10px;font-size:11px;}
-  .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
-  table{width:100%;border-collapse:collapse;font-size:13px;}
-  thead th{background:var(--surface2);padding:10px 16px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);font-family:var(--mono);border-bottom:1px solid var(--border);white-space:nowrap;}
-  tbody tr{border-bottom:1px solid var(--border);transition:background .1s;}
-  tbody tr:last-child{border-bottom:none;}
-  tbody tr:hover{background:rgba(19,23,32,.7);}
-  tbody td{padding:11px 16px;vertical-align:middle;}
-  .mono{font-family:var(--mono);font-size:12px;}
-  .text-muted{color:var(--muted2);}
-  .action-bar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
-  .search-wrap{position:relative;flex:1;max-width:300px;}
-  .search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none;}
-  .search-input{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:8px 12px 8px 34px;color:var(--text);font-size:13px;font-family:var(--font);outline:none;width:100%;transition:border-color .15s;}
-  .search-input:focus{border-color:var(--accent);}
-  .search-input::placeholder{color:var(--muted);}
-  .key-chip{font-family:var(--mono);font-size:11px;background:var(--surface2);border:1px solid var(--border2);border-radius:5px;padding:2px 7px;color:var(--accent2);}
-  .fp-text{font-family:var(--mono);font-size:11px;color:var(--muted2);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .copy-btn{background:none;border:none;cursor:pointer;color:var(--muted);font-size:12px;padding:2px 4px;border-radius:4px;transition:color .15s;}
-  .copy-btn:hover{color:var(--accent2);}
-  .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;font-family:var(--mono);}
-  .badge::before{content:'';width:5px;height:5px;border-radius:50%;}
-  .badge-green{background:rgba(34,216,122,.1);color:var(--green);border:1px solid rgba(34,216,122,.2);}
-  .badge-green::before{background:var(--green);}
-  .toast-wrap{position:fixed;bottom:24px;right:24px;z-index:2000;display:flex;flex-direction:column;gap:8px;}
-  .toast{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:12px 16px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;animation:toastIn .2s ease;min-width:240px;box-shadow:0 8px 24px rgba(0,0,0,.4);}
-  .toast.ok{border-color:rgba(34,216,122,.3);}
-  .toast.err{border-color:rgba(255,78,106,.3);}
-  @keyframes toastIn{from{opacity:0;transform:translateX(16px);}to{opacity:1;transform:translateX(0);}}
-  ::-webkit-scrollbar{width:6px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
-  .device-icon{width:32px;height:32px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
-  .device-cell{display:flex;align-items:center;gap:10px;}
-  .nav-icon{font-size:16px;width:20px;text-align:center;}
-</style>
+  <meta charset="utf-8" />
+  <title>Устройства · TG Parser Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: #0a0c10;
+      color: #e5e9f0;
+      line-height: 1.5;
+    }
+
+    .app {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      width: 280px;
+      background: #0f1217;
+      border-right: 1px solid #1e242c;
+      padding: 24px 16px;
+      position: fixed;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    .logo {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 32px;
+      padding-left: 12px;
+    }
+
+    .logo span {
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      color: #9aa4b2;
+      margin-bottom: 4px;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .nav-item.active {
+      background: #1a1f2a;
+      color: #fff;
+    }
+
+    .nav-item i {
+      width: 20px;
+      font-size: 18px;
+    }
+
+    .nav-item:hover:not(.active) {
+      background: #151a24;
+      color: #e5e9f0;
+    }
+
+    .main {
+      flex: 1;
+      margin-left: 280px;
+      padding: 32px 40px;
+      background: #0a0c10;
+      min-height: 100vh;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+    }
+
+    .header h1 {
+      font-size: 28px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .admin-badge {
+      background: #1a1f2a;
+      padding: 8px 16px;
+      border-radius: 40px;
+      font-size: 14px;
+      color: #9aa4b2;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .logout-btn {
+      background: #2d3340;
+      border: none;
+      color: #ff7b7b;
+      padding: 8px 20px;
+      border-radius: 40px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .logout-btn:hover {
+      background: #3a4050;
+    }
+
+    .action-bar {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .search-box {
+      flex: 1;
+      display: flex;
+      gap: 8px;
+    }
+
+    .search-box input {
+      flex: 1;
+      background: #0f1217;
+      border: 1px solid #1e242c;
+      border-radius: 40px;
+      padding: 12px 20px;
+      color: #e5e9f0;
+      font-size: 14px;
+    }
+
+    .search-box input:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+
+    .btn-primary {
+      background: #3b82f6;
+      border: none;
+      border-radius: 40px;
+      padding: 12px 32px;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .table-container {
+      background: #0f1217;
+      border: 1px solid #1e242c;
+      border-radius: 20px;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th {
+      text-align: left;
+      padding: 18px 16px;
+      color: #9aa4b2;
+      font-weight: 500;
+      border-bottom: 1px solid #1e242c;
+    }
+
+    td {
+      padding: 16px;
+      border-bottom: 1px solid #1e242c;
+    }
+
+    tr:hover td {
+      background: #151a24;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 40px;
+      font-size: 12px;
+      font-weight: 500;
+      background: rgba(124, 255, 178, 0.1);
+      color: #7CFFB2;
+      border: 1px solid rgba(124, 255, 178, 0.2);
+    }
+
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+    }
+
+    .fingerprint {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: #9aa4b2;
+    }
+
+    .footer-note {
+      margin-top: 20px;
+      color: #6b7a8f;
+      font-size: 13px;
+      text-align: center;
+    }
+  </style>
 </head>
 <body>
-
-<div class="sidebar">
-  <div class="logo">
-    <div class="logo-name"><span>TG</span> Parser Sender</div>
-    <div class="logo-sub">Admin Panel</div>
-  </div>
-  <nav class="nav">
-    <a href="/admin" class="nav-item {% if active_tab == 'dashboard' %}active{% endif %}"><span class="nav-icon">◈</span> Дашборд</a>
-    <a href="/admin/licenses" class="nav-item {% if active_tab == 'licenses' %}active{% endif %}"><span class="nav-icon">⌗</span> Лицензии</a>
-    <a href="/admin/users" class="nav-item {% if active_tab == 'users' %}active{% endif %}"><span class="nav-icon">◉</span> Пользователи</a>
-    <a href="/admin/devices" class="nav-item {% if active_tab == 'devices' %}active{% endif %}"><span class="nav-icon">⊟</span> Устройства</a>
-    <a href="/admin/transactions" class="nav-item {% if active_tab == 'transactions' %}active{% endif %}"><span class="nav-icon">≋</span> Транзакции</a>
-    <a href="/admin/settings" class="nav-item {% if active_tab == 'settings' %}active{% endif %}"><span class="nav-icon">⌘</span> Настройки</a>
-  </nav>
-  <div class="sidebar-footer">
-    <div class="admin-label"><span class="admin-dot"></span>admin online</div>
-    <form method="post" action="/admin/logout"><button class="logout-btn">↩ Выйти</button></form>
-  </div>
-</div>
-
-<div class="main">
-  <div class="topbar">
-    <span class="page-title">Устройства</span>
-    <div class="topbar-right">
-      <span class="mono text-muted" style="font-size:12px;">{{ devices|length }} активных</span>
+<div class="app">
+  <!-- Сайдбар -->
+  <div class="sidebar">
+    <div class="logo">
+      <span>TG Parser</span> Sender
     </div>
+    
+    <a href="/admin" class="nav-item {% if active_tab == 'dashboard' %}active{% endif %}">
+      <i>📊</i> Дашборд
+    </a>
+    <a href="/admin/licenses" class="nav-item {% if active_tab == 'licenses' %}active{% endif %}">
+      <i>🔑</i> Лицензии
+    </a>
+    <a href="/admin/users" class="nav-item {% if active_tab == 'users' %}active{% endif %}">
+      <i>👥</i> Пользователи
+    </a>
+    <a href="/admin/devices" class="nav-item {% if active_tab == 'devices' %}active{% endif %}">
+      <i>💻</i> Устройства
+    </a>
+    <a href="/admin/transactions" class="nav-item {% if active_tab == 'transactions' %}active{% endif %}">
+      <i>💰</i> Транзакции
+    </a>
+    <a href="/admin/settings" class="nav-item {% if active_tab == 'settings' %}active{% endif %}">
+      <i>⚙️</i> Настройки
+    </a>
   </div>
-  <div class="content">
-    <div class="action-bar">
-      <div class="search-wrap">
-        <span class="search-icon">⌕</span>
-        <input class="search-input" placeholder="Email, название, fingerprint..." oninput="filterDevices(this.value)">
+
+  <!-- Основной контент -->
+  <div class="main">
+    <div class="header">
+      <h1>Устройства</h1>
+      <div class="header-right">
+        <div class="admin-badge">
+          <span>👑</span> Администратор
+        </div>
+        <form method="post" action="/admin/logout" style="margin:0;">
+          <button class="logout-btn" type="submit">Выйти</button>
+        </form>
       </div>
     </div>
-    <div class="table-wrap">
-      <table id="devTable">
+
+    <!-- Поиск -->
+    <div class="action-bar">
+      <div class="search-box">
+        <input type="text" placeholder="🔍 Поиск по имени устройства, email...">
+        <button class="btn-primary">Найти</button>
+      </div>
+    </div>
+
+    <!-- Таблица устройств -->
+    <div class="table-container">
+      <table>
         <thead>
           <tr>
-            <th>Устройство</th>
             <th>Пользователь</th>
-            <th>Лицензия</th>
+            <th>Ключ</th>
+            <th>Устройство</th>
             <th>Fingerprint</th>
             <th>IP</th>
             <th>Последний вход</th>
-            <th>Действие</th>
+            <th>Добавлено</th>
           </tr>
         </thead>
         <tbody>
-          {% for d in devices %}
+        {% for d in devices %}
           <tr>
+            <td>{{ d.email }}</td>
+            <td class="mono">{{ d.license_key or '—' }}</td>
             <td>
-              <div class="device-cell">
-                <div class="device-icon">💻</div>
-                <div>
-                  <div style="font-size:13px;font-weight:600;">{{ d.device_name or 'Без имени' }}</div>
-                  <div style="font-size:11px;color:var(--muted);font-family:var(--mono);">id:{{ d.id }}</div>
-                </div>
-              </div>
+              <span class="badge">{{ d.device_name or 'Без имени' }}</span>
             </td>
-            <td>
-              <span style="font-size:13px;">{{ d.email }}</span>
-              <button class="copy-btn" onclick="copyText('{{ d.email }}')">⎘</button>
-            </td>
-            <td>
-              {% if d.license_key %}
-                <span class="key-chip">{{ d.license_key }}</span>
-              {% else %}
-                <span class="text-muted">—</span>
-              {% endif %}
-            </td>
-            <td>
-              <span class="fp-text" title="{{ d.device_fingerprint }}">{{ d.device_fingerprint }}</span>
-              <button class="copy-btn" onclick="copyText('{{ d.device_fingerprint }}')">⎘</button>
-            </td>
-            <td><span class="mono text-muted">{{ d.last_ip or '—' }}</span></td>
-            <td><span class="mono text-muted">{{ d.last_login.strftime('%d.%m.%y %H:%M') if d.last_login else '—' }}</span></td>
-            <td>
-              <button class="btn btn-danger btn-sm" onclick="unlinkDevice({{ d.id }}, '{{ d.device_name or 'устройство' }}')">
-                ✕ Отвязать
-              </button>
-            </td>
+            <td class="fingerprint">{{ d.device_fingerprint[:16] }}...</td>
+            <td>{{ d.last_ip or '—' }}</td>
+            <td>{{ d.last_login.strftime('%Y-%m-%d %H:%M') if d.last_login else '—' }}</td>
+            <td>{{ d.created_at.strftime('%Y-%m-%d') if d.created_at else '—' }}</td>
           </tr>
-          {% else %}
-          <tr><td colspan="7" style="padding:40px;text-align:center;color:var(--muted);">Устройств нет</td></tr>
-          {% endfor %}
+        {% endfor %}
         </tbody>
       </table>
     </div>
+
+    <div class="footer-note">
+      Показано максимум 500 записей
+    </div>
   </div>
 </div>
-
-<div class="toast-wrap" id="toasts"></div>
-
-<script>
-  function filterDevices(q) {
-    q = q.toLowerCase();
-    document.querySelectorAll('#devTable tbody tr').forEach(r => {
-      r.style.display = !q || r.textContent.toLowerCase().includes(q) ? '' : 'none';
-    });
-  }
-
-  async function unlinkDevice(id, name) {
-    if (!confirm('Отвязать устройство "' + name + '"?\nСессия будет прервана.')) return;
-    try {
-      const res = await fetch('/admin/api/unlink-device', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ device_id: id })
-      });
-      const d = await res.json();
-      if (d.success) { showToast('✓ Устройство отвязано', 'ok'); setTimeout(()=>location.reload(), 800); }
-      else showToast('Ошибка: ' + (d.error||'?'), 'err');
-    } catch(e) { showToast('Ошибка сети', 'err'); }
-  }
-
-  function copyText(t) { navigator.clipboard.writeText(t).then(()=>showToast('⎘ Скопировано', 'ok')); }
-  function showToast(msg, type='ok') {
-    const w = document.getElementById('toasts');
-    const t = document.createElement('div');
-    t.className = 'toast ' + type;
-    t.textContent = msg;
-    w.appendChild(t);
-    setTimeout(()=>t.remove(), 3000);
-  }
-</script>
 </body>
 </html>
