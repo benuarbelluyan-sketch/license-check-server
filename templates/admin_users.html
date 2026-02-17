@@ -5,71 +5,75 @@
   <title>Пользователи · TG Parser Admin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Inter', system-ui, sans-serif; background: #0a0c10; color: #e5e9f0; line-height: 1.5; }
-    .app { display: flex; min-height: 100vh; }
-    .sidebar { width: 220px; background: #0d1117; border-right: 1px solid #1e2530; padding: 24px 0; flex-shrink: 0; }
-    .sidebar-logo { padding: 0 20px 24px; font-weight: 700; font-size: 16px; color: #58a6ff; }
-    .sidebar-logo span { color: #e5e9f0; }
-    .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; color: #8b949e; text-decoration: none; font-size: 14px; transition: all .15s; }
-    .nav-item:hover { background: #161b22; color: #e5e9f0; }
-    .nav-item.active { background: #161b22; color: #58a6ff; border-left: 2px solid #58a6ff; }
-    .main { flex: 1; padding: 28px 32px; }
-    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
-    .page-title { font-size: 22px; font-weight: 700; }
-    .page-count { font-size: 13px; color: #8b949e; margin-top: 2px; }
-    .search-bar { display: flex; gap: 10px; margin-bottom: 20px; }
-    .search-bar input { flex: 1; background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 10px 14px; color: #e5e9f0; font-size: 14px; outline: none; }
-    .search-bar input:focus { border-color: #58a6ff; }
-    .search-bar button { background: #238636; border: none; border-radius: 8px; padding: 10px 18px; color: #fff; font-size: 14px; cursor: pointer; }
-    .table-wrap { background: #0d1117; border: 1px solid #1e2530; border-radius: 12px; overflow: hidden; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #1a202c; line-height: 1.6; min-height: 100vh; }
+    .container { max-width: 1400px; margin: 0 auto; padding: 40px 24px; }
+    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; }
+    .logo { display: flex; align-items: center; gap: 12px; }
+    .logo-icon { width: 48px; height: 48px; background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; border: 1px solid rgba(255,255,255,0.3); }
+    .logo-text { font-size: 20px; font-weight: 700; color: #fff; }
+    .logout-btn { background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3); border-radius: 12px; padding: 10px 20px; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+    .logout-btn:hover { background: rgba(255,255,255,0.3); }
+    .nav { background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); border-radius: 16px; padding: 8px; display: flex; gap: 4px; margin-bottom: 32px; overflow-x: auto; }
+    .nav-item { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 10px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s; white-space: nowrap; }
+    .nav-item:hover { background: rgba(255,255,255,0.15); color: #fff; }
+    .nav-item.active { background: #fff; color: #667eea; box-shadow: 0 4px 14px rgba(0,0,0,0.1); }
+    .table-card { background: #fff; border-radius: 20px; padding: 28px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    .table-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .table-title { font-size: 18px; font-weight: 700; color: #1a202c; }
+    .search-box { flex: 1; max-width: 400px; margin-left: 20px; }
+    .search-input { width: 100%; background: #f7fafc; border: 2px solid #e2e8f0; border-radius: 12px; padding: 10px 16px; font-size: 14px; transition: all 0.3s; }
+    .search-input:focus { outline: none; border-color: #667eea; background: #fff; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+    .table-wrap { overflow-x: auto; margin: 0 -28px; padding: 0 28px; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    thead { background: #161b22; }
-    th { padding: 12px 14px; text-align: left; color: #8b949e; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
-    td { padding: 12px 14px; border-top: 1px solid #1e2530; vertical-align: middle; }
-    tr:hover td { background: #161b22; }
-    .badge { display: inline-block; padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-    .badge-active { background: #1a3a28; color: #3fb950; }
-    .badge-expired { background: #3a2020; color: #f85149; }
-    .badge-nokey { background: #1e2530; color: #8b949e; }
-    .badge-confirmed { background: #1a2e4a; color: #58a6ff; }
-    .badge-unconfirmed { background: #2a1f10; color: #d29922; }
-    .user-key { font-size: 11px; color: #8b949e; font-family: monospace; }
-    .btn-view { display: inline-flex; align-items: center; gap: 5px; background: #21262d; border: 1px solid #30363d; border-radius: 6px; padding: 5px 12px; color: #e5e9f0; font-size: 12px; text-decoration: none; transition: all .15s; }
-    .btn-view:hover { background: #30363d; border-color: #58a6ff; color: #58a6ff; }
-    .empty { text-align: center; padding: 60px; color: #8b949e; }
-    .logout-btn { background: none; border: 1px solid #30363d; border-radius: 6px; padding: 7px 14px; color: #8b949e; font-size: 13px; cursor: pointer; }
-    .logout-btn:hover { border-color: #f85149; color: #f85149; }
-    .days-ok { color: #3fb950; font-size: 11px; }
-    .days-warn { color: #d29922; font-size: 11px; }
-    .days-exp { color: #f85149; font-size: 11px; }
+    thead { background: #f7fafc; }
+    th { padding: 12px 16px; text-align: left; color: #718096; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+    td { padding: 16px; border-top: 1px solid #f7fafc; vertical-align: middle; }
+    tr:hover td { background: #f7fafc; }
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .badge-verified { background: #c6f6d5; color: #22543d; }
+    .badge-unverified { background: #feebc8; color: #7c2d12; }
+    .badge-active { background: #c6f6d5; color: #22543d; }
+    .badge-expired { background: #fed7d7; color: #742a2a; }
+    .badge-nokey { background: #e2e8f0; color: #4a5568; }
+    .key-text { font-family: monospace; font-size: 11px; color: #718096; }
+    .btn-view { display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; border-radius: 8px; padding: 8px 16px; font-size: 12px; font-weight: 600; color: #fff; text-decoration: none; transition: all 0.3s; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3); }
+    .btn-view:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); }
+    .empty { text-align: center; padding: 60px; color: #a0aec0; }
+    .empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.3; }
+    @media (max-width: 768px) { .table-header { flex-direction: column; align-items: flex-start; gap: 16px; } .search-box { width: 100%; max-width: none; margin-left: 0; } }
   </style>
 </head>
 <body>
-<div class="app">
-  <nav class="sidebar">
-    <div class="sidebar-logo">TG Parser <span>Admin</span></div>
-    <a href="/admin" class="nav-item"><span>📊</span> Дашборд</a>
-    <a href="/admin/users" class="nav-item active"><span>👥</span> Пользователи</a>
-    <a href="/admin/licenses" class="nav-item"><span>🔑</span> Лицензии</a>
-    <a href="/admin/devices" class="nav-item"><span>💻</span> Устройства</a>
-    <a href="/admin/transactions" class="nav-item"><span>💳</span> Транзакции</a>
-    <a href="/admin/settings" class="nav-item"><span>⚙️</span> Настройки</a>
+<div class="container">
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">👥</div>
+      <div class="logo-text">TG Parser Admin</div>
+    </div>
+    <form method="post" action="/admin/logout" style="margin:0;">
+      <button class="logout-btn" type="submit">Выйти</button>
+    </form>
+  </div>
+
+  <nav class="nav">
+    <a href="/admin" class="nav-item">📊 Дашборд</a>
+    <a href="/admin/users" class="nav-item active">👥 Пользователи</a>
+    <a href="/admin/licenses" class="nav-item">🔑 Лицензии</a>
+    <a href="/admin/devices" class="nav-item">💻 Устройства</a>
+    <a href="/admin/transactions" class="nav-item">💳 Транзакции</a>
+    <a href="/admin/settings" class="nav-item">⚙️ Настройки</a>
   </nav>
-  <div class="main">
-    <div class="page-header">
-      <div>
-        <div class="page-title">👥 Пользователи</div>
-        <div class="page-count">{{ users | length }} найдено</div>
-      </div>
-      <form method="post" action="/admin/logout" style="margin:0;">
-        <button class="logout-btn" type="submit">Выйти</button>
+
+  <div class="table-card">
+    <div class="table-header">
+      <div class="table-title">Пользователи ({{ users | length }})</div>
+      <form method="get" action="/admin/users" class="search-box" style="margin:0;">
+        <input type="text" name="q" class="search-input" value="{{ q or '' }}" placeholder="🔍 Поиск по email или ключу..." />
       </form>
     </div>
-    <form method="get" action="/admin/users" class="search-bar">
-      <input type="text" name="q" value="{{ q or '' }}" placeholder="🔍 Поиск по email или ключу..." />
-      <button type="submit">Найти</button>
-    </form>
+
     <div class="table-wrap">
       {% if users %}
       <table>
@@ -77,7 +81,7 @@
           <tr>
             <th>#ID</th>
             <th>Email</th>
-            <th>Ключ / Статус</th>
+            <th>Лицензия</th>
             <th>Баланс</th>
             <th>Устройства</th>
             <th>Регистрация</th>
@@ -88,48 +92,41 @@
           {% for u in users %}
           {% if u.license_expires %}
             {% set diff = (u.license_expires - now).total_seconds() %}
-            {% set days_left = (diff / 86400) | int %}
+            {% set days = (diff / 86400) | int %}
           {% else %}
-            {% set days_left = -1 %}
+            {% set days = -1 %}
           {% endif %}
           <tr>
+            <td style="font-weight:600; color:#718096;">#{{ u.id }}</td>
             <td>
-              <span style="font-weight:600; color:#8b949e;">#{{ u.id }}</span>
-            </td>
-            <td>
-              <div style="font-weight:500;">{{ u.email }}</div>
+              <div style="font-weight:500; margin-bottom:4px;">{{ u.email }}</div>
               {% if u.email_confirmed %}
-                <span class="badge badge-confirmed">✓ email подтверждён</span>
+                <span class="badge badge-verified">✓ подтверждён</span>
               {% else %}
-                <span class="badge badge-unconfirmed">⚠ не подтверждён</span>
+                <span class="badge badge-unverified">⚠ не подтверждён</span>
               {% endif %}
             </td>
             <td>
               {% if u.license_key %}
-                <div class="user-key">{{ u.license_key }}</div>
+                <div class="key-text" style="margin-bottom:4px;">{{ u.license_key }}</div>
                 {% if u.license_revoked %}
                   <span class="badge badge-expired">🚫 отозвана</span>
-                {% elif days_left > 0 %}
-                  <span class="badge badge-active">активна</span>
-                  <span class="{% if days_left > 7 %}days-ok{% elif days_left > 2 %}days-warn{% else %}days-exp{% endif %}">
-                    {{ days_left }}д осталось
-                  </span>
+                {% elif days > 0 %}
+                  <span class="badge badge-active">✅ {{ days }}д</span>
                 {% else %}
-                  <span class="badge badge-expired">истекла</span>
+                  <span class="badge badge-expired">❌ истекла</span>
                 {% endif %}
               {% else %}
                 <span class="badge badge-nokey">нет ключа</span>
               {% endif %}
             </td>
-            <td style="font-weight:600; color:#3fb950;">${{ "%.2f" | format(u.balance | default(0) | float) }}</td>
-            <td style="color:#8b949e;">
-              {{ u.active_devices or 0 }}{% if u.max_devices %}<span style="color:#30363d;">/{{ u.max_devices }}</span>{% endif %}
-            </td>
-            <td style="color:#8b949e; font-size:12px;">
+            <td style="font-weight:600; color:#48bb78;">${{ "%.2f" | format(u.balance | default(0) | float) }}</td>
+            <td style="color:#718096;">{{ u.active_devices or 0 }}{% if u.max_devices %}/{{ u.max_devices }}{% endif %}</td>
+            <td style="color:#a0aec0; font-size:12px;">
               {% if u.created_at %}{{ u.created_at.strftime('%d.%m.%Y') }}{% endif %}
             </td>
             <td>
-              <a href="/admin/users/{{ u.id }}" class="btn-view">👤 Открыть</a>
+              <a href="/admin/users/{{ u.id }}" class="btn-view">Открыть →</a>
             </td>
           </tr>
           {% endfor %}
@@ -137,7 +134,7 @@
       </table>
       {% else %}
       <div class="empty">
-        <div style="font-size:40px; margin-bottom:12px;">👥</div>
+        <div class="empty-icon">👥</div>
         <div>Пользователи не найдены</div>
       </div>
       {% endif %}
