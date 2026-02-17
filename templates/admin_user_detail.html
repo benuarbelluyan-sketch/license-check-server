@@ -5,347 +5,549 @@
   <title>Пользователь #{{ user.id }} · TG Parser Admin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Inter', system-ui, sans-serif; background: #0a0c10; color: #e5e9f0; line-height: 1.5; }
-    .app { display: flex; min-height: 100vh; }
+    body { 
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #1a202c;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
 
-    /* SIDEBAR */
-    .sidebar { width: 220px; background: #0d1117; border-right: 1px solid #1e2530; padding: 24px 0; flex-shrink: 0; }
-    .sidebar-logo { padding: 0 20px 24px; font-weight: 700; font-size: 16px; color: #58a6ff; }
-    .sidebar-logo span { color: #e5e9f0; }
-    .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; color: #8b949e; text-decoration: none; font-size: 14px; transition: all .15s; }
-    .nav-item:hover { background: #161b22; color: #e5e9f0; }
-    .nav-item.active { background: #161b22; color: #58a6ff; border-left: 2px solid #58a6ff; }
+    /* CONTAINER */
+    .container { max-width: 1200px; margin: 0 auto; padding: 40px 24px; }
 
-    /* MAIN */
-    .main { flex: 1; padding: 28px 32px; max-width: 1100px; }
-    .back-link { display: inline-flex; align-items: center; gap: 6px; color: #8b949e; text-decoration: none; font-size: 13px; margin-bottom: 20px; }
-    .back-link:hover { color: #58a6ff; }
+    /* BACK BUTTON */
+    .back-btn { 
+      display: inline-flex; align-items: center; gap: 8px; 
+      background: rgba(255,255,255,0.2); backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.3); border-radius: 12px;
+      padding: 10px 18px; color: #fff; text-decoration: none; font-size: 14px; font-weight: 500;
+      transition: all 0.3s ease; margin-bottom: 24px;
+    }
+    .back-btn:hover { background: rgba(255,255,255,0.3); transform: translateX(-4px); }
 
-    /* PROFILE HEADER */
-    .profile-header { background: #0d1117; border: 1px solid #1e2530; border-radius: 12px; padding: 24px; margin-bottom: 20px; display: flex; align-items: center; gap: 20px; }
-    .avatar { width: 60px; height: 60px; border-radius: 50%; background: #21262d; display: flex; align-items: center; justify-content: center; font-size: 26px; flex-shrink: 0; }
-    .profile-info h2 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
-    .profile-meta { display: flex; gap: 10px; flex-wrap: wrap; }
-    .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-    .badge-green { background: #1a3a28; color: #3fb950; }
-    .badge-red { background: #3a2020; color: #f85149; }
-    .badge-blue { background: #1a2e4a; color: #58a6ff; }
-    .badge-gray { background: #1e2530; color: #8b949e; }
-    .badge-yellow { background: #2a1f10; color: #d29922; }
+    /* PROFILE CARD */
+    .profile-card {
+      background: #fff; border-radius: 24px; padding: 32px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+      margin-bottom: 24px;
+      display: flex; align-items: center; gap: 24px;
+    }
+    .avatar {
+      width: 80px; height: 80px; border-radius: 50%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 36px; color: #fff; flex-shrink: 0;
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+    }
+    .profile-info { flex: 1; }
+    .profile-name { font-size: 24px; font-weight: 700; margin-bottom: 8px; color: #1a202c; }
+    .profile-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+    
+    .tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    }
+    .tag-id { background: #f7fafc; color: #718096; }
+    .tag-verified { background: #c6f6d5; color: #22543d; }
+    .tag-unverified { background: #feebc8; color: #7c2d12; }
+    .tag-active { background: #c6f6d5; color: #22543d; }
+    .tag-expired { background: #fed7d7; color: #742a2a; }
+    .tag-revoked { background: #fed7d7; color: #742a2a; }
+    .tag-gray { background: #e2e8f0; color: #4a5568; }
 
-    /* GRID LAYOUT */
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
-    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .logout-btn {
+      background: rgba(255,255,255,0.2); backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.3); border-radius: 12px;
+      padding: 10px 20px; color: #fff; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: all 0.3s;
+    }
+    .logout-btn:hover { background: rgba(255,255,255,0.3); }
+
+    /* STATS ROW */
+    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 24px; }
+    .stat-card {
+      background: #fff; border-radius: 20px; padding: 24px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      transition: all 0.3s ease;
+    }
+    .stat-card:hover { transform: translateY(-4px); box-shadow: 0 8px 30px rgba(0,0,0,0.12); }
+    .stat-icon {
+      width: 48px; height: 48px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; margin-bottom: 16px;
+    }
+    .stat-icon.green { background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); color: #fff; }
+    .stat-icon.blue { background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%); color: #fff; }
+    .stat-icon.purple { background: linear-gradient(135deg, #9f7aea 0%, #805ad5 100%); color: #fff; }
+    .stat-label { font-size: 13px; color: #718096; font-weight: 500; margin-bottom: 4px; }
+    .stat-value { font-size: 28px; font-weight: 700; color: #1a202c; }
+    .stat-sub { font-size: 12px; color: #a0aec0; margin-top: 4px; }
+
+    /* GRID */
+    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 20px; }
+    .grid-full { margin-bottom: 20px; }
 
     /* CARDS */
-    .card { background: #0d1117; border: 1px solid #1e2530; border-radius: 12px; padding: 20px; }
-    .card-title { font-size: 13px; font-weight: 700; color: #8b949e; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
-    .card-title .icon { font-size: 16px; }
-
-    /* FIELDS */
-    .field { margin-bottom: 12px; }
-    .field label { display: block; font-size: 11px; color: #8b949e; text-transform: uppercase; letter-spacing: .3px; margin-bottom: 5px; }
-    .field-value { font-size: 14px; font-weight: 500; }
-    .field input[type=text], .field input[type=email], .field input[type=number], .field select {
-      width: 100%; background: #161b22; border: 1px solid #30363d; border-radius: 6px;
-      padding: 8px 12px; color: #e5e9f0; font-size: 13px; outline: none;
+    .card {
+      background: #fff; border-radius: 20px; padding: 28px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
     }
-    .field input:focus, .field select:focus { border-color: #58a6ff; }
+    .card-header {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 24px; padding-bottom: 16px;
+      border-bottom: 2px solid #f7fafc;
+    }
+    .card-icon {
+      width: 40px; height: 40px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+    }
+    .card-title { font-size: 16px; font-weight: 700; color: #1a202c; }
 
-    /* STAT BOXES */
-    .stat-box { background: #161b22; border-radius: 8px; padding: 14px 16px; }
-    .stat-label { font-size: 11px; color: #8b949e; margin-bottom: 4px; }
-    .stat-val { font-size: 22px; font-weight: 700; }
-    .stat-sub { font-size: 11px; color: #8b949e; margin-top: 2px; }
+    /* FORM */
+    .form-group { margin-bottom: 20px; }
+    .form-label {
+      display: block; font-size: 13px; font-weight: 600;
+      color: #4a5568; margin-bottom: 8px;
+    }
+    .form-input {
+      width: 100%; background: #f7fafc; border: 2px solid #e2e8f0;
+      border-radius: 12px; padding: 12px 16px; font-size: 14px;
+      color: #1a202c; transition: all 0.3s; font-family: inherit;
+    }
+    .form-input:focus {
+      outline: none; border-color: #667eea;
+      background: #fff; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    .form-input-group {
+      display: flex; gap: 8px; align-items: center;
+    }
+    .form-input-group .form-input { flex: 1; }
+    .form-select {
+      width: 100%; background: #f7fafc; border: 2px solid #e2e8f0;
+      border-radius: 12px; padding: 12px 16px; font-size: 14px;
+      color: #1a202c; cursor: pointer; transition: all 0.3s;
+      font-family: inherit;
+    }
+    .form-select:focus {
+      outline: none; border-color: #667eea;
+      background: #fff; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
 
     /* BUTTONS */
-    .btn { display: inline-flex; align-items: center; gap: 6px; border: none; border-radius: 8px; padding: 9px 16px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; }
-    .btn-primary { background: #238636; color: #fff; }
-    .btn-primary:hover { background: #2ea043; }
-    .btn-blue { background: #1f6feb; color: #fff; }
-    .btn-blue:hover { background: #388bfd; }
-    .btn-yellow { background: #9e6a03; color: #fff; }
-    .btn-yellow:hover { background: #bb8009; }
-    .btn-red { background: #6e2020; color: #f85149; }
-    .btn-red:hover { background: #8e2f2f; }
-    .btn-gray { background: #21262d; color: #e5e9f0; border: 1px solid #30363d; }
-    .btn-gray:hover { background: #30363d; }
-    .btn-sm { padding: 6px 12px; font-size: 12px; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      border: none; border-radius: 12px; padding: 12px 24px;
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      transition: all 0.3s ease; font-family: inherit;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff; box-shadow: 0 4px 14px rgba(102, 126, 234, 0.4);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px); box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+    }
+    .btn-success {
+      background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+      color: #fff; box-shadow: 0 4px 14px rgba(72, 187, 120, 0.4);
+    }
+    .btn-success:hover {
+      transform: translateY(-2px); box-shadow: 0 6px 20px rgba(72, 187, 120, 0.5);
+    }
+    .btn-warning {
+      background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+      color: #fff; box-shadow: 0 4px 14px rgba(237, 137, 54, 0.4);
+    }
+    .btn-warning:hover {
+      transform: translateY(-2px); box-shadow: 0 6px 20px rgba(237, 137, 54, 0.5);
+    }
+    .btn-danger {
+      background: linear-gradient(135deg, #fc8181 0%, #f56565 100%);
+      color: #fff; box-shadow: 0 4px 14px rgba(252, 129, 129, 0.4);
+    }
+    .btn-danger:hover {
+      transform: translateY(-2px); box-shadow: 0 6px 20px rgba(252, 129, 129, 0.5);
+    }
+    .btn-secondary {
+      background: #e2e8f0; color: #4a5568;
+    }
+    .btn-secondary:hover {
+      background: #cbd5e0; transform: translateY(-2px);
+    }
+    
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
 
-    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    /* DEVICES */
+    .device-item {
+      display: flex; align-items: center; justify-content: space-between;
+      background: #f7fafc; border-radius: 12px; padding: 16px;
+      margin-bottom: 10px; transition: all 0.3s;
+    }
+    .device-item:hover { background: #edf2f7; transform: translateX(4px); }
+    .device-info { display: flex; align-items: center; gap: 12px; }
+    .device-status {
+      width: 10px; height: 10px; border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .device-status.active { background: #48bb78; box-shadow: 0 0 0 3px rgba(72, 187, 120, 0.2); }
+    .device-status.inactive { background: #cbd5e0; }
+    .device-name { font-weight: 600; color: #1a202c; }
+    .device-meta { font-size: 12px; color: #718096; }
+    .btn-icon {
+      width: 32px; height: 32px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      background: #fff; border: 2px solid #e2e8f0;
+      color: #f56565; cursor: pointer; transition: all 0.3s;
+    }
+    .btn-icon:hover {
+      background: #fed7d7; border-color: #fc8181; transform: scale(1.1);
+    }
 
-    /* TABLE */
-    .mini-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    .mini-table th { padding: 8px 10px; text-align: left; color: #8b949e; font-size: 11px; text-transform: uppercase; border-bottom: 1px solid #1e2530; }
-    .mini-table td { padding: 8px 10px; border-bottom: 1px solid #161b22; vertical-align: middle; }
-    .mini-table tr:last-child td { border-bottom: none; }
+    /* TRANSACTIONS */
+    .transaction-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 0; border-bottom: 1px solid #f7fafc;
+    }
+    .transaction-item:last-child { border-bottom: none; }
+    .trans-info { display: flex; align-items: center; gap: 12px; }
+    .trans-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; flex-shrink: 0;
+    }
+    .trans-icon.positive { background: #c6f6d5; color: #22543d; }
+    .trans-icon.negative { background: #fed7d7; color: #742a2a; }
+    .trans-date { font-size: 12px; color: #a0aec0; }
+    .trans-desc { font-size: 13px; color: #4a5568; margin-top: 2px; }
+    .trans-amount { font-size: 16px; font-weight: 700; }
+    .trans-amount.positive { color: #48bb78; }
+    .trans-amount.negative { color: #f56565; }
 
     /* DIVIDER */
-    .divider { height: 1px; background: #1e2530; margin: 16px 0; }
+    .divider { height: 1px; background: #e2e8f0; margin: 20px 0; }
 
     /* TOAST */
-    #toast { position: fixed; bottom: 24px; right: 24px; background: #238636; color: #fff; padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; display: none; z-index: 999; box-shadow: 0 4px 20px rgba(0,0,0,.4); }
-    #toast.error { background: #6e2020; color: #f85149; }
+    #toast {
+      position: fixed; bottom: 32px; right: 32px;
+      background: #fff; color: #1a202c;
+      padding: 16px 24px; border-radius: 16px;
+      font-size: 14px; font-weight: 600;
+      display: none; z-index: 999;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+      border-left: 4px solid #48bb78;
+    }
+    #toast.error { border-left-color: #f56565; }
 
-    .logout-btn { background: none; border: 1px solid #30363d; border-radius: 6px; padding: 7px 14px; color: #8b949e; font-size: 13px; cursor: pointer; }
-    .logout-btn:hover { border-color: #f85149; color: #f85149; }
+    /* EMPTY STATE */
+    .empty {
+      text-align: center; padding: 40px; color: #a0aec0;
+    }
+    .empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.3; }
 
-    .tag-device { display: inline-flex; align-items: center; gap: 8px; background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 5px 10px; font-size: 12px; margin: 3px; }
-    .tag-device .d-name { font-weight: 500; }
-    .tag-device .d-date { color: #8b949e; }
-    .tag-device button { background: none; border: none; color: #f85149; cursor: pointer; font-size: 14px; line-height: 1; padding: 0; }
+    /* QUICK DAYS */
+    .quick-days {
+      display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;
+    }
+    .day-chip {
+      padding: 6px 14px; border-radius: 20px;
+      background: #f7fafc; border: 2px solid #e2e8f0;
+      font-size: 13px; font-weight: 600; color: #4a5568;
+      cursor: pointer; transition: all 0.3s;
+    }
+    .day-chip:hover {
+      background: #667eea; color: #fff; border-color: #667eea;
+    }
 
-    .amount-plus { color: #3fb950; font-weight: 600; }
-    .amount-minus { color: #f85149; font-weight: 600; }
+    /* VALUE DISPLAY */
+    .value-display {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff; font-size: 16px; font-weight: 700;
+      padding: 12px 20px; border-radius: 12px;
+      display: inline-block; margin: 8px 0;
+    }
 
-    .section-title { font-size: 16px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+    /* RESPONSIVE */
+    @media (max-width: 768px) {
+      .stats-row, .grid-2 { grid-template-columns: 1fr; }
+      .profile-card { flex-direction: column; text-align: center; }
+    }
   </style>
 </head>
 <body>
-<div class="app">
-  <!-- Sidebar -->
-  <nav class="sidebar">
-    <div class="sidebar-logo">TG Parser <span>Admin</span></div>
-    <a href="/admin" class="nav-item">📊 Дашборд</a>
-    <a href="/admin/users" class="nav-item active">👥 Пользователи</a>
-    <a href="/admin/licenses" class="nav-item">🔑 Лицензии</a>
-    <a href="/admin/devices" class="nav-item">💻 Устройства</a>
-    <a href="/admin/transactions" class="nav-item">💳 Транзакции</a>
-    <a href="/admin/settings" class="nav-item">⚙️ Настройки</a>
-  </nav>
+<div class="container">
+  <a href="/admin/users" class="back-btn">
+    ← Назад к списку
+  </a>
 
-  <div class="main">
-    <a href="/admin/users" class="back-link">← Назад к пользователям</a>
-
-    <!-- Profile Header -->
-    <div class="profile-header">
-      <div class="avatar">👤</div>
-      <div class="profile-info" style="flex:1;">
-        <h2>{{ user.email }}</h2>
-        <div class="profile-meta">
-          <span class="badge badge-gray">#{{ user.id }}</span>
-          {% if user.email_confirmed %}
-            <span class="badge badge-blue">✓ Email подтверждён</span>
-          {% else %}
-            <span class="badge badge-yellow">⚠ Email не подтверждён</span>
-          {% endif %}
-          {% if user.license_key %}
-            {% if user.license_revoked %}
-              <span class="badge badge-red">🚫 Лицензия отозвана</span>
-            {% elif user.license_expires and user.license_expires > now %}
-              {% set days = ((user.license_expires - now).total_seconds() / 86400) | int %}
-              <span class="badge badge-green">✅ Активна ({{ days }}д)</span>
-            {% else %}
-              <span class="badge badge-red">❌ Лицензия истекла</span>
-            {% endif %}
-          {% else %}
-            <span class="badge badge-gray">Нет лицензии</span>
-          {% endif %}
-          {% if user.created_at %}
-            <span class="badge badge-gray">Регистрация: {{ user.created_at.strftime('%d.%m.%Y') }}</span>
-          {% endif %}
-        </div>
-      </div>
-      <form method="post" action="/admin/logout" style="margin:0;">
-        <button class="logout-btn" type="submit">Выйти</button>
-      </form>
-    </div>
-
-    <!-- Stats Row -->
-    <div class="grid-3" style="margin-bottom:20px;">
-      <div class="stat-box">
-        <div class="stat-label">💰 Баланс</div>
-        <div class="stat-val" style="color:#3fb950;">${{ "%.2f" | format(user.balance | default(0) | float) }}</div>
-        <div class="stat-sub">Доступно</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-label">💻 Устройства</div>
-        <div class="stat-val">{{ devices | selectattr('is_active') | list | length }}<span style="font-size:14px; color:#8b949e;">/{{ user.max_devices or 1 }}</span></div>
-        <div class="stat-sub">Активных</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-label">📋 Транзакции</div>
-        <div class="stat-val">{{ transactions | length }}</div>
-        <div class="stat-sub">Последние 50</div>
-      </div>
-    </div>
-
-    <!-- ROW 1: Email + Password -->
-    <div class="grid-2">
-      <!-- Email Management -->
-      <div class="card">
-        <div class="card-title"><span class="icon">📧</span> Email</div>
-        <div class="field">
-          <label>Текущий email</label>
-          <input type="email" id="email-input" value="{{ user.email }}" />
-        </div>
-        <div class="btn-row">
-          <button class="btn btn-primary btn-sm" onclick="updateEmail()">💾 Сохранить email</button>
-          <button class="btn btn-blue btn-sm" onclick="confirmEmail()">✓ Подтвердить email</button>
-        </div>
-      </div>
-
-      <!-- Password Reset -->
-      <div class="card">
-        <div class="card-title"><span class="icon">🔐</span> Пароль</div>
-        <div class="field">
-          <label>Email для отправки ссылки</label>
-          <input type="text" id="reset-email" value="{{ user.email }}" />
-        </div>
-        <div class="btn-row">
-          <button class="btn btn-yellow btn-sm" onclick="resetPassword()">📩 Отправить сброс пароля</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ROW 2: License + Balance -->
-    <div class="grid-2">
-      <!-- License Management -->
-      <div class="card">
-        <div class="card-title"><span class="icon">🔑</span> Лицензия</div>
-        {% if user.license_key %}
-        <div class="field">
-          <label>Ключ</label>
-          <div class="field-value" style="font-family:monospace; font-size:12px; color:#8b949e;">{{ user.license_key }}</div>
-        </div>
-        <div class="field">
-          <label>Истекает</label>
-          <div class="field-value">
-            {% if user.license_expires %}
-              {{ user.license_expires.strftime('%d.%m.%Y %H:%M') }}
-            {% else %}
-              —
-            {% endif %}
-          </div>
-        </div>
-        <div class="field">
-          <label>Продлить на</label>
-          <select id="extend-days">
-            <option value="7">7 дней</option>
-            <option value="30" selected>30 дней</option>
-            <option value="90">90 дней</option>
-            <option value="180">180 дней</option>
-            <option value="365">1 год</option>
-          </select>
-        </div>
-        <div class="btn-row">
-          <button class="btn btn-primary btn-sm" onclick="extendLicense()">➕ Продлить</button>
-          {% if user.license_revoked %}
-            <button class="btn btn-blue btn-sm" onclick="revokeLicense(false)">✅ Восстановить</button>
-          {% else %}
-            <button class="btn btn-red btn-sm" onclick="revokeLicense(true)">🚫 Отозвать</button>
-          {% endif %}
-        </div>
+  <!-- Profile Header -->
+  <div class="profile-card">
+    <div class="avatar">👤</div>
+    <div class="profile-info">
+      <div class="profile-name">{{ user.email }}</div>
+      <div class="profile-tags">
+        <span class="tag tag-id">#{{ user.id }}</span>
+        {% if user.email_confirmed %}
+          <span class="tag tag-verified">✓ Email подтверждён</span>
         {% else %}
-        <div style="color:#8b949e; font-size:13px;">У пользователя нет лицензии</div>
+          <span class="tag tag-unverified">⚠ Email не подтверждён</span>
+        {% endif %}
+        {% if user.license_key %}
+          {% if user.license_revoked %}
+            <span class="tag tag-revoked">🚫 Лицензия отозвана</span>
+          {% elif user.license_expires and user.license_expires > now %}
+            {% set days = ((user.license_expires - now).total_seconds() / 86400) | int %}
+            <span class="tag tag-active">✅ Активна ({{ days }}д)</span>
+          {% else %}
+            <span class="tag tag-expired">❌ Истекла</span>
+          {% endif %}
+        {% else %}
+          <span class="tag tag-gray">Нет лицензии</span>
+        {% endif %}
+        {% if user.created_at %}
+          <span class="tag tag-gray">{{ user.created_at.strftime('%d.%m.%Y') }}</span>
         {% endif %}
       </div>
-
-      <!-- Balance & Deposit -->
-      <div class="card">
-        <div class="card-title"><span class="icon">💰</span> Баланс</div>
-        <div class="field">
-          <label>Текущий баланс</label>
-          <div class="stat-val" id="balance-display" style="color:#3fb950; font-size:20px;">${{ "%.2f" | format(user.balance | default(0) | float) }}</div>
-        </div>
-        <div class="divider"></div>
-        <div class="field">
-          <label>Сумма (+ пополнить, - снять)</label>
-          <input type="number" id="deposit-amount" value="10" step="0.01" />
-        </div>
-        <div class="field">
-          <label>Тип операции</label>
-          <select id="deposit-type">
-            <option value="deposit">💳 Пополнение</option>
-            <option value="bonus">🎁 Бонус</option>
-            <option value="refund">↩️ Возврат</option>
-            <option value="withdrawal">📤 Списание</option>
-            <option value="adjustment">🔧 Корректировка</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Комментарий</label>
-          <input type="text" id="deposit-note" placeholder="Причина / источник..." />
-        </div>
-        <div class="btn-row">
-          <button class="btn btn-primary btn-sm" onclick="addDeposit()">💾 Применить</button>
-        </div>
-      </div>
     </div>
-
-    <!-- Devices -->
-    <div class="card" style="margin-bottom:16px;">
-      <div class="card-title"><span class="icon">💻</span> Устройства</div>
-      
-      <div class="field" style="margin-bottom:14px;">
-        <label>Лимит устройств</label>
-        <div style="display:flex; gap:8px; align-items:center;">
-          <input type="number" id="device-limit" value="{{ user.max_devices or 1 }}" min="1" max="20" style="width:80px;" />
-          <button class="btn btn-gray btn-sm" onclick="updateDeviceLimit()">💾 Сохранить лимит</button>
-          <button class="btn btn-red btn-sm" onclick="unlinkAllDevices()">🗑 Сбросить все устройства</button>
-        </div>
-      </div>
-
-      {% if devices %}
-        <div>
-          {% for d in devices %}
-          <div class="tag-device" id="device-{{ d.id }}">
-            <span>{% if d.is_active %}🟢{% else %}⚫{% endif %}</span>
-            <span class="d-name">{{ d.device_name or d.device_fingerprint[:16] ~ '...' }}</span>
-            <span class="d-date">{{ d.last_login.strftime('%d.%m.%Y') if d.last_login else '' }}</span>
-            {% if d.last_ip %}<span style="color:#8b949e; font-size:11px;">{{ d.last_ip }}</span>{% endif %}
-            {% if d.is_active %}
-              <button onclick="unlinkDevice({{ d.id }})" title="Отвязать">✕</button>
-            {% endif %}
-          </div>
-          {% endfor %}
-        </div>
-      {% else %}
-        <div style="color:#8b949e; font-size:13px;">Нет устройств</div>
-      {% endif %}
-    </div>
-
-    <!-- Transactions -->
-    <div class="card">
-      <div class="card-title"><span class="icon">💳</span> Транзакции</div>
-      {% if transactions %}
-      <table class="mini-table">
-        <thead>
-          <tr>
-            <th>Дата</th>
-            <th>Тип</th>
-            <th>Сумма</th>
-            <th>Описание</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for t in transactions %}
-          <tr>
-            <td style="color:#8b949e;">{{ t.created_at.strftime('%d.%m.%Y %H:%M') if t.created_at else '—' }}</td>
-            <td>
-              {% if t.type == 'deposit' %}<span class="badge badge-green">💳 пополнение</span>
-              {% elif t.type == 'bonus' %}<span class="badge badge-blue">🎁 бонус</span>
-              {% elif t.type == 'refund' %}<span class="badge badge-blue">↩️ возврат</span>
-              {% elif t.type == 'withdrawal' %}<span class="badge badge-red">📤 списание</span>
-              {% elif t.type == 'charge' %}<span class="badge badge-red">⚡ расход</span>
-              {% else %}<span class="badge badge-gray">{{ t.type }}</span>
-              {% endif %}
-            </td>
-            <td class="{% if t.amount >= 0 %}amount-plus{% else %}amount-minus{% endif %}">
-              {% if t.amount >= 0 %}+{% endif %}${{ "%.2f" | format(t.amount | float) }}
-            </td>
-            <td style="color:#8b949e;">{{ t.description or '—' }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% else %}
-        <div style="color:#8b949e; font-size:13px;">Транзакций нет</div>
-      {% endif %}
-    </div>
-
+    <form method="post" action="/admin/logout" style="margin:0;">
+      <button class="logout-btn" type="submit">Выйти</button>
+    </form>
   </div>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-icon green">💰</div>
+      <div class="stat-label">Баланс</div>
+      <div class="stat-value" id="balance-display">${{ "%.2f" | format(user.balance | default(0) | float) }}</div>
+      <div class="stat-sub">Доступно для использования</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon blue">💻</div>
+      <div class="stat-label">Устройства</div>
+      <div class="stat-value">{{ devices | selectattr('is_active') | list | length }}<span style="font-size:18px; color:#a0aec0;">/{{ user.max_devices or 1 }}</span></div>
+      <div class="stat-sub">Активных устройств</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon purple">📋</div>
+      <div class="stat-label">Транзакции</div>
+      <div class="stat-value">{{ transactions | length }}</div>
+      <div class="stat-sub">За всё время</div>
+    </div>
+  </div>
+
+  <!-- Email & Password -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">📧</div>
+        <div class="card-title">Email управление</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email адрес</label>
+        <input type="email" class="form-input" id="email-input" value="{{ user.email }}" />
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="updateEmail()">💾 Сохранить</button>
+        <button class="btn btn-success" onclick="confirmEmail()">✓ Подтвердить</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">🔐</div>
+        <div class="card-title">Сброс пароля</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email для отправки ссылки</label>
+        <input type="email" class="form-input" id="reset-email" value="{{ user.email }}" />
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-warning" onclick="resetPassword()">📩 Отправить ссылку</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- License & Balance -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">🔑</div>
+        <div class="card-title">Управление лицензией</div>
+      </div>
+      {% if user.license_key %}
+      <div class="form-group">
+        <label class="form-label">Лицензионный ключ</label>
+        <div class="value-display" style="font-family: monospace; font-size: 13px;">{{ user.license_key }}</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Дата истечения</label>
+        <div style="font-size: 15px; font-weight: 600; color: #4a5568;">
+          {% if user.license_expires %}
+            {{ user.license_expires.strftime('%d.%m.%Y %H:%M') }}
+          {% else %}
+            Не указана
+          {% endif %}
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="form-group">
+        <label class="form-label">Продлить на дней</label>
+        <input type="number" class="form-input" id="extend-days" value="30" min="1" max="3650" step="1" />
+        <div class="quick-days">
+          <span class="day-chip" onclick="document.getElementById('extend-days').value=7">7 дней</span>
+          <span class="day-chip" onclick="document.getElementById('extend-days').value=30">30 дней</span>
+          <span class="day-chip" onclick="document.getElementById('extend-days').value=90">90 дней</span>
+          <span class="day-chip" onclick="document.getElementById('extend-days').value=180">180 дней</span>
+          <span class="day-chip" onclick="document.getElementById('extend-days').value=365">1 год</span>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="extendLicense()">➕ Продлить</button>
+        {% if user.license_revoked %}
+          <button class="btn btn-success" onclick="revokeLicense(false)">✅ Восстановить</button>
+        {% else %}
+          <button class="btn btn-danger" onclick="revokeLicense(true)">🚫 Отозвать</button>
+        {% endif %}
+      </div>
+      {% else %}
+      <div class="empty">
+        <div class="empty-icon">🔑</div>
+        <div>У пользователя нет лицензии</div>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">💰</div>
+        <div class="card-title">Управление балансом</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Текущий баланс</label>
+        <div class="value-display" style="font-size: 24px;">${{ "%.2f" | format(user.balance | default(0) | float) }}</div>
+      </div>
+      <div class="divider"></div>
+      <div class="form-group">
+        <label class="form-label">Сумма (+ пополнить, - снять)</label>
+        <input type="number" class="form-input" id="deposit-amount" value="10.00" step="0.01" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Тип операции</label>
+        <select class="form-select" id="deposit-type">
+          <option value="deposit">💳 Пополнение</option>
+          <option value="bonus">🎁 Бонус</option>
+          <option value="refund">↩️ Возврат</option>
+          <option value="withdrawal">📤 Списание</option>
+          <option value="adjustment">🔧 Корректировка</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Комментарий</label>
+        <input type="text" class="form-input" id="deposit-note" placeholder="Причина операции..." />
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="addDeposit()">💾 Применить операцию</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Devices -->
+  <div class="grid-full">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">💻</div>
+        <div class="card-title">Устройства пользователя</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Лимит устройств</label>
+        <div class="form-input-group">
+          <input type="number" class="form-input" id="device-limit" value="{{ user.max_devices or 1 }}" min="1" max="50" />
+          <button class="btn btn-secondary" onclick="updateDeviceLimit()">💾 Сохранить</button>
+          <button class="btn btn-danger" onclick="unlinkAllDevices()">🗑 Сбросить все</button>
+        </div>
+      </div>
+      <div class="divider"></div>
+      {% if devices %}
+        {% for d in devices %}
+        <div class="device-item" id="device-{{ d.id }}">
+          <div class="device-info">
+            <div class="device-status {% if d.is_active %}active{% else %}inactive{% endif %}"></div>
+            <div>
+              <div class="device-name">{{ d.device_name or 'Устройство' }}</div>
+              <div class="device-meta">
+                {{ d.device_fingerprint[:24] }}... 
+                · {{ d.last_login.strftime('%d.%m.%Y %H:%M') if d.last_login else '—' }}
+                {% if d.last_ip %} · {{ d.last_ip }}{% endif %}
+              </div>
+            </div>
+          </div>
+          {% if d.is_active %}
+            <button class="btn-icon" onclick="unlinkDevice({{ d.id }})" title="Отвязать устройство">×</button>
+          {% endif %}
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty">
+          <div class="empty-icon">💻</div>
+          <div>Нет устройств</div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Transactions -->
+  <div class="grid-full">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">💳</div>
+        <div class="card-title">История транзакций</div>
+      </div>
+      {% if transactions %}
+        {% for t in transactions %}
+        <div class="transaction-item">
+          <div class="trans-info">
+            <div class="trans-icon {% if t.amount >= 0 %}positive{% else %}negative{% endif %}">
+              {% if t.type == 'deposit' %}💳
+              {% elif t.type == 'bonus' %}🎁
+              {% elif t.type == 'refund' %}↩️
+              {% elif t.type == 'withdrawal' %}📤
+              {% elif t.type == 'charge' %}⚡
+              {% else %}📝{% endif %}
+            </div>
+            <div>
+              <div style="font-weight: 600; color: #1a202c;">
+                {% if t.type == 'deposit' %}Пополнение
+                {% elif t.type == 'bonus' %}Бонус
+                {% elif t.type == 'refund' %}Возврат
+                {% elif t.type == 'withdrawal' %}Списание
+                {% elif t.type == 'charge' %}Расход
+                {% else %}{{ t.type }}{% endif %}
+              </div>
+              <div class="trans-date">{{ t.created_at.strftime('%d.%m.%Y %H:%M') if t.created_at else '—' }}</div>
+              <div class="trans-desc">{{ t.description or 'Без описания' }}</div>
+            </div>
+          </div>
+          <div class="trans-amount {% if t.amount >= 0 %}positive{% else %}negative{% endif %}">
+            {% if t.amount >= 0 %}+{% endif %}${{ "%.2f" | format(t.amount | float) }}
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty">
+          <div class="empty-icon">💳</div>
+          <div>Транзакций пока нет</div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
 </div>
 
 <!-- Toast -->
@@ -360,7 +562,7 @@ function toast(msg, isError=false) {
   t.textContent = msg;
   t.className = isError ? 'error' : '';
   t.style.display = 'block';
-  setTimeout(() => t.style.display = 'none', 3000);
+  setTimeout(() => t.style.display = 'none', 3500);
 }
 
 async function api(url, body) {
@@ -374,36 +576,37 @@ async function api(url, body) {
 
 async function updateEmail() {
   const email = document.getElementById('email-input').value.trim();
-  if (!email) return;
+  if (!email) return toast('Введите email', true);
   const res = await api('/admin/api/update-email', {user_id: USER_ID, email});
-  if (res.success) toast('✅ Email обновлён');
+  if (res.success) toast('✅ Email успешно обновлён');
   else toast('❌ Ошибка: ' + (res.detail || 'неизвестная'), true);
 }
 
 async function confirmEmail() {
   const res = await api('/admin/api/confirm-email', {user_id: USER_ID});
-  if (res.success) { toast('✅ Email подтверждён'); setTimeout(() => location.reload(), 1000); }
+  if (res.success) { toast('✅ Email подтверждён'); setTimeout(() => location.reload(), 1200); }
   else toast('❌ Ошибка: ' + (res.detail || 'неизвестная'), true);
 }
 
 async function resetPassword() {
   const email = document.getElementById('reset-email').value.trim();
   const res = await api('/admin/api/reset-password', {user_id: USER_ID, email});
-  if (res.success) toast('📩 Письмо со сбросом пароля отправлено');
+  if (res.success) toast('📩 Ссылка для сброса отправлена на email');
   else toast('❌ Ошибка: ' + (res.detail || 'неизвестная'), true);
 }
 
 async function extendLicense() {
   const days = parseInt(document.getElementById('extend-days').value);
+  if (!days || days < 1) return toast('Введите количество дней', true);
   const res = await api('/admin/api/extend-license', {user_id: USER_ID, days});
-  if (res.success) { toast('✅ Лицензия продлена'); setTimeout(() => location.reload(), 1000); }
+  if (res.success) { toast(`✅ Лицензия продлена на ${days} дней`); setTimeout(() => location.reload(), 1200); }
   else toast('❌ Ошибка: ' + (res.detail || 'неизвестная'), true);
 }
 
 async function revokeLicense(revoked) {
   if (revoked && !confirm('Отозвать лицензию? Пользователь потеряет доступ.')) return;
   const res = await api('/admin/api/revoke-license', {user_id: USER_ID, revoked});
-  if (res.success) { toast(revoked ? '🚫 Лицензия отозвана' : '✅ Лицензия восстановлена'); setTimeout(() => location.reload(), 1000); }
+  if (res.success) { toast(revoked ? '🚫 Лицензия отозвана' : '✅ Лицензия восстановлена'); setTimeout(() => location.reload(), 1200); }
   else toast('❌ Ошибка: ' + (res.detail || 'неизвестная'), true);
 }
 
@@ -411,9 +614,8 @@ async function addDeposit() {
   const amount = parseFloat(document.getElementById('deposit-amount').value);
   const type = document.getElementById('deposit-type').value;
   const note = document.getElementById('deposit-note').value;
-  if (isNaN(amount)) return toast('❌ Введите сумму', true);
+  if (isNaN(amount)) return toast('Введите корректную сумму', true);
   
-  // Для списания делаем отрицательным
   const finalAmount = (type === 'withdrawal' || type === 'charge') ? -Math.abs(amount) : Math.abs(amount);
   
   const res = await api('/admin/api/add-transaction', {
@@ -423,7 +625,7 @@ async function addDeposit() {
     description: note || type
   });
   if (res.success) {
-    toast('✅ Транзакция добавлена, баланс: $' + res.new_balance.toFixed(2));
+    toast(`✅ Операция выполнена! Новый баланс: $${res.new_balance.toFixed(2)}`);
     document.getElementById('balance-display').textContent = '$' + res.new_balance.toFixed(2);
     setTimeout(() => location.reload(), 1500);
   } else {
@@ -433,16 +635,16 @@ async function addDeposit() {
 
 async function updateDeviceLimit() {
   const limit = parseInt(document.getElementById('device-limit').value);
-  if (!LICENSE_KEY) return toast('❌ Нет лицензии', true);
+  if (!LICENSE_KEY) return toast('У пользователя нет лицензии', true);
   const res = await api('/admin/api/update-limit', {key: LICENSE_KEY, max_devices: limit});
   if (res.success) toast('✅ Лимит устройств обновлён');
   else toast('❌ Ошибка: ' + (res.detail || 'неизвестная'), true);
 }
 
 async function unlinkAllDevices() {
-  if (!confirm('Отвязать все устройства? Пользователь будет выброшен со всех сессий.')) return;
+  if (!confirm('Отвязать все устройства? Пользователь будет выброшен из всех сессий.')) return;
   const res = await api('/admin/api/unlink-devices', {user_id: USER_ID});
-  if (res.success) { toast('✅ Сброшено устройств: ' + res.count); setTimeout(() => location.reload(), 1000); }
+  if (res.success) { toast(`✅ Сброшено устройств: ${res.count}`); setTimeout(() => location.reload(), 1200); }
   else toast('❌ Ошибка: ' + (res.detail || 'неизвестная'), true);
 }
 
