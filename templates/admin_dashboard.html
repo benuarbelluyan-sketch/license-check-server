@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Ð”Ð°ÑˆÐ±Ð¾Ñ€Ð´ Â· TG Parser Admin</title>
+  <title>Дашборд · TG Parser Admin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -19,7 +19,7 @@
       min-height: 100vh;
     }
 
-    /* Ð¡Ð°Ð¹Ð´Ð±Ð°Ñ€ */
+    /* Сайдбар */
     .sidebar {
       width: 280px;
       background: #0f1217;
@@ -71,7 +71,7 @@
       color: #e5e9f0;
     }
 
-    /* ÐžÑÐ½Ð¾Ð²Ð½Ð¾Ð¹ ÐºÐ¾Ð½Ñ‚ÐµÐ½Ñ‚ */
+    /* Основной контент */
     .main {
       flex: 1;
       margin-left: 280px;
@@ -423,155 +423,155 @@
 </head>
 <body>
 <div class="app">
-  <!-- Ð¡Ð°Ð¹Ð´Ð±Ð°Ñ€ -->
+  <!-- Сайдбар -->
   <div class="sidebar">
     <div class="logo">
       <span>TG Parser</span> Sender
     </div>
     
     <a href="/admin" class="nav-item {% if active_tab == 'dashboard' %}active{% endif %}">
-      <i>ðŸ“Š</i> Ð”Ð°ÑˆÐ±Ð¾Ñ€Ð´
+      <i>📊</i> Дашборд
     </a>
     <a href="/admin/licenses" class="nav-item {% if active_tab == 'licenses' %}active{% endif %}">
-      <i>ðŸ”‘</i> Ð›Ð¸Ñ†ÐµÐ½Ð·Ð¸Ð¸
+      <i>🔑</i> Лицензии
     </a>
     <a href="/admin/users" class="nav-item {% if active_tab == 'users' %}active{% endif %}">
-      <i>ðŸ‘¥</i> ÐŸÐ¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÐµÐ»Ð¸
+      <i>👥</i> Пользователи
     </a>
     <a href="/admin/devices" class="nav-item {% if active_tab == 'devices' %}active{% endif %}">
-      <i>ðŸ’»</i> Ð£ÑÑ‚Ñ€Ð¾Ð¹ÑÑ‚Ð²Ð°
+      <i>💻</i> Устройства
     </a>
     <a href="/admin/transactions" class="nav-item {% if active_tab == 'transactions' %}active{% endif %}">
-      <i>ðŸ’°</i> Ð¢Ñ€Ð°Ð½Ð·Ð°ÐºÑ†Ð¸Ð¸
+      <i>💰</i> Транзакции
     </a>
     <a href="/admin/settings" class="nav-item {% if active_tab == 'settings' %}active{% endif %}">
-      <i>âš™ï¸</i> ÐÐ°ÑÑ‚Ñ€Ð¾Ð¹ÐºÐ¸
+      <i>⚙️</i> Настройки
     </a>
   </div>
 
-  <!-- ÐžÑÐ½Ð¾Ð²Ð½Ð¾Ð¹ ÐºÐ¾Ð½Ñ‚ÐµÐ½Ñ‚ -->
+  <!-- Основной контент -->
   <div class="main">
     <div class="header">
-      <h1>Ð”Ð°ÑˆÐ±Ð¾Ñ€Ð´</h1>
+      <h1>Дашборд</h1>
       <div class="header-right">
         <div class="admin-badge">
-          <span>ðŸ‘‘</span> ÐÐ´Ð¼Ð¸Ð½Ð¸ÑÑ‚Ñ€Ð°Ñ‚Ð¾Ñ€
+          <span>👑</span> Администратор
         </div>
         <form method="post" action="/admin/logout" style="margin:0;">
-          <button class="logout-btn" type="submit">Ð’Ñ‹Ð¹Ñ‚Ð¸</button>
+          <button class="logout-btn" type="submit">Выйти</button>
         </form>
       </div>
     </div>
 
-    <!-- Ð¡Ñ‚Ð°Ñ‚Ð¸ÑÑ‚Ð¸ÐºÐ° -->
+    <!-- Статистика -->
     <div class="stats-grid">
       <div class="stat-card">
-        <div class="stat-icon">ðŸ”‘</div>
+        <div class="stat-icon">🔑</div>
         <div class="stat-value">{{ stats.total }}</div>
-        <div class="stat-label">Ð’ÑÐµÐ³Ð¾ Ð»Ð¸Ñ†ÐµÐ½Ð·Ð¸Ð¹</div>
+        <div class="stat-label">Всего лицензий</div>
         <div class="stat-detail">
-          <span class="active">{{ stats.active }} Ð°ÐºÑ‚Ð¸Ð²Ð½Ñ‹Ñ…</span>
-          <span class="expired">{{ stats.expired }} Ð¿Ñ€Ð¾ÑÑ€Ð¾Ñ‡ÐµÐ½Ð¾</span>
-          <span class="revoked">{{ stats.revoked }} Ð·Ð°Ð±Ð»Ð¾Ðº.</span>
+          <span class="active">{{ stats.active }} активных</span>
+          <span class="expired">{{ stats.expired }} просрочено</span>
+          <span class="revoked">{{ stats.revoked }} заблок.</span>
         </div>
       </div>
 
       <div class="stat-card">
-        <div class="stat-icon">ðŸ‘¥</div>
+        <div class="stat-icon">👥</div>
         <div class="stat-value">{{ stats.total_users }}</div>
-        <div class="stat-label">ÐŸÐ¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÐµÐ»Ð¸</div>
+        <div class="stat-label">Пользователи</div>
         <div class="stat-detail">
-          <span style="color:#7CFFB2;">{{ stats.confirmed_users }}</span> Ð¿Ð¾Ð´Ñ‚Ð²ÐµÑ€Ð´Ð¸Ð»Ð¸ email
+          <span style="color:#7CFFB2;">{{ stats.confirmed_users }}</span> подтвердили email
         </div>
       </div>
 
       <div class="stat-card">
-        <div class="stat-icon">ðŸ’°</div>
+        <div class="stat-icon">💰</div>
         <div class="stat-value">${{ "%.2f"|format(stats.total_balance | default(0)) }}</div>
-        <div class="stat-label">Ð‘Ð°Ð»Ð°Ð½Ñ</div>
+        <div class="stat-label">Баланс</div>
         <div class="stat-detail">
-          Ð¿Ð¾Ñ‚Ñ€Ð°Ñ‡ÐµÐ½Ð¾: ${{ "%.2f"|format(stats.total_revenue | default(0)) }}
+          потрачено: ${{ "%.2f"|format(stats.total_revenue | default(0)) }}
         </div>
       </div>
 
       <div class="stat-card">
-        <div class="stat-icon">ðŸ’»</div>
+        <div class="stat-icon">💻</div>
         <div class="stat-value">{{ stats.total_devices }}</div>
-        <div class="stat-label">Ð£ÑÑ‚Ñ€Ð¾Ð¹ÑÑ‚Ð²Ð°</div>
+        <div class="stat-label">Устройства</div>
         <div class="stat-detail">
-          Ñƒ {{ stats.users_with_devices }} Ð¿Ð¾Ð»ÑŒÐ·Ð¾Ð²Ð°Ñ‚ÐµÐ»ÐµÐ¹
+          у {{ stats.users_with_devices }} пользователей
         </div>
       </div>
     </div>
 
-    <!-- ÐŸÐ¾Ð¸ÑÐº Ð¸ Ñ„Ð¸Ð»ÑŒÑ‚Ñ€ -->
+    <!-- Поиск и фильтр -->
     <div class="action-bar">
       <div class="search-box">
-        <input type="text" placeholder="ðŸ” ÐŸÐ¾Ð¸ÑÐº Ð¿Ð¾ key, hwid, note..." value="{{ q or '' }}">
+        <input type="text" placeholder="🔍 Поиск по key, hwid, note..." value="{{ q or '' }}">
         <select>
-          <option value="all" {% if status=="all" %}selected{% endif %}>Ð’ÑÐµ ÑÑ‚Ð°Ñ‚ÑƒÑÑ‹</option>
+          <option value="all" {% if status=="all" %}selected{% endif %}>Все статусы</option>
           <option value="active" {% if status=="active" %}selected{% endif %}>Active</option>
           <option value="expired" {% if status=="expired" %}selected{% endif %}>Expired</option>
           <option value="revoked" {% if status=="revoked" %}selected{% endif %}>Revoked</option>
         </select>
-        <button class="btn-primary">ÐÐ°Ð¹Ñ‚Ð¸</button>
+        <button class="btn-primary">Найти</button>
       </div>
       <a href="/admin/export" style="text-decoration:none;">
-        <button class="btn-secondary">ðŸ“¥ Ð­ÐºÑÐ¿Ð¾Ñ€Ñ‚ CSV</button>
+        <button class="btn-secondary">📥 Экспорт CSV</button>
       </a>
     </div>
 
-    <!-- Ð¡Ð¾Ð·Ð´Ð°Ð½Ð¸Ðµ Ð»Ð¸Ñ†ÐµÐ½Ð·Ð¸Ð¸ -->
+    <!-- Создание лицензии -->
     <div class="create-card">
-      <h3>âœ¨ Ð¡Ð¾Ð·Ð´Ð°Ñ‚ÑŒ Ð½Ð¾Ð²ÑƒÑŽ Ð»Ð¸Ñ†ÐµÐ½Ð·Ð¸ÑŽ</h3>
+      <h3>✨ Создать новую лицензию</h3>
       <form method="post" action="/admin/upsert">
         <div class="form-grid">
           <div class="form-group">
-            <input name="key" placeholder="KEY (Ð½Ð°Ð¿Ñ€Ð¸Ð¼ÐµÑ€ MY-PC-001)" required>
+            <input name="key" placeholder="KEY (например MY-PC-001)" required>
           </div>
           <div class="form-group">
-            <input name="hwid" placeholder="HWID (UUID ÐºÐ»Ð¸ÐµÐ½Ñ‚Ð°)" required>
+            <input name="hwid" placeholder="HWID (UUID клиента)" required>
           </div>
           <div class="form-group">
-            <input name="days" type="number" placeholder="Ð¡Ñ€Ð¾Ðº (Ð´Ð½Ð¸)" value="30" required>
+            <input name="days" type="number" placeholder="Срок (дни)" value="30" required>
           </div>
           <div class="form-group">
             <select name="plan">
-              <option value="custom">custom (Ð±Ð°Ð·Ð¾Ð²Ñ‹Ð¹)</option>
-              <option value="m1">m1 (1 Ð¼ÐµÑÑÑ†)</option>
-              <option value="m3">m3 (3 Ð¼ÐµÑÑÑ†Ð°)</option>
-              <option value="m6">m6 (6 Ð¼ÐµÑÑÑ†ÐµÐ²)</option>
-              <option value="y1">y1 (1 Ð³Ð¾Ð´)</option>
+              <option value="custom">custom (базовый)</option>
+              <option value="m1">m1 (1 месяц)</option>
+              <option value="m3">m3 (3 месяца)</option>
+              <option value="m6">m6 (6 месяцев)</option>
+              <option value="y1">y1 (1 год)</option>
             </select>
           </div>
           <div class="form-group">
-            <input name="note" placeholder="Ð—Ð°Ð¼ÐµÑ‚ÐºÐ° (Ð½ÐµÐ¾Ð±ÑÐ·Ð°Ñ‚ÐµÐ»ÑŒÐ½Ð¾)">
+            <input name="note" placeholder="Заметка (необязательно)">
           </div>
         </div>
         <div class="generate-section">
-          <button class="btn-primary" type="submit">ðŸ’¾ Ð¡Ð¾Ñ…Ñ€Ð°Ð½Ð¸Ñ‚ÑŒ Ð»Ð¸Ñ†ÐµÐ½Ð·Ð¸ÑŽ</button>
-          <span style="color:#9aa4b2;">Ð¸Ð»Ð¸</span>
-          <button class="btn-secondary" type="button" onclick="alert('Ð¡Ð³ÐµÐ½ÐµÑ€Ð¸Ñ€Ð¾Ð²Ð°Ð½: VIP-' + Math.random().toString(36).substring(7).toUpperCase())">ðŸŽ² Generate KEY</button>
+          <button class="btn-primary" type="submit">💾 Сохранить лицензию</button>
+          <span style="color:#9aa4b2;">или</span>
+          <button class="btn-secondary" type="button" onclick="alert('Сгенерирован: VIP-' + Math.random().toString(36).substring(7).toUpperCase())">🎲 Generate KEY</button>
           <span style="color:#6b7a8f; font-size:13px; margin-left:auto;">
-            Ð¡Ð¾Ð²ÐµÑ‚: ÐºÐ»Ð¸ÐµÐ½Ñ‚ Ð¿Ñ€Ð¸ÑÑ‹Ð»Ð°ÐµÑ‚ HWID â†’ Ñ‚Ñ‹ Ð³ÐµÐ½ÐµÑ€Ð¸ÑˆÑŒ KEY
+            Совет: клиент присылает HWID → ты генеришь KEY
           </span>
         </div>
       </form>
     </div>
 
-    <!-- Ð¢Ð°Ð±Ð»Ð¸Ñ†Ð° Ð»Ð¸Ñ†ÐµÐ½Ð·Ð¸Ð¹ -->
+    <!-- Таблица лицензий -->
     <div class="table-container">
       <table>
         <thead>
           <tr>
             <th>KEY</th>
             <th>HWID</th>
-            <th>Ð”ÐµÐ¹ÑÑ‚Ð²ÑƒÐµÑ‚ Ð´Ð¾</th>
-            <th>Ð¡Ñ‚Ð°Ñ‚ÑƒÑ</th>
-            <th>ÐŸÐ»Ð°Ð½</th>
-            <th>ÐŸÑ€Ð¾Ð²ÐµÑ€Ð¾Ðº</th>
-            <th>Ð—Ð°Ð¼ÐµÑ‚ÐºÐ°</th>
-            <th>Ð”ÐµÐ¹ÑÑ‚Ð²Ð¸Ñ</th>
+            <th>Действует до</th>
+            <th>Статус</th>
+            <th>План</th>
+            <th>Проверок</th>
+            <th>Заметка</th>
+            <th>Действия</th>
           </tr>
         </thead>
         <tbody>
@@ -591,7 +591,7 @@
             </td>
             <td><span class="badge">{{ r.plan }}</span></td>
             <td>{{ r.check_count }}</td>
-            <td>{{ r.note or 'â€”' }}</td>
+            <td>{{ r.note or '—' }}</td>
             <td>
               <div class="actions">
                 <form method="post" action="/admin/add_days" style="display:inline;">
@@ -610,12 +610,12 @@
                   <button class="action-btn secondary" type="submit">Unrevoke</button>
                 </form>
                 {% else %}
-                <form method="post" action="/admin/revoke" style="display:inline;" onsubmit="return confirm('Ð—Ð°Ð±Ð»Ð¾ÐºÐ¸Ñ€Ð¾Ð²Ð°Ñ‚ÑŒ ÐºÐ»ÑŽÑ‡ {{ r.key }}?');">
+                <form method="post" action="/admin/revoke" style="display:inline;" onsubmit="return confirm('Заблокировать ключ {{ r.key }}?');">
                   <input type="hidden" name="key" value="{{ r.key }}">
                   <button class="action-btn warn" type="submit">Revoke</button>
                 </form>
                 {% endif %}
-                <form method="post" action="/admin/delete" style="display:inline;" onsubmit="return confirm('Ð£Ð´Ð°Ð»Ð¸Ñ‚ÑŒ ÐºÐ»ÑŽÑ‡ {{ r.key }}? Ð­Ñ‚Ð¾ Ð½ÐµÐ¾Ð±Ñ€Ð°Ñ‚Ð¸Ð¼Ð¾!');">
+                <form method="post" action="/admin/delete" style="display:inline;" onsubmit="return confirm('Удалить ключ {{ r.key }}? Это необратимо!');">
                   <input type="hidden" name="key" value="{{ r.key }}">
                   <button class="action-btn warn" type="submit">Delete</button>
                 </form>
@@ -628,7 +628,7 @@
     </div>
 
     <div class="footer-note">
-      ÐŸÐ¾ÐºÐ°Ð·Ð°Ð½Ð¾ Ð¼Ð°ÐºÑÐ¸Ð¼ÑƒÐ¼ 500 Ð·Ð°Ð¿Ð¸ÑÐµÐ¹ â€¢ Ð˜ÑÐ¿Ð¾Ð»ÑŒÐ·ÑƒÐ¹Ñ‚Ðµ Ð¿Ð¾Ð¸ÑÐº Ð¸ Ñ„Ð¸Ð»ÑŒÑ‚Ñ€Ñ‹
+      Показано максимум 500 записей • Используйте поиск и фильтры
     </div>
   </div>
 </div>
