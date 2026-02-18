@@ -1614,6 +1614,65 @@ def admin_users(request: Request):
         }
     )
 
+@app.get("/admin/users/{user_id}", response_class=HTMLResponse)
+def admin_user_detail(user_id: int, request: Request):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    try:
+        # User + license info
+        cur.execute("""
+            SELECT u.*, l.plan, l.expires_at as license_expires, l.revoked as license_revoked,
+                   l.max_devices, l.check_count
+            FROM users u
+            LEFT JOIN licenses l ON u.license_key = l.key
+            WHERE u.id = %s
+        """, (user_id,))
+        user = cur.fetchone()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Devices
+        cur.execute("""
+            SELECT * FROM user_devices WHERE user_id = %s ORDER BY last_login DESC
+        """, (user_id,))
+        devices = cur.fetchall()
+
+        # Transactions
+        cur.execute("""
+            SELECT * FROM transactions WHERE user_id = %s ORDER BY created_at DESC LIMIT 100
+        """, (user_id,))
+        transactions = cur.fetchall()
+
+        # Days left on license
+        days = None
+        if user.get("license_expires"):
+            delta = user["license_expires"] - now()
+            days = max(0, delta.days)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+    return templates.TemplateResponse(
+        "admin_user_detail.html",
+        {
+            "request": request,
+            "user": user,
+            "devices": devices,
+            "transactions": transactions,
+            "days": days,
+            "now": now(),
+            "active_tab": "users"
+        }
+    )
+
 # =========================
 # ---
 # =========================
