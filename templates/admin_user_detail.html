@@ -315,9 +315,15 @@
         {% endif %}
       </div>
     </div>
-    <form method="post" action="/admin/logout" style="margin:0;">
-      <button class="logout-btn" type="submit">Выйти</button>
-    </form>
+    <div style="display:flex; gap:10px; align-items:center;">
+      <button class="logout-btn" onclick="deleteUser()"
+        style="background:rgba(252,129,129,0.3); border-color:rgba(252,129,129,0.5);">
+        🗑 Удалить
+      </button>
+      <form method="post" action="/admin/logout" style="margin:0;">
+        <button class="logout-btn" type="submit">Выйти</button>
+      </form>
+    </div>
   </div>
 
   <!-- Stats -->
@@ -665,6 +671,18 @@ async function unlinkDevice(deviceId) {
   if (res.success) {
     toast('✅ Устройство отвязано');
     document.getElementById('device-' + deviceId).remove();
+  } else {
+    toast('❌ Ошибка: ' + (res.detail || 'неизвестная'), true);
+  }
+}
+
+async function deleteUser() {
+  const email = document.querySelector('.profile-name') ? document.querySelector('.profile-name').textContent.trim() : 'этого пользователя';
+  if (!confirm(`Удалить пользователя ${email}?\n\nЭто действие необратимо. Пользователь сможет зарегистрироваться снова с тем же email.`)) return;
+  const res = await api('/admin/api/delete-user', {user_id: USER_ID});
+  if (res.success) {
+    toast('✅ Пользователь удалён');
+    setTimeout(() => window.location.href = '/admin/users', 1200);
   } else {
     toast('❌ Ошибка: ' + (res.detail || 'неизвестная'), true);
   }
