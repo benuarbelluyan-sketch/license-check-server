@@ -1551,6 +1551,222 @@ def admin_update_limit(request: Request, data: UpdateLimitRequest):
 # =========================
 # ---
 # =========================
+
+
+# =========================
+# USER DETAIL PAGE
+# =========================
+@app.get("/admin/users/{user_id}", response_class=HTMLResponse)
+def admin_user_detail(user_id: int, request: Request):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT u.*,
+                   l.expires_at AS license_expires,
+                   l.revoked    AS license_revoked,
+                   l.plan       AS license_plan,
+                   l.max_devices
+            FROM users u
+            LEFT JOIN licenses l ON u.license_key = l.key
+            WHERE u.id = %s
+        """, (user_id,))
+        user = cur.fetchone()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        cur.execute("""
+            SELECT * FROM user_devices WHERE user_id = %s ORDER BY last_login DESC
+        """, (user_id,))
+        devices = cur.fetchall()
+
+        cur.execute("""
+            SELECT * FROM transactions WHERE user_id = %s ORDER BY created_at DESC LIMIT 50
+        """, (user_id,))
+        transactions = cur.fetchall()
+    finally:
+        cur.close()
+        con.close()
+
+    return templates.TemplateResponse("admin_user_detail.html", {
+        "request": request,
+        "user": user,
+        "devices": devices,
+        "transactions": transactions,
+        "now": now(),
+        "active_tab": "users",
+    })
+
+
+# --- update email ---
+class UpdateEmailReq(BaseModel):
+    user_id: int
+    email: str
+
+@app.post("/admin/api/update-email")
+def admin_update_email(request: Request, data: UpdateEmailReq):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("UPDATE users SET email = %s WHERE id = %s", (data.email, data.user_id))
+        con.commit()
+        return {"success": True}
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
+
+
+# --- update telegram ---
+class UpdateTelegramReq(BaseModel):
+    user_id: int
+    telegram: str
+
+@app.post("/admin/api/update-telegram")
+def admin_update_telegram(request: Request, data: UpdateTelegramReq):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("UPDATE users SET telegram = %s WHERE id = %s", (data.telegram, data.user_id))
+        con.commit()
+        return {"success": True}
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
+
+
+# --- confirm email ---
+class ConfirmEmailReq(BaseModel):
+    user_id: int
+
+@app.post("/admin/api/confirm-email")
+def admin_confirm_email(request: Request, data: ConfirmEmailReq):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("""
+            UPDATE users SET email_confirmed = TRUE, email_confirmed_at = %s WHERE id = %s
+        """, (now(), data.user_id))
+        con.commit()
+        return {"success": True}
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
+
+
+# --- extend license ---
+class ExtendLicenseReq(BaseModel):
+    user_id: int
+    days: int
+
+@app.post("/admin/api/extend-license")
+def admin_extend_license(request: Request, data: ExtendLicenseReq):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("SELECT license_key FROM users WHERE id = %s", (data.user_id,))
+        row = cur.fetchone()
+        if not row or not row[0]:
+            raise HTTPException(status_code=404, detail="License not found")
+        key = row[0]
+        cur.execute("""
+            UPDATE licenses
+            SET expires_at = GREATEST(expires_at, NOW()) + INTERVAL '%s days'
+            WHERE key = %s
+        """, (data.days, key))
+        con.commit()
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
+
+
+# --- revoke/unrevoke license ---
+class RevokeLicenseReq(BaseModel):
+    user_id: int
+    revoked: bool
+
+@app.post("/admin/api/revoke-license")
+def admin_revoke_license(request: Request, data: RevokeLicenseReq):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("SELECT license_key FROM users WHERE id = %s", (data.user_id,))
+        row = cur.fetchone()
+        if not row or not row[0]:
+            raise HTTPException(status_code=404, detail="License not found")
+        key = row[0]
+        cur.execute("UPDATE licenses SET revoked = %s WHERE key = %s", (data.revoked, key))
+        con.commit()
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
+
+
+# --- add transaction (generic) ---
+class AddTransactionReq(BaseModel):
+    user_id: int
+    amount: float
+    type: str
+    description: str = ""
+
+@app.post("/admin/api/add-transaction")
+def admin_add_transaction(request: Request, data: AddTransactionReq):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("SELECT license_key FROM users WHERE id = %s", (data.user_id,))
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="User not found")
+        key = row[0]
+        cur.execute("""
+            UPDATE users SET balance = balance + %s WHERE id = %s RETURNING balance
+        """, (data.amount, data.user_id))
+        new_balance = float(cur.fetchone()[0])
+        cur.execute("""
+            INSERT INTO transactions (user_id, license_key, amount, type, description)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (data.user_id, key, data.amount, data.type, data.description or data.type))
+        con.commit()
+        return {"success": True, "new_balance": new_balance}
+    except HTTPException:
+        raise
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
+
 @app.get("/admin/licenses", response_class=HTMLResponse)
 def admin_licenses(request: Request):
     if not is_admin(request):
@@ -2153,7 +2369,7 @@ def add_days(request: Request, key: str = Form(...), add: int = Form(...)):
     cur.close()
     con.close()
 
-    return RedirectResponse("/admin", status_code=303)
+    return RedirectResponse("/admin/licenses", status_code=303)
 
 @app.post("/admin/revoke")
 def revoke(request: Request, key: str = Form(...)):
@@ -2167,7 +2383,7 @@ def revoke(request: Request, key: str = Form(...)):
     cur.close()
     con.close()
 
-    return RedirectResponse("/admin", status_code=303)
+    return RedirectResponse("/admin/licenses", status_code=303)
 
 @app.post("/admin/unrevoke")
 def unrevoke(request: Request, key: str = Form(...)):
@@ -2181,7 +2397,7 @@ def unrevoke(request: Request, key: str = Form(...)):
     cur.close()
     con.close()
 
-    return RedirectResponse("/admin", status_code=303)
+    return RedirectResponse("/admin/licenses", status_code=303)
 
 @app.post("/admin/delete")
 def delete(request: Request, key: str = Form(...)):
@@ -2190,12 +2406,22 @@ def delete(request: Request, key: str = Form(...)):
 
     con = db()
     cur = con.cursor()
-    cur.execute("DELETE FROM licenses WHERE key=%s", (key,))
-    con.commit()
-    cur.close()
-    con.close()
+    try:
+        # Delete dependent rows first to avoid FK violations
+        cur.execute("DELETE FROM transactions WHERE license_key=%s", (key,))
+        cur.execute("DELETE FROM usage_logs WHERE license_key=%s", (key,))
+        cur.execute("DELETE FROM payment_requests WHERE license_key=%s", (key,))
+        cur.execute("UPDATE users SET license_key=NULL WHERE license_key=%s", (key,))
+        cur.execute("DELETE FROM licenses WHERE key=%s", (key,))
+        con.commit()
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
 
-    return RedirectResponse("/admin", status_code=303)
+    return RedirectResponse("/admin/licenses", status_code=303)
 
 @app.get("/admin/export")
 def export_csv(request: Request):
@@ -2238,6 +2464,165 @@ def generate_key(request: Request, prefix: str = Form("")):
         "admin_licenses.html",
         {"request": request, "generated_key": key}
     )
+
+
+# =========================
+# ADMIN USER DETAIL APIs
+# =========================
+
+class UpdateEmailRequest(BaseModel):
+    user_id: int
+    email: str
+
+@app.post("/admin/api/update-email")
+def admin_update_email(request: Request, data: UpdateEmailRequest):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("UPDATE users SET email=%s WHERE id=%s", (data.email, data.user_id))
+        con.commit()
+        return {"success": True}
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
+
+class UpdateTelegramRequest(BaseModel):
+    user_id: int
+    telegram: str
+
+@app.post("/admin/api/update-telegram")
+def admin_update_telegram(request: Request, data: UpdateTelegramRequest):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("UPDATE users SET telegram=%s WHERE id=%s", (data.telegram, data.user_id))
+        con.commit()
+        return {"success": True}
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
+
+class ConfirmEmailRequest(BaseModel):
+    user_id: int
+
+@app.post("/admin/api/confirm-email")
+def admin_confirm_email(request: Request, data: ConfirmEmailRequest):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute(
+            "UPDATE users SET email_confirmed=TRUE, email_confirmed_at=%s WHERE id=%s",
+            (now(), data.user_id)
+        )
+        con.commit()
+        return {"success": True}
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
+
+class ExtendLicenseRequest(BaseModel):
+    user_id: int
+    days: int
+
+@app.post("/admin/api/extend-license")
+def admin_extend_license(request: Request, data: ExtendLicenseRequest):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("SELECT license_key FROM users WHERE id=%s", (data.user_id,))
+        row = cur.fetchone()
+        if not row or not row[0]:
+            raise HTTPException(status_code=404, detail="No license found for user")
+        key = row[0]
+        cur.execute(
+            "UPDATE licenses SET expires_at = expires_at + (%s || ' days')::interval, revoked=FALSE, updated_at=NOW() WHERE key=%s",
+            (data.days, key)
+        )
+        con.commit()
+        return {"success": True, "key": key}
+    except HTTPException:
+        raise
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
+
+class RevokeLicenseRequest(BaseModel):
+    user_id: int
+    revoked: bool
+
+@app.post("/admin/api/revoke-license")
+def admin_revoke_license(request: Request, data: RevokeLicenseRequest):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("SELECT license_key FROM users WHERE id=%s", (data.user_id,))
+        row = cur.fetchone()
+        if not row or not row[0]:
+            raise HTTPException(status_code=404, detail="No license found for user")
+        key = row[0]
+        cur.execute("UPDATE licenses SET revoked=%s, updated_at=NOW() WHERE key=%s", (data.revoked, key))
+        con.commit()
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
+
+class AddTransactionRequest(BaseModel):
+    user_id: int
+    amount: float
+    type: str = "deposit"
+    description: str = ""
+
+@app.post("/admin/api/add-transaction")
+def admin_add_transaction(request: Request, data: AddTransactionRequest):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("SELECT license_key FROM users WHERE id=%s", (data.user_id,))
+        row = cur.fetchone()
+        license_key = row[0] if row else None
+
+        cur.execute(
+            "UPDATE users SET balance = balance + %s WHERE id=%s RETURNING balance",
+            (data.amount, data.user_id)
+        )
+        new_balance = cur.fetchone()[0]
+
+        cur.execute(
+            "INSERT INTO transactions (user_id, license_key, amount, type, description, metadata) VALUES (%s,%s,%s,%s,%s,%s)",
+            (data.user_id, license_key, data.amount, data.type, data.description, json.dumps({"admin": True}))
+        )
+        con.commit()
+        return {"success": True, "new_balance": float(new_balance)}
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
 
 # =========================
 # ---
