@@ -1379,25 +1379,6 @@ def admin_deposit(request: Request, data: DepositRequest):
         
         new_balance = cur.fetchone()[0]
         
-
-
-# Пишем транзакцию (для истории в приложении)
-try:
-    cur.execute("""
-        INSERT INTO transactions (user_id, license_key, amount, type, description, metadata)
-        VALUES (%s, %s, %s, %s, %s, %s)
-    """, (
-        user_id,
-        license_key,
-        -float(total_cost),
-        "charge",
-        req.description or req.operation,
-        json.dumps({"operation": req.operation, "units": units})
-    ))
-except Exception:
-    # не ломаем списание, если таблица/поле отличается
-    pass
-
         cur.execute("""
             INSERT INTO transactions 
             (user_id, license_key, amount, type, description, metadata)
@@ -2105,46 +2086,49 @@ def get_balance(req: BalanceReq):
 
 class TxReq(BaseModel):
     session_token: str
-    limit: int = 50
+    limit: int = 100
 
 @app.post("/api/balance/transactions")
-def balance_transactions(req: TxReq):
+def get_transactions(req: TxReq):
     con = db()
     cur = con.cursor(cursor_factory=RealDictCursor)
     try:
-        # Определяем пользователя по сессии
+        # Находим пользователя по сессии
         cur.execute("""
             SELECT u.id
             FROM users u
             JOIN user_sessions s ON u.id = s.user_id
             WHERE s.session_token = %s
         """, (req.session_token,))
-        u = cur.fetchone()
-        if not u:
+        row = cur.fetchone()
+        if not row:
             raise HTTPException(status_code=401, detail="invalid_session")
+        user_id = row['id']
 
-        limit = int(req.limit or 50)
-        limit = max(1, min(limit, 200))
+        lim = int(req.limit) if req.limit else 100
+        lim = max(1, min(lim, 500))
 
-        cur.execute("""
-            SELECT amount, type, description, created_at
-            FROM transactions
-            WHERE user_id = %s
-            ORDER BY created_at DESC
-            LIMIT %s
-        """, (u['id'], limit))
-        rows = cur.fetchall() or []
+        try:
+            cur.execute("""
+                SELECT created_at, amount, type, description
+                FROM transactions
+                WHERE user_id = %s
+                ORDER BY created_at DESC
+                LIMIT %s
+            """, (user_id, lim))
+            txs = cur.fetchall() or []
+        except Exception:
+            # если таблицы нет / схема отличается — отдаём пусто, но без падения клиента
+            txs = []
 
-        # сериализация дат
         out = []
-        for r in rows:
+        for t in txs:
             out.append({
-                "amount": float(r["amount"]),
-                "type": r["type"],
-                "description": r.get("description") if isinstance(r, dict) else None,
-                "created_at": (r["created_at"].isoformat() if r.get("created_at") else None)
+                "date": (t.get('created_at').isoformat() if t.get('created_at') else None),
+                "amount": float(t.get('amount') or 0),
+                "type": t.get('type') or "",
+                "description": t.get('description') or "",
             })
-
         return {"transactions": out}
     finally:
         cur.close()
@@ -2255,6 +2239,23 @@ def charge(req: ChargeReq):
         """, (user_id, license_key, req.operation, units, total_cost, 
               json.dumps({"description": req.description})))
         
+        # Пишем транзакцию (для истории в клиенте)
+        try:
+            cur.execute("""
+                INSERT INTO transactions (user_id, license_key, amount, type, description, metadata)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (
+                user_id,
+                license_key,
+                -float(total_cost),
+                "charge",
+                req.description or req.operation,
+                json.dumps({"operation": req.operation, "units": units}),
+            ))
+        except Exception:
+            # не ломаем списание, если таблица/поле отличается
+            pass
+
         cur.execute("COMMIT")
         
         return {
