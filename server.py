@@ -1609,6 +1609,7 @@ def admin_users(request: Request):
         {
             "request": request,
             "users": users,
+            "now": now(),
             "active_tab": "users"
         }
     )
@@ -1645,6 +1646,7 @@ def admin_devices(request: Request):
         {
             "request": request,
             "devices": devices,
+            "now": now(),
             "active_tab": "devices"
         }
     )
@@ -1680,6 +1682,7 @@ def admin_transactions(request: Request):
         {
             "request": request,
             "transactions": transactions,
+            "now": now(),
             "active_tab": "transactions"
         }
     )
@@ -1696,6 +1699,7 @@ def admin_settings(request: Request):
         "admin_settings.html",
         {
             "request": request,
+            "now": now(),
             "active_tab": "settings"
         }
     )
