@@ -246,7 +246,7 @@ def init_db():
         INSERT INTO pricing (operation_type, base_price, final_price, min_units, description)
         VALUES 
             ('parse',    0.0005, 0.0005, 100, 'Parsing one message'),
-            ('ai_parse', 0.0001, 0.0002,   1, 'AI analysis per person'),
+            ('ai_parse', 0.0002, 0.0004,   1, 'AI analysis per person (x2 markup)'),
             ('sender',   0.001,  0.001,   50, 'Sending one message'),
             ('invite',   0.002,  0.002,   20, 'Inviting one user')
         ON CONFLICT (operation_type) DO UPDATE SET
@@ -257,10 +257,10 @@ def init_db():
         
         -- Force update ai_parse pricing to correct values regardless of what was in DB
         UPDATE pricing SET
-            base_price  = 0.0001,
-            final_price = 0.0002,
+            base_price  = 0.0002,
+            final_price = 0.0004,
             min_units   = 1,
-            description = 'AI analysis per person'
+            description = 'AI analysis per person (x2 markup)'
         WHERE operation_type = 'ai_parse';
         """)
         pass  # log
@@ -2293,6 +2293,7 @@ class AIItem(BaseModel):
     text: str
 
 class AIScoreReq(BaseModel):
+    session_token: str
     prompt: str
     items: List[AIItem]
     min_score: int = 70
@@ -2312,6 +2313,23 @@ def _extract_json(text: str) -> Dict[str, Any]:
 @app.post("/api/ai/score")
 def ai_score(req: AIScoreReq) -> Dict[str, Any]:
     try:
+        # Require active session to use AI endpoint (prevents free OpenAI usage without balance)
+        con = db()
+        cur = con.cursor()
+        try:
+            cur.execute(
+                "SELECT 1 FROM user_sessions WHERE session_token = %s AND expires_at > NOW()",
+                (req.session_token,)
+            )
+            if not cur.fetchone():
+                raise HTTPException(status_code=401, detail="invalid_session")
+        finally:
+            try:
+                cur.close()
+                con.close()
+            except Exception:
+                pass
+
         client = get_openai_client()
         items = [{"id": str(it.id), "text": (it.text or "")[:1200]} for it in req.items]
 
