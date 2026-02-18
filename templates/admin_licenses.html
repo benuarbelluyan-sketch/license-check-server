@@ -19,23 +19,57 @@
     .nav-item { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 10px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s; white-space: nowrap; }
     .nav-item:hover { background: rgba(255,255,255,0.15); color: #fff; }
     .nav-item.active { background: #fff; color: #667eea; box-shadow: 0 4px 14px rgba(0,0,0,0.1); }
+
+    /* Карточка создания */
+    .create-card { background: #fff; border-radius: 20px; padding: 28px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 24px; }
+    .create-title { font-size: 16px; font-weight: 700; color: #1a202c; margin-bottom: 20px; }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 20px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-label { font-size: 11px; font-weight: 600; color: #718096; text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-input { padding: 10px 14px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-size: 13px; font-family: 'Inter', sans-serif; color: #2d3748; background: #f7fafc; transition: border-color 0.2s; outline: none; }
+    .form-input:focus { border-color: #667eea; background: #fff; }
+    .form-input::placeholder { color: #a0aec0; }
+    .key-row { display: flex; gap: 8px; }
+    .key-row .form-input { flex: 1; font-family: monospace; }
+    .btn-gen { padding: 10px 14px; background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: opacity 0.2s; }
+    .btn-gen:hover { opacity: 0.85; }
+    .form-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .btn-create { padding: 11px 28px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; border: none; border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer; transition: opacity 0.2s, transform 0.1s; }
+    .btn-create:hover { opacity: 0.9; transform: translateY(-1px); }
+    .form-hint { font-size: 12px; color: #a0aec0; }
+
+    /* Таблица */
     .table-card { background: #fff; border-radius: 20px; padding: 28px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
     .table-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
     .table-title { font-size: 18px; font-weight: 700; color: #1a202c; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
     thead { background: #f7fafc; }
     th { padding: 12px 16px; text-align: left; color: #718096; font-weight: 600; font-size: 12px; text-transform: uppercase; }
-    td { padding: 16px; border-top: 1px solid #f7fafc; vertical-align: middle; }
+    td { padding: 14px 16px; border-top: 1px solid #f7fafc; vertical-align: middle; }
     tr:hover td { background: #f7fafc; }
     .badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
     .badge-active { background: #c6f6d5; color: #22543d; }
     .badge-expired { background: #fed7d7; color: #742a2a; }
-    .key-text { font-family: monospace; font-size: 12px; color: #4a5568; }
+    .badge-revoked { background: #e2e8f0; color: #4a5568; }
+    .key-text { font-family: monospace; font-size: 12px; color: #4a5568; font-weight: 600; }
     .empty { text-align: center; padding: 60px; color: #a0aec0; }
+    .action-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+    .btn-sm { padding: 5px 12px; border-radius: 8px; font-size: 11px; font-weight: 600; cursor: pointer; border: none; transition: opacity 0.2s; }
+    .btn-sm:hover { opacity: 0.8; }
+    .btn-extend { background: #ebf8ff; color: #2b6cb0; }
+    .btn-revoke { background: #fff5f5; color: #c53030; }
+    .btn-unrevoke { background: #f0fff4; color: #276749; }
+    .btn-delete { background: #fff5f5; color: #c53030; }
+
+    /* Flash */
+    .flash { padding: 12px 20px; border-radius: 12px; margin-bottom: 20px; font-size: 13px; font-weight: 500; }
+    .flash-ok { background: #c6f6d5; color: #22543d; }
+    .flash-err { background: #fed7d7; color: #742a2a; }
   </style>
 </head>
 <body>
 <div class="container">
+
   <div class="header">
     <div class="logo">
       <div class="logo-icon">🔑</div>
@@ -45,6 +79,7 @@
       <button class="logout-btn" type="submit">Выйти</button>
     </form>
   </div>
+
   <nav class="nav">
     <a href="/admin" class="nav-item">📊 Дашборд</a>
     <a href="/admin/users" class="nav-item">👥 Пользователи</a>
@@ -53,10 +88,68 @@
     <a href="/admin/transactions" class="nav-item">💳 Транзакции</a>
     <a href="/admin/settings" class="nav-item">⚙️ Настройки</a>
   </nav>
+
+  {% if request.query_params.get('ok') %}
+  <div class="flash flash-ok">✅ {{ request.query_params.get('ok') }}</div>
+  {% endif %}
+  {% if request.query_params.get('err') %}
+  <div class="flash flash-err">❌ {{ request.query_params.get('err') }}</div>
+  {% endif %}
+
+  <!-- Форма создания лицензии -->
+  <div class="create-card">
+    <div class="create-title">✨ Создать новую лицензию</div>
+    <form method="post" action="/admin/upsert">
+      <div class="form-grid">
+
+        <div class="form-group">
+          <label class="form-label">Ключ лицензии *</label>
+          <div class="key-row">
+            <input class="form-input" name="key" id="keyInput" placeholder="BEN-XXXX-XXXX-XXXX" required>
+            <button type="button" class="btn-gen" onclick="generateKey()">🎲 Авто</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">HWID устройства</label>
+          <input class="form-input" name="hwid" value="" placeholder="Пусто = привяжется сам при входе">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Срок действия (дней)</label>
+          <input class="form-input" name="days" type="number" value="30" min="1" max="3650" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">План</label>
+          <select class="form-input" name="plan">
+            <option value="custom">custom — 1 устройство</option>
+            <option value="m1">m1 — 1 устройство</option>
+            <option value="m3">m3 — 2 устройства</option>
+            <option value="m6">m6 — 3 устройства</option>
+            <option value="y1">y1 — 5 устройств</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Примечание</label>
+          <input class="form-input" name="note" placeholder="Например: Иван, тест, VIP...">
+        </div>
+
+      </div>
+      <div class="form-actions">
+        <button class="btn-create" type="submit">💾 Создать лицензию</button>
+        <span class="form-hint">💡 Пустой HWID — ключ привяжется к устройству при первой активации пользователем</span>
+      </div>
+    </form>
+  </div>
+
+  <!-- Таблица лицензий -->
   <div class="table-card">
     <div class="table-header">
       <div class="table-title">Лицензии ({{ rows | length }})</div>
     </div>
+
     {% if rows %}
     <table>
       <thead>
@@ -67,6 +160,7 @@
           <th>Устройства</th>
           <th>Истекает</th>
           <th>Примечание</th>
+          <th>Действия</th>
         </tr>
       </thead>
       <tbody>
@@ -74,14 +168,44 @@
         <tr>
           <td><div class="key-text">{{ r.key }}</div></td>
           <td>
-            {% if r.revoked %}<span class="badge badge-expired">🚫 Отозвана</span>
-            {% elif r.expires_at > now %}<span class="badge badge-active">✅ Активна</span>
-            {% else %}<span class="badge badge-expired">❌ Истекла</span>{% endif %}
+            {% if r.revoked %}
+              <span class="badge badge-revoked">🚫 Отозвана</span>
+            {% elif r.expires_at > now %}
+              <span class="badge badge-active">✅ Активна</span>
+            {% else %}
+              <span class="badge badge-expired">❌ Истекла</span>
+            {% endif %}
           </td>
           <td style="color:#4a5568; font-weight:500;">{{ r.plan or 'custom' }}</td>
           <td style="color:#718096;">{{ r.max_devices or 1 }}</td>
           <td style="color:#a0aec0; font-size:12px;">{{ r.expires_at.strftime('%d.%m.%Y') if r.expires_at else '—' }}</td>
           <td style="color:#a0aec0; font-size:12px;">{{ r.note or '—' }}</td>
+          <td>
+            <div class="action-btns">
+              <form method="post" action="/admin/add_days" style="display:inline;">
+                <input type="hidden" name="key" value="{{ r.key }}">
+                <input type="hidden" name="add" value="30">
+                <button class="btn-sm btn-extend" type="submit">+30д</button>
+              </form>
+              {% if r.revoked %}
+              <form method="post" action="/admin/unrevoke" style="display:inline;">
+                <input type="hidden" name="key" value="{{ r.key }}">
+                <button class="btn-sm btn-unrevoke" type="submit">Восстановить</button>
+              </form>
+              {% else %}
+              <form method="post" action="/admin/revoke" style="display:inline;"
+                onsubmit="return confirm('Отозвать ключ {{ r.key }}?')">
+                <input type="hidden" name="key" value="{{ r.key }}">
+                <button class="btn-sm btn-revoke" type="submit">Отозвать</button>
+              </form>
+              {% endif %}
+              <form method="post" action="/admin/delete" style="display:inline;"
+                onsubmit="return confirm('Удалить ключ {{ r.key }}? Это необратимо!')">
+                <input type="hidden" name="key" value="{{ r.key }}">
+                <button class="btn-sm btn-delete" type="submit">🗑</button>
+              </form>
+            </div>
+          </td>
         </tr>
         {% endfor %}
       </tbody>
@@ -89,10 +213,18 @@
     {% else %}
     <div class="empty">
       <div style="font-size:48px; opacity:0.3; margin-bottom:12px;">🔑</div>
-      <div>Лицензий нет</div>
+      <div>Лицензий нет. Создайте первую выше.</div>
     </div>
     {% endif %}
   </div>
+
 </div>
+<script>
+  function generateKey() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const part = (n) => Array.from({length: n}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    document.getElementById('keyInput').value = 'BEN-' + part(4) + '-' + part(4) + '-' + part(4);
+  }
+</script>
 </body>
 </html>
