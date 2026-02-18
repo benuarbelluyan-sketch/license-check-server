@@ -1379,6 +1379,25 @@ def admin_deposit(request: Request, data: DepositRequest):
         
         new_balance = cur.fetchone()[0]
         
+
+
+# Пишем транзакцию (для истории в приложении)
+try:
+    cur.execute("""
+        INSERT INTO transactions (user_id, license_key, amount, type, description, metadata)
+        VALUES (%s, %s, %s, %s, %s, %s)
+    """, (
+        user_id,
+        license_key,
+        -float(total_cost),
+        "charge",
+        req.description or req.operation,
+        json.dumps({"operation": req.operation, "units": units})
+    ))
+except Exception:
+    # не ломаем списание, если таблица/поле отличается
+    pass
+
         cur.execute("""
             INSERT INTO transactions 
             (user_id, license_key, amount, type, description, metadata)
@@ -2079,6 +2098,54 @@ def get_balance(req: BalanceReq):
             "currency": user['currency']
         }
         
+    finally:
+        cur.close()
+        con.close()
+
+
+class TxReq(BaseModel):
+    session_token: str
+    limit: int = 50
+
+@app.post("/api/balance/transactions")
+def balance_transactions(req: TxReq):
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    try:
+        # Определяем пользователя по сессии
+        cur.execute("""
+            SELECT u.id
+            FROM users u
+            JOIN user_sessions s ON u.id = s.user_id
+            WHERE s.session_token = %s
+        """, (req.session_token,))
+        u = cur.fetchone()
+        if not u:
+            raise HTTPException(status_code=401, detail="invalid_session")
+
+        limit = int(req.limit or 50)
+        limit = max(1, min(limit, 200))
+
+        cur.execute("""
+            SELECT amount, type, description, created_at
+            FROM transactions
+            WHERE user_id = %s
+            ORDER BY created_at DESC
+            LIMIT %s
+        """, (u['id'], limit))
+        rows = cur.fetchall() or []
+
+        # сериализация дат
+        out = []
+        for r in rows:
+            out.append({
+                "amount": float(r["amount"]),
+                "type": r["type"],
+                "description": r.get("description") if isinstance(r, dict) else None,
+                "created_at": (r["created_at"].isoformat() if r.get("created_at") else None)
+            })
+
+        return {"transactions": out}
     finally:
         cur.close()
         con.close()
