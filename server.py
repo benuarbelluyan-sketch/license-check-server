@@ -254,6 +254,14 @@ def init_db():
             final_price = EXCLUDED.final_price,
             min_units   = EXCLUDED.min_units,
             description = EXCLUDED.description;
+        
+        -- Force update ai_parse pricing to correct values regardless of what was in DB
+        UPDATE pricing SET
+            base_price  = 0.0001,
+            final_price = 0.0002,
+            min_units   = 1,
+            description = 'AI analysis per person'
+        WHERE operation_type = 'ai_parse';
         """)
         pass  # log
         
