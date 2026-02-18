@@ -1553,6 +1553,39 @@ def admin_update_limit(request: Request, data: UpdateLimitRequest):
 # =========================
 
 
+
+
+# --- delete user ---
+class DeleteUserReq(BaseModel):
+    user_id: int
+
+@app.post("/admin/api/delete-user")
+def admin_delete_user(request: Request, data: DeleteUserReq):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        # Manually nullify FK in tables without CASCADE to avoid constraint errors
+        cur.execute("UPDATE transactions SET user_id = NULL WHERE user_id = %s", (data.user_id,))
+        cur.execute("UPDATE usage_logs SET user_id = NULL WHERE user_id = %s", (data.user_id,))
+        cur.execute("UPDATE payment_requests SET user_id = NULL WHERE user_id = %s", (data.user_id,))
+        # DELETE user - cascades to user_devices, user_sessions, email_confirmations, password_resets
+        cur.execute("DELETE FROM users WHERE id = %s RETURNING email", (data.user_id,))
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="User not found")
+        con.commit()
+        return {"success": True, "deleted_email": row[0]}
+    except HTTPException:
+        con.rollback()
+        raise
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
+
 # =========================
 # USER DETAIL PAGE
 # =========================
