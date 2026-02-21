@@ -2370,6 +2370,107 @@ def ai_score(req: AIScoreReq) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"AI error: {type(e).__name__}: {e}")
 
 # =========================
+# AI CHAT — conversational AI for TG Leads full-AI mode
+# =========================
+class AIChatMessage(BaseModel):
+    role: str   # "user" | "assistant"
+    text: str
+
+class AIChatReq(BaseModel):
+    session_token: str
+    goal: str = ""
+    system_context: str = ""
+    history: List[AIChatMessage] = []
+    message: str
+    ai_score_threshold: int = 60
+
+@app.post("/api/ai/chat")
+def ai_chat(req: AIChatReq) -> Dict[str, Any]:
+    """
+    Conversational AI endpoint for TG Leads full-AI mode.
+    Takes conversation history + new message, returns AI reply + intent/score.
+    Response: {"reply": str, "intent": "hot|cold|neutral", "score": 0-100,
+               "goal_achieved": bool}
+    """
+    try:
+        con = db()
+        cur = con.cursor()
+        try:
+            cur.execute(
+                "SELECT 1 FROM user_sessions WHERE session_token = %s AND expires_at > NOW()",
+                (req.session_token,)
+            )
+            if not cur.fetchone():
+                raise HTTPException(status_code=401, detail="invalid_session")
+        finally:
+            try:
+                cur.close()
+                con.close()
+            except Exception:
+                pass
+
+        client = get_openai_client()
+
+        # Build system prompt
+        system_parts = [
+            "Ты профессиональный менеджер по продажам в Telegram.",
+            f"Цель: {req.goal}" if req.goal else "Цель: продать продукт или услугу.",
+        ]
+        if req.system_context:
+            system_parts.append(f"Контекст: {req.system_context}")
+        system_parts += [
+            "",
+            "Правила:",
+            "1. Веди живой, естественный диалог на русском языке.",
+            "2. Отвечай кратко и по делу — не пиши длинных монологов.",
+            "3. Выявляй потребности и двигай лида к цели.",
+            "4. Когда цель достигнута (договорились о сделке/встрече/демо) — сообщи об этом.",
+            "5. Если лид явно отказывается и не идёт на контакт — сообщи об этом.",
+            "",
+            "ВАЖНО: Отвечай ТОЛЬКО валидным JSON (без markdown-блоков), строго в формате:",
+            '{"reply": "<текст ответа лиду>", "intent": "hot|cold|neutral", '
+            '"score": <0-100>, "goal_achieved": <true|false>}',
+            "intent hot = лид очень заинтересован / готов к сделке",
+            "intent cold = лид отказывается, не заинтересован",
+            "intent neutral = диалог продолжается",
+            "goal_achieved = true только когда цель полностью достигнута",
+        ]
+        system_prompt = "\n".join(system_parts)
+
+        # Build messages list: history + new message
+        messages = [{"role": "system", "content": system_prompt}]
+        for h in (req.history or []):
+            role = "user" if h.role == "user" else "assistant"
+            messages.append({"role": role, "content": (h.text or "")[:1000]})
+        messages.append({"role": "user", "content": (req.message or "")[:1000]})
+
+        resp = client.chat.completions.create(
+            model="gpt-4.1-mini",
+            messages=messages,
+            response_format={"type": "json_object"},
+            temperature=0.7,
+            max_tokens=500,
+        )
+
+        out_text = resp.choices[0].message.content or ""
+        try:
+            data = _extract_json(out_text)
+        except Exception:
+            data = {}
+
+        return {
+            "reply": str(data.get("reply") or ""),
+            "intent": str(data.get("intent") or "neutral").lower(),
+            "score": int(data.get("score") or 50),
+            "goal_achieved": bool(data.get("goal_achieved", False)),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI chat error: {type(e).__name__}: {e}")
+
+# =========================
 # ---
 # =========================
 @app.post("/admin/upsert")
