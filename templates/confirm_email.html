@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Email confirmation · TG Leads AI</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:Inter,system-ui,-apple-system,sans-serif;background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+    .card{background:#fff;border-radius:24px;padding:44px;max-width:560px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.2);text-align:left}
+    .title{font-size:26px;font-weight:800;color:#0f172a;margin-bottom:8px}
+    .sub{color:#64748b;font-size:14px;margin-bottom:18px;line-height:1.6}
+    .badge{display:inline-block;border-radius:999px;padding:6px 12px;font-weight:800;font-size:12px;margin-bottom:14px}
+    .ok{background:#dcfce7;color:#14532d}
+    .warn{background:#fef9c3;color:#713f12}
+    .err{background:#fee2e2;color:#7f1d1d}
+    .btn{display:inline-block;margin-top:10px;background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);color:#fff;text-decoration:none;padding:12px 16px;border-radius:14px;font-weight:800}
+    .foot{margin-top:18px;color:#94a3b8;font-size:12px;text-align:center}
+  </style>
+</head>
+<body>
+  <div class="card">
+    {% if status == "ok" %}
+      <div class="badge ok">✅ Confirmed</div>
+      <div class="title">Email confirmed</div>
+      <div class="sub">{{ message }}</div>
+    {% elif status == "expired" %}
+      <div class="badge warn">⏳ Expired</div>
+      <div class="title">Link expired</div>
+      <div class="sub">{{ message }}</div>
+    {% elif status == "invalid" %}
+      <div class="badge err">⚠️ Invalid</div>
+      <div class="title">Invalid link</div>
+      <div class="sub">{{ message }}</div>
+    {% else %}
+      <div class="badge err">❌ Error</div>
+      <div class="title">Confirmation error</div>
+      <div class="sub">{{ message }}</div>
+    {% endif %}
+
+    <a class="btn" href="#" onclick="window.close(); return false;">Close</a>
+
+    <div class="foot">TG Leads AI</div>
+  </div>
+</body>
+</html>
