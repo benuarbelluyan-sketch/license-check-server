@@ -1211,7 +1211,7 @@ def reset_password_public(data: ResetPasswordPublicReq):
     cur = con.cursor(cursor_factory=RealDictCursor)
     try:
         cur.execute(
-            "SELECT user_id, expires_at FROM password_resets WHERE token=%s AND used_at IS NULL",
+            "SELECT user_id, expires_at FROM password_resets WHERE token=%s AND used = FALSE",
             (token,)
         )
         row = cur.fetchone()
@@ -1222,7 +1222,7 @@ def reset_password_public(data: ResetPasswordPublicReq):
 
         user_id = row["user_id"]
         cur.execute("UPDATE users SET password_hash=%s WHERE id=%s", (hash_password(new_password), user_id))
-        cur.execute("UPDATE password_resets SET used_at=NOW() WHERE token=%s", (token,))
+        cur.execute("UPDATE password_resets SET used=TRUE WHERE token=%s", (token,))
         cur.execute("DELETE FROM user_sessions WHERE user_id=%s", (user_id,))
         con.commit()
         return {"success": True}
