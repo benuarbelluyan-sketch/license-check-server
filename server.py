@@ -1148,6 +1148,11 @@ def confirm_email(request: Request, token: str):
             pass
 
 
+
+@app.get("/forgot-password", response_class=HTMLResponse)
+def forgot_password_page(request: Request):
+    return templates.TemplateResponse("forgot_password.html", {"request": request, "sent": False, "error": ""})
+
 @app.post("/forgot-password", response_class=HTMLResponse)
 def forgot_password_submit(request: Request, email: str = Form(...), background_tasks: BackgroundTasks = None):
     # ВАЖНО: всегда отвечаем одинаково (не раскрываем, зарегистрирован ли email)
