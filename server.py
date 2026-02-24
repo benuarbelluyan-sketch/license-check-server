@@ -37,6 +37,118 @@ app = FastAPI()
 # =========================
 # ---
 # =========================
+
+def _email_html_base(title: str, preheader: str, heading: str, body_html: str, button_text: str, button_url: str) -> str:
+    # Email HTML with strong client compatibility (Gmail/Outlook), UTF-8
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{title}</title>
+  <style>
+    body,table,td,a{{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}}
+    table,td{{mso-table-lspace:0pt;mso-table-rspace:0pt;}}
+    img{{-ms-interpolation-mode:bicubic;border:0;outline:none;text-decoration:none;}}
+    table{{border-collapse:collapse !important;}}
+    body{{margin:0;padding:0;width:100% !important;background:#f4f6fb;font-family:Arial,Helvetica,sans-serif;}}
+    .container{{max-width:600px;margin:0 auto;}}
+    .card{{background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 24px rgba(15,23,42,0.08);}}
+    .header{{background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);padding:28px 28px 22px 28px;color:#fff;}}
+    .brand{{font-size:20px;font-weight:700;letter-spacing:-0.2px;}}
+    .subbrand{{opacity:.9;font-size:13px;margin-top:6px;}}
+    .content{{padding:28px; color:#0f172a;}}
+    h1{{margin:0 0 10px 0;font-size:22px;line-height:1.25;}}
+    p{{margin:0 0 14px 0;font-size:14px;line-height:1.6;color:#334155;}}
+    .btn-wrap{{padding:8px 0 6px 0;}}
+    .btn{{display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;padding:12px 18px;border-radius:12px;font-weight:700;font-size:14px;}}
+    .small{{font-size:12px;color:#64748b;}}
+    .footer{{padding:18px 28px;color:#94a3b8;font-size:12px;text-align:center;}}
+    .mono{{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}}
+    .preheader{{display:none !important;visibility:hidden;opacity:0;color:transparent;height:0;width:0;}}
+  </style>
+</head>
+<body>
+  <div class="preheader">{preheader}</div>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+    <tr>
+      <td style="padding:28px 12px;">
+        <div class="container">
+          <div class="card">
+            <div class="header">
+              <div class="brand">TG Leads AI</div>
+              <div class="subbrand">Telegram leads & outreach platform</div>
+            </div>
+            <div class="content">
+              <h1>{heading}</h1>
+              {body_html}
+              <div class="btn-wrap">
+                <a class="btn" href="{button_url}" target="_blank" rel="noopener">{button_text}</a>
+              </div>
+              <p class="small">If the button doesn’t work, open this link:</p>
+              <p class="small mono"><a href="{button_url}" target="_blank" rel="noopener">{button_url}</a></p>
+              <p class="small">If you didn’t request this, you can safely ignore this email.</p>
+            </div>
+            <div class="footer">
+              © {datetime.utcnow().year} TG Leads AI
+            </div>
+          </div>
+        </div>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>"""
+
+def send_confirmation_email(email: str, token: str):
+    confirm_url = f"{BASE_URL}/api/auth/confirm?token={token}"
+
+    html = _email_html_base(
+        title="Confirm your email — TG Leads AI",
+        preheader="Confirm your email to activate your TG Leads AI account",
+        heading="Confirm your email",
+        body_html="""
+          <p>Click the button below to confirm your email address and activate your account.</p>
+          <p class="small">This link expires after a limited time.</p>
+        """,
+        button_text="✅ Confirm email",
+        button_url=confirm_url
+    )
+
+    message = Mail(
+        from_email=Email(FROM_EMAIL, FROM_NAME),
+        to_emails=email,
+        subject="Confirm your email — TG Leads AI",
+        html_content=html,
+        plain_text_content=f"Confirm your email: {confirm_url}"
+    )
+    _send_mail(message)
+
+def send_password_reset_email(email: str, token: str):
+    reset_url = f"{BASE_URL}/reset-password?token={token}"
+
+    html = _email_html_base(
+        title="Reset your password — TG Leads AI",
+        preheader="Your password reset link for TG Leads AI",
+        heading="Reset your password",
+        body_html="""
+          <p>We received a request to reset your password. Click the button below to set a new password.</p>
+          <p class="small">If you didn’t request this, just ignore this email — your password won’t change.</p>
+        """,
+        button_text="🔒 Reset password",
+        button_url=reset_url
+    )
+
+    message = Mail(
+        from_email=Email(FROM_EMAIL, FROM_NAME),
+        to_emails=email,
+        subject="Reset your password — TG Leads AI",
+        html_content=html,
+        plain_text_content=f"Reset password link: {reset_url}"
+    )
+    _send_mail(message)
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
@@ -975,279 +1087,66 @@ def logout(session_token: str = Form(...)):
         cur.close()
         con.close()
 
-@app.get("/api/auth/confirm")
-def confirm_email(token: str):
+@app.get("/api/auth/confirm", response_class=HTMLResponse)
+def confirm_email(request: Request, token: str):
     con = db()
     cur = con.cursor()
-    
+
+    status = "error"
+    message = "Something went wrong. Please try again later."
+
     try:
         cur.execute("""
-            SELECT user_id, expires_at 
-            FROM email_confirmations 
+            SELECT user_id, expires_at
+            FROM email_confirmations
             WHERE token = %s AND confirmed_at IS NULL
         """, (token,))
-        
+
         row = cur.fetchone()
         if not row:
-            return HTMLResponse("""
-                <html>
-                <body style="font-family: Arial; text-align: center; padding: 50px;">
-                    <h2>??? ???????????? ??????????????????????????????</h2>
-                    <p>????????????????, ?????? ?????? ???????????????????????? ?????? ??????????????.</p>
-                </body>
-                </html>
-            """)
-        
+            status = "invalid"
+            message = "This confirmation link is invalid or has already been used."
+            return templates.TemplateResponse("confirm_email.html", {"request": request, "status": status, "message": message})
+
         user_id, expires_at = row
-        
+
         if now() > expires_at:
-            return HTMLResponse("""
-                <html>
-                <body style="font-family: Arial; text-align: center; padding: 50px;">
-                    <h2>??? ???????????? ??????????????</h2>
-                    <p>?????????????????? ?????????? ???????????? ?? ??????????????????.</p>
-                </body>
-                </html>
-            """)
-        
+            status = "expired"
+            message = "This confirmation link has expired. Please request a new confirmation email."
+            return templates.TemplateResponse("confirm_email.html", {"request": request, "status": status, "message": message})
+
         cur.execute("""
-            UPDATE users 
+            UPDATE users
             SET email_confirmed = TRUE, email_confirmed_at = NOW()
             WHERE id = %s
         """, (user_id,))
-        
+
         cur.execute("""
-            UPDATE email_confirmations 
+            UPDATE email_confirmations
             SET confirmed_at = NOW()
             WHERE token = %s
         """, (token,))
-        
+
         con.commit()
-        
-        return HTMLResponse("""
-            <html>
-            <body style="font-family: Arial; text-align: center; padding: 50px;">
-                <h2>??? Email ??????????????????????!</h2>
-                <p>???????????? ???? ???????????? ?????????? ?? ??????????????????.</p>
-                <p>?????????????????? ?? ???????????????????? ?? ?????????????? "??????????".</p>
-            </body>
-            </html>
-        """)
-        
+
+        status = "ok"
+        message = "Email confirmed! You can now return to the app and sign in."
+
+        return templates.TemplateResponse("confirm_email.html", {"request": request, "status": status, "message": message})
+
     except Exception as e:
-        return HTMLResponse(f"""
-            <html>
-            <body style="font-family: Arial; text-align: center; padding: 50px;">
-                <h2>??? ????????????</h2>
-                <p>{str(e)}</p>
-            </body>
-            </html>
-        """)
+        # Keep user-facing message generic, but include a short detail for debugging if needed
+        status = "error"
+        message = "Confirmation failed. Please try again later."
+        return templates.TemplateResponse("confirm_email.html", {"request": request, "status": status, "message": message})
+
     finally:
-        cur.close()
-        con.close()
+        try:
+            cur.close()
+            con.close()
+        except Exception:
+            pass
 
-# =========================
-# ---
-# =========================
-def send_confirmation_email(email: str, token: str):
-    """???????????????? ?????????????????? ???????????? ?? ????????????????????????????"""
-    confirm_url = f"{BASE_URL}/api/auth/confirm?token={token}"
-    
-    # ---
-    if not SENDGRID_API_KEY:
-        print(f"[INFO] email={email} confirm_url={confirm_url}")
-        return
-    
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>?????????????????????????? email</title>
-    </head>
-    <body style="margin:0; padding:0; font-family: 'Segoe UI', Arial, sans-serif; background:#f5f7fa;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin:0 auto; background:white; border-radius:16px; margin-top:40px; box-shadow:0 4px 12px rgba(0,0,0,0.05);">
-            <!-- ?????????? -->
-            <tr>
-                <td style="padding:40px 40px 20px 40px; text-align:center; background:linear-gradient(135deg, #3b82f6, #8b5cf6); border-radius:16px 16px 0 0;">
-                    <h1 style="color:white; margin:0; font-size:28px; font-weight:600;">TG Parser Sender</h1>
-                    <p style="color:rgba(255,255,255,0.9); margin:10px 0 0 0; font-size:16px;">???????????????????????????????? ?????????????? Telegram</p>
-                </td>
-            </tr>
-            
-            <!-- ???????????????? ?????????????? -->
-            <tr>
-                <td style="padding:40px;">
-                    <h2 style="color:#1e293b; margin:0 0 20px 0; font-size:24px;">?????????????????????????? email</h2>
-                    <p style="color:#475569; line-height:1.6; margin:0 0 30px 0; font-size:16px;">
-                        ????????????????????????!<br><br>
-                        ?????? ???????????????????? ?????????????????????? ?? <strong>TG Parser Sender</strong> ?????????????????????? ?????? email ??????????.
-                    </p>
-                    
-                    <!-- ???????????? -->
-                    <table cellpadding="0" cellspacing="0" style="margin:30px auto;">
-                        <tr>
-                            <td style="background:#4CAF50; border-radius:40px; padding:14px 40px;">
-                                <a href="{confirm_url}" style="color:white; text-decoration:none; font-size:16px; font-weight:600; letter-spacing:0.5px;">??? ?????????????????????? EMAIL</a>
-                            </td>
-                        </tr>
-                    </table>
-                    
-                    <!-- ???????????????????????????? ???????????? -->
-                    <p style="color:#64748b; font-size:14px; margin:30px 0 0 0; text-align:center;">
-                        ?????? ?????????????????? ???? ????????????:<br>
-                        <a href="{confirm_url}" style="color:#3b82f6; word-break:break-all;">{confirm_url}</a>
-                    </p>
-                    
-                    <!-- ???????? ???????????????? -->
-                    <p style="color:#94a3b8; font-size:13px; margin:30px 0 0 0; text-align:center; border-top:1px solid #e2e8f0; padding-top:30px;">
-                        ???????????? ?????????????????????????? 24 ????????.<br>
-                        ???????? ???? ???? ????????????????????????????????, ???????????? ???????????????????????????? ?????? ????????????.
-                    </p>
-                </td>
-            </tr>
-            
-            <!-- ???????????? -->
-            <tr>
-                <td style="padding:30px 40px; background:#f8fafc; border-radius:0 0 16px 16px;">
-                    <table width="100%">
-                        <tr>
-                            <td style="text-align:center;">
-                                <p style="color:#64748b; margin:0 0 10px 0; font-size:14px;">
-                                    ?? ??????????????????, ?????????????? TG Parser Sender
-                                </p>
-                                <p style="color:#94a3b8; margin:0; font-size:13px;">
-                                    ???? support@tgparsersender.me | ???? @Ben_bell97
-                                </p>
-                            </td>
-                        </tr>
-                    </table>
-                </td>
-            </tr>
-        </table>
-    </body>
-    </html>
-    """
-    
-    message = Mail(
-        from_email=Email(FROM_EMAIL, FROM_NAME),
-        to_emails=To(email),
-        subject="Подтверждение email — TG Parser Sender",
-        html_content=Content("text/html", html_content)
-    )
-    
-    try:
-        sg = sendgrid.SendGridAPIClient(api_key=SENDGRID_API_KEY)
-        response = sg.send(message)
-        print(f"[INFO] email={email}")
-    except Exception as e:
-        print(f"[INFO] e={e}")
-
-def send_password_reset_email(email: str, token: str):
-    """???????????????? ?????????????????? ???????????? ?????? ???????????? ????????????"""
-    reset_url = f"{BASE_URL}/reset-password?token={token}"
-    
-    if not SENDGRID_API_KEY:
-        print(f"[INFO] email={email} reset_url={reset_url}")
-        return
-    
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>?????????? ????????????</title>
-    </head>
-    <body style="margin:0; padding:0; font-family: 'Segoe UI', Arial, sans-serif; background:#f5f7fa;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin:0 auto; background:white; border-radius:16px; margin-top:40px; box-shadow:0 4px 12px rgba(0,0,0,0.05);">
-            <!-- ?????????? -->
-            <tr>
-                <td style="padding:40px 40px 20px 40px; text-align:center; background:linear-gradient(135deg, #ef4444, #f97316); border-radius:16px 16px 0 0;">
-                    <h1 style="color:white; margin:0; font-size:28px; font-weight:600;">TG Parser Sender</h1>
-                    <p style="color:rgba(255,255,255,0.9); margin:10px 0 0 0; font-size:16px;">???????????????????????????? ??????????????</p>
-                </td>
-            </tr>
-            
-            <!-- ???????????????? ?????????????? -->
-            <tr>
-                <td style="padding:40px;">
-                    <h2 style="color:#1e293b; margin:0 0 20px 0; font-size:24px;">?????????? ????????????</h2>
-                    <p style="color:#475569; line-height:1.6; margin:0 0 30px 0; font-size:16px;">
-                        ???? ???????????????? ???????????? ???? ?????????? ???????????? ?????? ???????????? ????????????????.
-                    </p>
-                    
-                    <!-- ???????????? -->
-                    <table cellpadding="0" cellspacing="0" style="margin:30px auto;">
-                        <tr>
-                            <td style="background:#3b82f6; border-radius:40px; padding:14px 40px;">
-                                <a href="{reset_url}" style="color:white; text-decoration:none; font-size:16px; font-weight:600; letter-spacing:0.5px;">???? ???????????????? ????????????</a>
-                            </td>
-                        </tr>
-                    </table>
-                    
-                    <!-- ???????????????????????????? ???????????? -->
-                    <p style="color:#64748b; font-size:14px; margin:30px 0 0 0; text-align:center;">
-                        ?????? ?????????????????? ???? ????????????:<br>
-                        <a href="{reset_url}" style="color:#3b82f6; word-break:break-all;">{reset_url}</a>
-                    </p>
-                    
-                    <!-- ???????????????????????????? -->
-                    <p style="color:#94a3b8; font-size:13px; margin:30px 0 0 0; text-align:center; border-top:1px solid #e2e8f0; padding-top:30px;">
-                        ???????????? ?????????????????????????? 1 ??????.<br>
-                        ???????? ???? ???? ?????????????????????? ?????????? ????????????, ???????????????????????????? ?????? ????????????.
-                    </p>
-                </td>
-            </tr>
-            
-            <!-- ???????????? -->
-            <tr>
-                <td style="padding:30px 40px; background:#f8fafc; border-radius:0 0 16px 16px;">
-                    <table width="100%">
-                        <tr>
-                            <td style="text-align:center;">
-                                <p style="color:#64748b; margin:0 0 10px 0; font-size:14px;">
-                                    ?? ??????????????????, ?????????????? TG Parser Sender
-                                </p>
-                                <p style="color:#94a3b8; margin:0; font-size:13px;">
-                                    ???? support@tgparsersender.me | ???? @Ben_bell97
-                                </p>
-                            </td>
-                        </tr>
-                    </table>
-                </td>
-            </tr>
-        </table>
-    </body>
-    </html>
-    """
-    
-    message = Mail(
-        from_email=Email(FROM_EMAIL, FROM_NAME),
-        to_emails=To(email),
-        subject="Сброс пароля — TG Parser Sender",
-        html_content=Content("text/html", html_content)
-    )
-    
-    try:
-        sg = sendgrid.SendGridAPIClient(api_key=SENDGRID_API_KEY)
-        response = sg.send(message)
-        print(f"[INFO] email={email}")
-    except Exception as e:
-        print(f"[INFO] e={e}")
-
-# =========================
-# ---
-# =========================
-# =========================
-# PUBLIC PAGES: Forgot / Reset password
-# =========================
-@app.get("/forgot-password", response_class=HTMLResponse)
-def forgot_password_page(request: Request):
-    # Приложение открывает эту страницу в браузере
-    return templates.TemplateResponse("forgot_password.html", {"request": request, "sent": False, "error": ""})
 
 @app.post("/forgot-password", response_class=HTMLResponse)
 def forgot_password_submit(request: Request, email: str = Form(...), background_tasks: BackgroundTasks = None):
