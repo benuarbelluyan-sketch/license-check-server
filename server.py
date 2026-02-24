@@ -27,8 +27,8 @@ from starlette.middleware.sessions import SessionMiddleware
 # =========================
 # ---
 # =========================
-import sendgrid
-from sendgrid.helpers.mail import Mail, Email, To, Content
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail, Email
 
 from openai import OpenAI
 
@@ -37,6 +37,22 @@ app = FastAPI()
 # =========================
 # ---
 # =========================
+
+
+def _send_mail(message: Mail):
+    if not SENDGRID_API_KEY:
+        raise RuntimeError("SENDGRID_API_KEY is missing")
+
+    try:
+        sg = SendGridAPIClient(SENDGRID_API_KEY)
+        resp = sg.send(message)
+        # Minimal log for Render
+        print(f"[mail] status={resp.status_code}")
+        return resp
+    except Exception as e:
+        print(f"[mail] error: {e}")
+        raise
+
 
 def _email_html_base(title: str, preheader: str, heading: str, body_html: str, button_text: str, button_url: str) -> str:
     # Email HTML with strong client compatibility (Gmail/Outlook), UTF-8
