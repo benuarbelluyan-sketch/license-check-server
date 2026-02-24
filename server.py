@@ -155,6 +155,33 @@ def send_password_reset_email(email: str, token: str):
     _send_mail(message)
 
 
+
+
+def send_confirmation_email(email: str, token: str):
+    confirm_url = f"{BASE_URL}/confirm-email?token={token}"
+
+    html = _email_html_base(
+        title="Confirm your email — TG Leads AI",
+        preheader="Confirm your email address for TG Leads AI",
+        heading="Confirm your email",
+        body_html="""
+          <p>Thanks for signing up for <b>TG Leads AI</b>!</p>
+          <p>Please confirm your email address by clicking the button below.</p>
+          <p class="small">If you didn’t create an account, you can safely ignore this email.</p>
+        """,
+        button_text="✅ Confirm email",
+        button_url=confirm_url
+    )
+
+    message = Mail(
+        from_email=Email(FROM_EMAIL, FROM_NAME),
+        to_emails=email,
+        subject="Confirm your email — TG Leads AI",
+        html_content=html,
+        plain_text_content=f"Confirm email link: {confirm_url}"
+    )
+    _send_mail(message)
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
