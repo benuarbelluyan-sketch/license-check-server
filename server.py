@@ -1237,6 +1237,13 @@ def confirm_email(request: Request, token: str):
 
 
 
+
+@app.get("/confirm-email", response_class=HTMLResponse)
+def confirm_email_alias(request: Request, token: str):
+    # Friendly public URL for email confirmation
+    return confirm_email(request=request, token=token)
+
+
 @app.get("/forgot-password", response_class=HTMLResponse)
 def forgot_password_page(request: Request):
     return templates.TemplateResponse("forgot_password.html", {"request": request, "sent": False, "error": ""})
