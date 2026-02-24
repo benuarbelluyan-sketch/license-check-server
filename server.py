@@ -54,9 +54,10 @@ ADMIN_PANEL_SECRET = os.environ.get("ADMIN_PANEL_SECRET", "change-me")
 # =========================
 # ---
 # =========================
-SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "")
-FROM_EMAIL = "noreply@tgparsersender.me"  # ???????? email ???? ???????????????????? ?? SendGrid
-FROM_NAME = "TG Parser Sender"
+SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "").strip()
+BASE_URL = os.environ.get("BASE_URL", "https://license-check-server-xatc.onrender.com").rstrip("/")
+FROM_EMAIL = os.environ.get("FROM_EMAIL", "noreply@tgparsersender.me").strip()
+FROM_NAME = os.environ.get("FROM_NAME", "TG Parser Sender").strip() or "TG Parser Sender"
 
 # =========================
 # OPENAI
@@ -1051,7 +1052,7 @@ def confirm_email(token: str):
 # =========================
 def send_confirmation_email(email: str, token: str):
     """???????????????? ?????????????????? ???????????? ?? ????????????????????????????"""
-    confirm_url = f"https://license-check-server-xatc.onrender.com/api/auth/confirm?token={token}"
+    confirm_url = f"{BASE_URL}/api/auth/confirm?token={token}"
     
     # ---
     if not SENDGRID_API_KEY:
@@ -1133,7 +1134,7 @@ def send_confirmation_email(email: str, token: str):
     message = Mail(
         from_email=Email(FROM_EMAIL, FROM_NAME),
         to_emails=To(email),
-        subject="?????????????????????????? email ?? TG Parser Sender",
+        subject="Подтверждение email — TG Parser Sender",
         html_content=Content("text/html", html_content)
     )
     
@@ -1146,7 +1147,7 @@ def send_confirmation_email(email: str, token: str):
 
 def send_password_reset_email(email: str, token: str):
     """???????????????? ?????????????????? ???????????? ?????? ???????????? ????????????"""
-    reset_url = f"https://license-check-server-xatc.onrender.com/reset-password?token={token}"
+    reset_url = f"{BASE_URL}/reset-password?token={token}"
     
     if not SENDGRID_API_KEY:
         print(f"[INFO] email={email} reset_url={reset_url}")
@@ -1226,7 +1227,7 @@ def send_password_reset_email(email: str, token: str):
     message = Mail(
         from_email=Email(FROM_EMAIL, FROM_NAME),
         to_emails=To(email),
-        subject="?????????? ???????????? ?? TG Parser Sender",
+        subject="Сброс пароля — TG Parser Sender",
         html_content=Content("text/html", html_content)
     )
     
@@ -1240,6 +1241,85 @@ def send_password_reset_email(email: str, token: str):
 # =========================
 # ---
 # =========================
+# =========================
+# PUBLIC PAGES: Forgot / Reset password
+# =========================
+@app.get("/forgot-password", response_class=HTMLResponse)
+def forgot_password_page(request: Request):
+    # Приложение открывает эту страницу в браузере
+    return templates.TemplateResponse("forgot_password.html", {"request": request, "sent": False, "error": ""})
+
+@app.post("/forgot-password", response_class=HTMLResponse)
+def forgot_password_submit(request: Request, email: str = Form(...), background_tasks: BackgroundTasks = None):
+    # ВАЖНО: всегда отвечаем одинаково (не раскрываем, зарегистрирован ли email)
+    email_norm = (email or "").strip().lower()
+    if not email_norm:
+        return templates.TemplateResponse("forgot_password.html", {"request": request, "sent": False, "error": "Введите email."})
+
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("SELECT id, email FROM users WHERE email=%s", (email_norm,))
+        u = cur.fetchone()
+        if u:
+            token = generate_token()
+            expires_at = now() + timedelta(hours=24)
+            cur.execute(
+                "INSERT INTO password_resets (user_id, token, expires_at) VALUES (%s,%s,%s)",
+                (u["id"], token, expires_at)
+            )
+            con.commit()
+
+            if background_tasks is not None:
+                background_tasks.add_task(send_password_reset_email, u["email"], token)
+            else:
+                send_password_reset_email(u["email"], token)
+    except Exception:
+        return templates.TemplateResponse("forgot_password.html", {"request": request, "sent": False, "error": "Не удалось отправить письмо. Попробуйте позже."})
+    finally:
+        cur.close()
+        con.close()
+
+    return templates.TemplateResponse("forgot_password.html", {"request": request, "sent": True, "error": ""})
+
+@app.get("/reset-password", response_class=HTMLResponse)
+def reset_password_page(request: Request, token: str):
+    return templates.TemplateResponse("reset_password.html", {"request": request, "token": token, "error": ""})
+
+class ResetPasswordPublicReq(BaseModel):
+    token: str
+    new_password: str
+
+@app.post("/api/auth/reset-password")
+def reset_password_public(data: ResetPasswordPublicReq):
+    token = (data.token or "").strip()
+    new_password = (data.new_password or "").strip()
+    if len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="password_too_short")
+
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute(
+            "SELECT user_id, expires_at FROM password_resets WHERE token=%s AND used_at IS NULL",
+            (token,)
+        )
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=400, detail="invalid_or_used_token")
+        if now() > row["expires_at"]:
+            raise HTTPException(status_code=400, detail="token_expired")
+
+        user_id = row["user_id"]
+        cur.execute("UPDATE users SET password_hash=%s WHERE id=%s", (hash_password(new_password), user_id))
+        cur.execute("UPDATE password_resets SET used_at=NOW() WHERE token=%s", (token,))
+        cur.execute("DELETE FROM user_sessions WHERE user_id=%s", (user_id,))
+        con.commit()
+        return {"success": True}
+    finally:
+        cur.close()
+        con.close()
+
 @app.get("/admin/login", response_class=HTMLResponse)
 def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request, "error": ""})
