@@ -55,7 +55,7 @@ def _send_mail(message: Mail):
 
 
 def _email_html_base(title: str, preheader: str, heading: str, body_html: str, button_text: str, button_url: str) -> str:
-    # Email HTML with strong client compatibility (Gmail/Outlook), UTF-8
+    # Bulletproof email HTML (better contrast / Gmail safe link colors / Outlook-friendly button)
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -70,18 +70,19 @@ def _email_html_base(title: str, preheader: str, heading: str, body_html: str, b
     body{{margin:0;padding:0;width:100% !important;background:#f4f6fb;font-family:Arial,Helvetica,sans-serif;}}
     .container{{max-width:600px;margin:0 auto;}}
     .card{{background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 24px rgba(15,23,42,0.08);}}
-    .header{{background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);padding:28px 28px 22px 28px;color:#fff;}}
+    .header{{background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);padding:28px 28px 22px 28px;color:#ffffff;}}
     .brand{{font-size:20px;font-weight:700;letter-spacing:-0.2px;}}
     .subbrand{{opacity:.9;font-size:13px;margin-top:6px;}}
     .content{{padding:28px; color:#0f172a;}}
     h1{{margin:0 0 10px 0;font-size:22px;line-height:1.25;}}
     p{{margin:0 0 14px 0;font-size:14px;line-height:1.6;color:#334155;}}
-    .btn-wrap{{padding:8px 0 6px 0;}}
-    .btn{{display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;padding:12px 18px;border-radius:12px;font-weight:700;font-size:14px;}}
     .small{{font-size:12px;color:#64748b;}}
     .footer{{padding:18px 28px;color:#94a3b8;font-size:12px;text-align:center;}}
     .mono{{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}}
     .preheader{{display:none !important;visibility:hidden;opacity:0;color:transparent;height:0;width:0;}}
+    /* Force safe link color inside buttons and elsewhere */
+    a{{color:#2563eb;}}
+    .btn-link{{color:#ffffff !important;text-decoration:none !important;}}
   </style>
 </head>
 <body>
@@ -98,11 +99,22 @@ def _email_html_base(title: str, preheader: str, heading: str, body_html: str, b
             <div class="content">
               <h1>{heading}</h1>
               {body_html}
-              <div class="btn-wrap">
-                <a class="btn" href="{button_url}" target="_blank" rel="noopener">{button_text}</a>
-              </div>
+
+              <!-- Bulletproof button -->
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:10px 0 10px 0;">
+                <tr>
+                  <td bgcolor="#4f46e5" style="border-radius:12px;">
+                    <a href="{button_url}" target="_blank" rel="noopener"
+                       class="btn-link"
+                       style="display:inline-block;padding:12px 18px;font-weight:700;font-size:14px;line-height:14px;border-radius:12px;background:#4f46e5;color:#ffffff !important;text-decoration:none !important;">
+                      {button_text}
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
               <p class="small">If the button doesn’t work, open this link:</p>
-              <p class="small mono"><a href="{button_url}" target="_blank" rel="noopener">{button_url}</a></p>
+              <p class="small mono"><a href="{button_url}" target="_blank" rel="noopener" style="color:#2563eb;">{button_url}</a></p>
               <p class="small">If you didn’t request this, you can safely ignore this email.</p>
             </div>
             <div class="footer">
@@ -116,29 +128,7 @@ def _email_html_base(title: str, preheader: str, heading: str, body_html: str, b
 </body>
 </html>"""
 
-def send_confirmation_email(email: str, token: str):
-    confirm_url = f"{BASE_URL}/api/auth/confirm?token={token}"
 
-    html = _email_html_base(
-        title="Confirm your email — TG Leads AI",
-        preheader="Confirm your email to activate your TG Leads AI account",
-        heading="Confirm your email",
-        body_html="""
-          <p>Click the button below to confirm your email address and activate your account.</p>
-          <p class="small">This link expires after a limited time.</p>
-        """,
-        button_text="✅ Confirm email",
-        button_url=confirm_url
-    )
-
-    message = Mail(
-        from_email=Email(FROM_EMAIL, FROM_NAME),
-        to_emails=email,
-        subject="Confirm your email — TG Leads AI",
-        html_content=html,
-        plain_text_content=f"Confirm your email: {confirm_url}"
-    )
-    _send_mail(message)
 
 def send_password_reset_email(email: str, token: str):
     reset_url = f"{BASE_URL}/reset-password?token={token}"
