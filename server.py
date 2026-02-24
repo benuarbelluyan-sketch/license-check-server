@@ -1051,6 +1051,61 @@ def auth_me(authorization: str = Header(None)):
 class ResendConfirmReq(BaseModel):
     email: str
 
+
+class ChangePasswordReq(BaseModel):
+    session_token: str
+    old_password: str
+    new_password: str
+
+@app.post("/api/auth/change-password")
+def change_password(req: ChangePasswordReq):
+    # Validate
+    if not req.new_password or len(req.new_password) < 6:
+        raise HTTPException(status_code=400, detail="weak_password")
+
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    try:
+        # Load user by session
+        cur.execute("""
+            SELECT u.id, u.password_hash
+            FROM users u
+            JOIN user_sessions s ON u.id = s.user_id
+            WHERE s.session_token = %s
+        """, (req.session_token,))
+        user = cur.fetchone()
+        if not user:
+            raise HTTPException(status_code=401, detail="invalid_session")
+
+        if not verify_password(req.old_password, user["password_hash"] or ""):
+            raise HTTPException(status_code=400, detail="wrong_password")
+
+        new_hash = hash_password(req.new_password)
+
+        cur.execute("""
+            UPDATE users
+            SET password_hash = %s
+            WHERE id = %s
+        """, (new_hash, user["id"]))
+
+        # Optional: invalidate all password reset tokens for this user (safety)
+        try:
+            cur.execute("UPDATE password_resets SET used = TRUE WHERE user_id = %s AND used = FALSE", (user["id"],))
+        except Exception:
+            pass
+
+        con.commit()
+        return {"success": True}
+    except HTTPException:
+        con.rollback()
+        raise
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
 @app.post("/api/auth/resend-confirmation")
 def resend_confirmation(req: ResendConfirmReq, background_tasks: BackgroundTasks):
     con = db()
