@@ -218,6 +218,54 @@ def get_openai_client():
         _openai_client = OpenAI(api_key=key)
     return _openai_client
 
+# GPT-4.1-mini pricing (USD per token) x2 markup
+_GPT_INPUT_PRICE  = 0.40 / 1_000_000 * 2   # $0.0000008 per input token
+_GPT_OUTPUT_PRICE = 1.60 / 1_000_000 * 2   # $0.0000032 per output token
+
+def _calc_ai_cost(prompt_tokens: int, completion_tokens: int) -> float:
+    cost = prompt_tokens * _GPT_INPUT_PRICE + completion_tokens * _GPT_OUTPUT_PRICE
+    return max(round(cost, 8), 0.000001)
+
+def _charge_ai_transaction(session_token: str, cost: float, description: str, metadata: dict) -> dict:
+    """Deduct cost from balance and write to transactions. Returns success/error dict."""
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("BEGIN")
+        cur.execute("""
+            SELECT u.id, u.balance, u.license_key
+            FROM users u
+            JOIN user_sessions s ON u.id = s.user_id
+            WHERE s.session_token = %s AND s.expires_at > NOW()
+            FOR UPDATE
+        """, (session_token,))
+        user = cur.fetchone()
+        if not user:
+            cur.execute("ROLLBACK")
+            return {"success": False, "error": "invalid_session"}
+        user_id, balance, license_key = user
+        if float(balance) < cost:
+            cur.execute("ROLLBACK")
+            return {"success": False, "error": "insufficient_funds"}
+        cur.execute("""
+            UPDATE users SET balance = balance - %s, total_spent = COALESCE(total_spent,0) + %s
+            WHERE id = %s RETURNING balance
+        """, (cost, cost, user_id))
+        new_balance = float(cur.fetchone()[0])
+        cur.execute("""
+            INSERT INTO transactions (user_id, license_key, amount, type, description, metadata)
+            VALUES (%s, %s, %s, 'charge', %s, %s)
+        """, (user_id, license_key, -cost, description, json.dumps(metadata)))
+        cur.execute("COMMIT")
+        return {"success": True, "charged": cost, "new_balance": new_balance}
+    except Exception as e:
+        try: cur.execute("ROLLBACK")
+        except Exception: pass
+        return {"success": False, "error": str(e)}
+    finally:
+        try: cur.close(); con.close()
+        except Exception: pass
+
 # =========================
 # ---
 # =========================
@@ -1483,7 +1531,7 @@ def admin_deposit(request: Request, data: DepositRequest):
             data.user_id, 
             license_key, 
             data.amount, 
-            f"???????????? ????????????????????: {data.note}" if data.note else "???????????? ????????????????????",
+            f"💳 Пополнение баланса: {data.note}" if data.note else "💳 Пополнение баланса (администратор)",
             json.dumps({"method": data.method, "admin": True})
         ))
         
@@ -1977,11 +2025,32 @@ def admin_user_detail(user_id: int, request: Request):
         """, (user_id,))
         devices = cur.fetchall()
 
-        # Transactions
+        # Transactions (deposits + AI charges)
         cur.execute("""
-            SELECT * FROM transactions WHERE user_id = %s ORDER BY created_at DESC LIMIT 100
+            SELECT * FROM transactions WHERE user_id = %s ORDER BY created_at DESC LIMIT 200
         """, (user_id,))
         transactions = cur.fetchall()
+
+        # AI usage stats from usage_logs
+        cur.execute("""
+            SELECT
+                COUNT(*) as total_ops,
+                COALESCE(SUM(cost), 0) as total_ai_cost
+            FROM usage_logs WHERE user_id = %s
+        """, (user_id,))
+        ai_stats_row = cur.fetchone()
+        ai_stats = {
+            "total_ops": int(ai_stats_row["total_ops"]) if ai_stats_row else 0,
+            "total_ai_cost": float(ai_stats_row["total_ai_cost"]) if ai_stats_row else 0.0,
+        }
+
+        # AI spend from transactions (type=charge)
+        cur.execute("""
+            SELECT COALESCE(SUM(ABS(amount)), 0) as total_charged
+            FROM transactions WHERE user_id = %s AND type = 'charge'
+        """, (user_id,))
+        ai_charged_row = cur.fetchone()
+        total_ai_charged = float(ai_charged_row["total_charged"]) if ai_charged_row else 0.0
 
         # Days left on license
         days = None
@@ -2004,6 +2073,8 @@ def admin_user_detail(user_id: int, request: Request):
             "user": user,
             "devices": devices,
             "transactions": transactions,
+            "ai_stats": ai_stats,
+            "total_ai_charged": total_ai_charged,
             "days": days,
             "now": now(),
             "active_tab": "users"
@@ -2365,6 +2436,60 @@ def charge(req: ChargeReq):
         con.close()
 
 # =========================
+# BALANCE TRANSACTIONS API
+# =========================
+class TransactionsReq(BaseModel):
+    session_token: str
+    limit: int = 50
+
+@app.post("/api/balance/transactions")
+def get_balance_transactions(req: TransactionsReq) -> Dict[str, Any]:
+    """Return transaction history (deposits + AI charges) for the authenticated user."""
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT u.id FROM users u
+            JOIN user_sessions s ON u.id = s.user_id
+            WHERE s.session_token = %s AND s.expires_at > NOW()
+        """, (req.session_token,))
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=401, detail="invalid_session")
+        user_id = row["id"]
+        limit = max(1, min(int(req.limit), 200))
+        cur.execute("""
+            SELECT id, amount, type, description, metadata, created_at
+            FROM transactions
+            WHERE user_id = %s
+            ORDER BY created_at DESC
+            LIMIT %s
+        """, (user_id, limit))
+        rows = cur.fetchall()
+        result = []
+        for r in rows:
+            meta = r["metadata"] or {}
+            if isinstance(meta, str):
+                try: meta = json.loads(meta)
+                except Exception: meta = {}
+            result.append({
+                "id": r["id"],
+                "amount": float(r["amount"]),
+                "type": r["type"],
+                "description": r["description"] or "",
+                "metadata": meta,
+                "created_at": r["created_at"].isoformat() if r["created_at"] else None,
+            })
+        return {"transactions": result}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        try: cur.close(); con.close()
+        except Exception: pass
+
+# =========================
 # AI API
 # =========================
 class AIItem(BaseModel):
@@ -2443,6 +2568,24 @@ def ai_score(req: AIScoreReq) -> Dict[str, Any]:
         if not isinstance(data, dict) or "results" not in data:
             raise ValueError(f"bad_ai_response: {out_text[:200]}")
 
+        # ── Billing: charge based on actual token usage ──
+        usage = resp.usage
+        prompt_tokens     = int(usage.prompt_tokens)     if usage else 300
+        completion_tokens = int(usage.completion_tokens) if usage else 100
+        cost = _calc_ai_cost(prompt_tokens, completion_tokens)
+        n_items = len(items)
+        description = f"🤖 TG Leads AI анализ | {n_items} лид(ов) | {prompt_tokens}вх+{completion_tokens}вых ток."
+        _charge_ai_transaction(
+            req.session_token, cost, description,
+            {
+                "type": "ai_score",
+                "model": "gpt-4.1-mini",
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "items_count": n_items,
+            }
+        )
+
         return data
 
     except Exception as e:
@@ -2462,6 +2605,8 @@ class AIChatReq(BaseModel):
     history: List[AIChatMessage] = []
     message: str
     ai_score_threshold: int = 60
+    username: str = ""       # TG username for transaction description
+    project_name: str = ""   # project name for context
 
 @app.post("/api/ai/chat")
 def ai_chat(req: AIChatReq) -> Dict[str, Any]:
@@ -2541,11 +2686,43 @@ def ai_chat(req: AIChatReq) -> Dict[str, Any]:
         except Exception:
             data = {}
 
+        # ── Billing: charge based on actual token usage ──
+        usage = resp.usage
+        prompt_tokens     = int(usage.prompt_tokens)     if usage else 200
+        completion_tokens = int(usage.completion_tokens) if usage else 80
+        cost = _calc_ai_cost(prompt_tokens, completion_tokens)
+
+        uname = (req.username or "").strip().lstrip("@")
+        proj  = (req.project_name or "").strip()
+        desc_parts = ["🤖 TG Leads AI чат"]
+        if uname:
+            desc_parts.append(f"@{uname}")
+        if proj:
+            desc_parts.append(f"[{proj}]")
+        desc_parts.append(f"{prompt_tokens}вх+{completion_tokens}вых ток.")
+        description = " | ".join(desc_parts)
+
+        charge_result = _charge_ai_transaction(
+            req.session_token, cost, description,
+            {
+                "type": "ai_chat",
+                "model": "gpt-4.1-mini",
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "username": uname,
+                "project": proj,
+            }
+        )
+        charged = charge_result.get("charged", 0.0) if charge_result.get("success") else 0.0
+
         return {
             "reply": str(data.get("reply") or ""),
             "intent": str(data.get("intent") or "neutral").lower(),
             "score": int(data.get("score") or 50),
             "goal_achieved": bool(data.get("goal_achieved", False)),
+            "charged": charged,
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
         }
 
     except HTTPException:
