@@ -1733,9 +1733,7 @@ def admin_delete_user(request: Request, data: DeleteUserReq):
     finally:
         cur.close(); con.close()
 
-# =========================
-# USER DETAIL PAGE — см. ниже после /admin/users
-# =========================
+# USER DETAIL PAGE — роут определён ниже после /admin/users
 
 
 # --- update email ---
