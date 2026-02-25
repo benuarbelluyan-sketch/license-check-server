@@ -224,7 +224,7 @@ _GPT_OUTPUT_PRICE = 1.60 / 1_000_000 * 2   # $0.0000032 per output token
 
 def _calc_ai_cost(prompt_tokens: int, completion_tokens: int) -> float:
     cost = prompt_tokens * _GPT_INPUT_PRICE + completion_tokens * _GPT_OUTPUT_PRICE
-    return max(round(cost, 8), 0.000001)
+    return max(round(cost, 8), 0.00004)  # minimum $0.00004 per call
 
 def _charge_ai_transaction(session_token: str, cost: float, description: str, metadata: dict) -> dict:
     """Deduct cost from balance and write to transactions. Returns success/error dict."""
@@ -348,7 +348,7 @@ def init_db():
             created_at TIMESTAMPTZ DEFAULT NOW(),
             last_login TIMESTAMPTZ,
             is_active BOOLEAN DEFAULT TRUE,
-            total_spent DECIMAL(10,2) DEFAULT 0.00
+            total_spent DECIMAL(14,8) DEFAULT 0.00000000
         );
         """)
         pass  # log
@@ -415,7 +415,7 @@ def init_db():
             id BIGSERIAL PRIMARY KEY,
             user_id BIGINT REFERENCES users(id),
             license_key TEXT REFERENCES licenses(key),
-            amount DECIMAL(10,2) NOT NULL,
+            amount DECIMAL(14,8) NOT NULL,
             type TEXT NOT NULL,
             description TEXT,
             created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -423,7 +423,18 @@ def init_db():
         );
         """)
         pass  # log
-        
+
+        # Migrate existing columns to higher precision (idempotent)
+        for _col_mig in [
+            "ALTER TABLE transactions ALTER COLUMN amount TYPE DECIMAL(14,8) USING amount::DECIMAL(14,8)",
+            "ALTER TABLE users ALTER COLUMN total_spent TYPE DECIMAL(14,8) USING total_spent::DECIMAL(14,8)",
+            "ALTER TABLE users ALTER COLUMN balance TYPE DECIMAL(14,8) USING balance::DECIMAL(14,8)",
+        ]:
+            try:
+                cur.execute(_col_mig)
+            except Exception:
+                pass  # already correct type or table doesn't exist yet
+
         # ---
         cur.execute("""
         CREATE TABLE IF NOT EXISTS pricing (
@@ -480,7 +491,7 @@ def init_db():
             id BIGSERIAL PRIMARY KEY,
             user_id BIGINT REFERENCES users(id),
             license_key TEXT REFERENCES licenses(key),
-            amount DECIMAL(10,2) NOT NULL,
+            amount DECIMAL(14,8) NOT NULL,
             payment_id TEXT UNIQUE,
             status TEXT DEFAULT 'pending',
             payment_url TEXT,
