@@ -407,6 +407,14 @@
           {% endif %}
         </div>
       </div>
+      <div class="form-group">
+        <label class="form-label">Лимит устройств (для этого ключа)</label>
+        <div class="form-input-group">
+          <input type="number" class="form-input" id="device-limit" value="{{ user.max_devices or 1 }}" min="1" max="50" style="max-width:100px;" />
+          <button class="btn btn-secondary" onclick="updateDeviceLimit()">💾 Сохранить</button>
+        </div>
+        <div style="font-size:12px;color:#a0aec0;margin-top:4px;">Сколько устройств может активировать этот ключ</div>
+      </div>
       <div class="divider"></div>
       <div class="form-group">
         <label class="form-label">Продлить на дней</label>
@@ -477,11 +485,8 @@
         <div class="card-title">Устройства пользователя</div>
       </div>
       <div class="form-group">
-        <label class="form-label">Лимит устройств</label>
         <div class="form-input-group">
-          <input type="number" class="form-input" id="device-limit" value="{{ user.max_devices or 1 }}" min="1" max="50" />
-          <button class="btn btn-secondary" onclick="updateDeviceLimit()">💾 Сохранить</button>
-          <button class="btn btn-danger" onclick="unlinkAllDevices()">🗑 Сбросить все</button>
+          <button class="btn btn-danger" onclick="unlinkAllDevices()">🗑 Сбросить все устройства</button>
         </div>
       </div>
       <div class="divider"></div>
