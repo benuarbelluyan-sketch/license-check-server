@@ -55,8 +55,8 @@ ADMIN_PANEL_SECRET = os.environ.get("ADMIN_PANEL_SECRET", "change-me")
 # ---
 # =========================
 SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "")
-FROM_EMAIL = "noreply@tgparsersender.me"  # ???????? email ???? ???????????????????? ?? SendGrid
-FROM_NAME = "TG Parser Sender"
+FROM_EMAIL = os.environ.get("FROM_EMAIL", "noreply@tgparsersender.me")
+FROM_NAME = os.environ.get("FROM_NAME", "TG Parser Sender")
 
 # =========================
 # OPENAI
@@ -1050,196 +1050,121 @@ def confirm_email(token: str):
 # ---
 # =========================
 def send_confirmation_email(email: str, token: str):
-    """???????????????? ?????????????????? ???????????? ?? ????????????????????????????"""
+    """Отправляет письмо подтверждения email."""
     confirm_url = f"https://license-check-server-xatc.onrender.com/api/auth/confirm?token={token}"
-    
-    # ---
+
     if not SENDGRID_API_KEY:
-        print(f"[INFO] email={email} confirm_url={confirm_url}")
+        print(f"[INFO] NO SENDGRID_API_KEY — confirm_url={confirm_url}")
         return
-    
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>?????????????????????????? email</title>
-    </head>
-    <body style="margin:0; padding:0; font-family: 'Segoe UI', Arial, sans-serif; background:#f5f7fa;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin:0 auto; background:white; border-radius:16px; margin-top:40px; box-shadow:0 4px 12px rgba(0,0,0,0.05);">
-            <!-- ?????????? -->
-            <tr>
-                <td style="padding:40px 40px 20px 40px; text-align:center; background:linear-gradient(135deg, #3b82f6, #8b5cf6); border-radius:16px 16px 0 0;">
-                    <h1 style="color:white; margin:0; font-size:28px; font-weight:600;">TG Parser Sender</h1>
-                    <p style="color:rgba(255,255,255,0.9); margin:10px 0 0 0; font-size:16px;">???????????????????????????????? ?????????????? Telegram</p>
-                </td>
-            </tr>
-            
-            <!-- ???????????????? ?????????????? -->
-            <tr>
-                <td style="padding:40px;">
-                    <h2 style="color:#1e293b; margin:0 0 20px 0; font-size:24px;">?????????????????????????? email</h2>
-                    <p style="color:#475569; line-height:1.6; margin:0 0 30px 0; font-size:16px;">
-                        ????????????????????????!<br><br>
-                        ?????? ???????????????????? ?????????????????????? ?? <strong>TG Parser Sender</strong> ?????????????????????? ?????? email ??????????.
-                    </p>
-                    
-                    <!-- ???????????? -->
-                    <table cellpadding="0" cellspacing="0" style="margin:30px auto;">
-                        <tr>
-                            <td style="background:#4CAF50; border-radius:40px; padding:14px 40px;">
-                                <a href="{confirm_url}" style="color:white; text-decoration:none; font-size:16px; font-weight:600; letter-spacing:0.5px;">??? ?????????????????????? EMAIL</a>
-                            </td>
-                        </tr>
-                    </table>
-                    
-                    <!-- ???????????????????????????? ???????????? -->
-                    <p style="color:#64748b; font-size:14px; margin:30px 0 0 0; text-align:center;">
-                        ?????? ?????????????????? ???? ????????????:<br>
-                        <a href="{confirm_url}" style="color:#3b82f6; word-break:break-all;">{confirm_url}</a>
-                    </p>
-                    
-                    <!-- ???????? ???????????????? -->
-                    <p style="color:#94a3b8; font-size:13px; margin:30px 0 0 0; text-align:center; border-top:1px solid #e2e8f0; padding-top:30px;">
-                        ???????????? ?????????????????????????? 24 ????????.<br>
-                        ???????? ???? ???? ????????????????????????????????, ???????????? ???????????????????????????? ?????? ????????????.
-                    </p>
-                </td>
-            </tr>
-            
-            <!-- ???????????? -->
-            <tr>
-                <td style="padding:30px 40px; background:#f8fafc; border-radius:0 0 16px 16px;">
-                    <table width="100%">
-                        <tr>
-                            <td style="text-align:center;">
-                                <p style="color:#64748b; margin:0 0 10px 0; font-size:14px;">
-                                    ?? ??????????????????, ?????????????? TG Parser Sender
-                                </p>
-                                <p style="color:#94a3b8; margin:0; font-size:13px;">
-                                    ???? support@tgparsersender.me | ???? @Ben_bell97
-                                </p>
-                            </td>
-                        </tr>
-                    </table>
-                </td>
-            </tr>
-        </table>
-    </body>
-    </html>
-    """
-    
+
+    html_content = (
+        "<!DOCTYPE html><html><head>"
+        "<meta charset=\"UTF-8\">"
+        "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+        "</head>"
+        "<body style=\"margin:0;padding:0;font-family:Arial,sans-serif;background:#f5f7fa;\">"
+        "<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:600px;margin:40px auto;background:#fff;border-radius:16px;box-shadow:0 4px 12px rgba(0,0,0,0.08);\">"
+        "<tr><td style=\"padding:40px;text-align:center;background:linear-gradient(135deg,#3b82f6,#8b5cf6);border-radius:16px 16px 0 0;\">"
+        "<h1 style=\"color:#fff;margin:0;font-size:26px;font-weight:700;\">TG Parser Sender</h1>"
+        "<p style=\"color:rgba(255,255,255,0.85);margin:8px 0 0;font-size:14px;\">TG Leads AI</p>"
+        "</td></tr>"
+        "<tr><td style=\"padding:40px;\">"
+        "<h2 style=\"color:#1e293b;margin:0 0 16px;font-size:22px;\">Подтвердите email</h2>"
+        "<p style=\"color:#475569;line-height:1.7;margin:0 0 28px;font-size:15px;\">"
+        "Здравствуйте!<br><br>"
+        "Для завершения регистрации в <strong>TG Parser Sender</strong> нажмите кнопку ниже."
+        "</p>"
+        "<table cellpadding=\"0\" cellspacing=\"0\" style=\"margin:0 auto 28px;\">"
+        "<tr><td style=\"background:#22c55e;border-radius:40px;padding:14px 40px;\">"
+        f"<a href=\"{confirm_url}\" style=\"color:#fff;text-decoration:none;font-size:16px;font-weight:600;\">Подтвердить email</a>"
+        "</td></tr></table>"
+        "<p style=\"color:#64748b;font-size:13px;text-align:center;margin:0 0 20px;\">"
+        "Или скопируйте ссылку:<br>"
+        f"<a href=\"{confirm_url}\" style=\"color:#3b82f6;word-break:break-all;\">{confirm_url}</a>"
+        "</p>"
+        "<p style=\"color:#94a3b8;font-size:12px;text-align:center;border-top:1px solid #e2e8f0;padding-top:20px;margin:0;\">"
+        "Ссылка действительна 24 часа. Если вы не регистрировались — проигнорируйте письмо."
+        "</p>"
+        "</td></tr>"
+        "<tr><td style=\"padding:24px 40px;background:#f8fafc;border-radius:0 0 16px 16px;text-align:center;\">"
+        "<p style=\"color:#64748b;margin:0 0 4px;font-size:13px;\">С уважением, команда TG Parser Sender</p>"
+        "<p style=\"color:#94a3b8;margin:0;font-size:12px;\">support@tgparsersender.me | @Ben_bell97</p>"
+        "</td></tr>"
+        "</table></body></html>"
+    )
+
     message = Mail(
         from_email=Email(FROM_EMAIL, FROM_NAME),
         to_emails=To(email),
-        subject="?????????????????????????? email ?? TG Parser Sender",
+        subject="Подтверждение email — TG Parser Sender",
         html_content=Content("text/html", html_content)
     )
-    
     try:
         sg = sendgrid.SendGridAPIClient(api_key=SENDGRID_API_KEY)
         response = sg.send(message)
-        print(f"[INFO] email={email}")
+        print(f"[INFO] Confirmation email sent to {email}, status={response.status_code}")
     except Exception as e:
-        print(f"[INFO] e={e}")
+        print(f"[ERROR] send_confirmation_email failed for {email}: {e}")
+
 
 def send_password_reset_email(email: str, token: str):
-    """???????????????? ?????????????????? ???????????? ?????? ???????????? ????????????"""
+    """Отправляет письмо для сброса пароля."""
     reset_url = f"https://license-check-server-xatc.onrender.com/reset-password?token={token}"
-    
+
     if not SENDGRID_API_KEY:
-        print(f"[INFO] email={email} reset_url={reset_url}")
+        print(f"[INFO] NO SENDGRID_API_KEY — reset_url={reset_url}")
         return
-    
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>?????????? ????????????</title>
-    </head>
-    <body style="margin:0; padding:0; font-family: 'Segoe UI', Arial, sans-serif; background:#f5f7fa;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin:0 auto; background:white; border-radius:16px; margin-top:40px; box-shadow:0 4px 12px rgba(0,0,0,0.05);">
-            <!-- ?????????? -->
-            <tr>
-                <td style="padding:40px 40px 20px 40px; text-align:center; background:linear-gradient(135deg, #ef4444, #f97316); border-radius:16px 16px 0 0;">
-                    <h1 style="color:white; margin:0; font-size:28px; font-weight:600;">TG Parser Sender</h1>
-                    <p style="color:rgba(255,255,255,0.9); margin:10px 0 0 0; font-size:16px;">???????????????????????????? ??????????????</p>
-                </td>
-            </tr>
-            
-            <!-- ???????????????? ?????????????? -->
-            <tr>
-                <td style="padding:40px;">
-                    <h2 style="color:#1e293b; margin:0 0 20px 0; font-size:24px;">?????????? ????????????</h2>
-                    <p style="color:#475569; line-height:1.6; margin:0 0 30px 0; font-size:16px;">
-                        ???? ???????????????? ???????????? ???? ?????????? ???????????? ?????? ???????????? ????????????????.
-                    </p>
-                    
-                    <!-- ???????????? -->
-                    <table cellpadding="0" cellspacing="0" style="margin:30px auto;">
-                        <tr>
-                            <td style="background:#3b82f6; border-radius:40px; padding:14px 40px;">
-                                <a href="{reset_url}" style="color:white; text-decoration:none; font-size:16px; font-weight:600; letter-spacing:0.5px;">???? ???????????????? ????????????</a>
-                            </td>
-                        </tr>
-                    </table>
-                    
-                    <!-- ???????????????????????????? ???????????? -->
-                    <p style="color:#64748b; font-size:14px; margin:30px 0 0 0; text-align:center;">
-                        ?????? ?????????????????? ???? ????????????:<br>
-                        <a href="{reset_url}" style="color:#3b82f6; word-break:break-all;">{reset_url}</a>
-                    </p>
-                    
-                    <!-- ???????????????????????????? -->
-                    <p style="color:#94a3b8; font-size:13px; margin:30px 0 0 0; text-align:center; border-top:1px solid #e2e8f0; padding-top:30px;">
-                        ???????????? ?????????????????????????? 1 ??????.<br>
-                        ???????? ???? ???? ?????????????????????? ?????????? ????????????, ???????????????????????????? ?????? ????????????.
-                    </p>
-                </td>
-            </tr>
-            
-            <!-- ???????????? -->
-            <tr>
-                <td style="padding:30px 40px; background:#f8fafc; border-radius:0 0 16px 16px;">
-                    <table width="100%">
-                        <tr>
-                            <td style="text-align:center;">
-                                <p style="color:#64748b; margin:0 0 10px 0; font-size:14px;">
-                                    ?? ??????????????????, ?????????????? TG Parser Sender
-                                </p>
-                                <p style="color:#94a3b8; margin:0; font-size:13px;">
-                                    ???? support@tgparsersender.me | ???? @Ben_bell97
-                                </p>
-                            </td>
-                        </tr>
-                    </table>
-                </td>
-            </tr>
-        </table>
-    </body>
-    </html>
-    """
-    
+
+    html_content = (
+        "<!DOCTYPE html><html><head>"
+        "<meta charset=\"UTF-8\">"
+        "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+        "</head>"
+        "<body style=\"margin:0;padding:0;font-family:Arial,sans-serif;background:#f5f7fa;\">"
+        "<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:600px;margin:40px auto;background:#fff;border-radius:16px;box-shadow:0 4px 12px rgba(0,0,0,0.08);\">"
+        "<tr><td style=\"padding:40px;text-align:center;background:linear-gradient(135deg,#ef4444,#f97316);border-radius:16px 16px 0 0;\">"
+        "<h1 style=\"color:#fff;margin:0;font-size:26px;font-weight:700;\">TG Parser Sender</h1>"
+        "<p style=\"color:rgba(255,255,255,0.85);margin:8px 0 0;font-size:14px;\">Безопасность аккаунта</p>"
+        "</td></tr>"
+        "<tr><td style=\"padding:40px;\">"
+        "<h2 style=\"color:#1e293b;margin:0 0 16px;font-size:22px;\">Сброс пароля</h2>"
+        "<p style=\"color:#475569;line-height:1.7;margin:0 0 28px;font-size:15px;\">"
+        "Мы получили запрос на сброс пароля для вашего аккаунта.<br><br>"
+        "Нажмите кнопку ниже чтобы задать новый пароль. Если вы не запрашивали сброс — проигнорируйте письмо."
+        "</p>"
+        "<table cellpadding=\"0\" cellspacing=\"0\" style=\"margin:0 auto 28px;\">"
+        "<tr><td style=\"background:#3b82f6;border-radius:40px;padding:14px 40px;\">"
+        f"<a href=\"{reset_url}\" style=\"color:#fff;text-decoration:none;font-size:16px;font-weight:600;\">Сбросить пароль</a>"
+        "</td></tr></table>"
+        "<p style=\"color:#64748b;font-size:13px;text-align:center;margin:0 0 20px;\">"
+        "Или скопируйте ссылку:<br>"
+        f"<a href=\"{reset_url}\" style=\"color:#3b82f6;word-break:break-all;\">{reset_url}</a>"
+        "</p>"
+        "<p style=\"color:#94a3b8;font-size:12px;text-align:center;border-top:1px solid #e2e8f0;padding-top:20px;margin:0;\">"
+        "Ссылка действительна 1 час. После использования ссылка становится недействительной."
+        "</p>"
+        "</td></tr>"
+        "<tr><td style=\"padding:24px 40px;background:#f8fafc;border-radius:0 0 16px 16px;text-align:center;\">"
+        "<p style=\"color:#64748b;margin:0 0 4px;font-size:13px;\">С уважением, команда TG Parser Sender</p>"
+        "<p style=\"color:#94a3b8;margin:0;font-size:12px;\">support@tgparsersender.me | @Ben_bell97</p>"
+        "</td></tr>"
+        "</table></body></html>"
+    )
+
     message = Mail(
         from_email=Email(FROM_EMAIL, FROM_NAME),
         to_emails=To(email),
-        subject="?????????? ???????????? ?? TG Parser Sender",
+        subject="Сброс пароля — TG Parser Sender",
         html_content=Content("text/html", html_content)
     )
-    
     try:
         sg = sendgrid.SendGridAPIClient(api_key=SENDGRID_API_KEY)
         response = sg.send(message)
-        print(f"[INFO] email={email}")
+        print(f"[INFO] Reset email sent to {email}, status={response.status_code}")
     except Exception as e:
-        print(f"[INFO] e={e}")
+        print(f"[ERROR] send_password_reset_email failed for {email}: {e}")
 
-# =========================
-# ---
-# =========================
+
 @app.get("/admin/login", response_class=HTMLResponse)
 def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request, "error": ""})
@@ -2529,25 +2454,17 @@ def add_days(request: Request, key: str = Form(...), add: int = Form(...)):
 
 @app.post("/admin/set_expires")
 def set_expires(request: Request, key: str = Form(...), expires_date: str = Form(...)):
-    """Установить точную дату истечения лицензии."""
     if not is_admin(request):
         return RedirectResponse("/admin/login", status_code=303)
     try:
         from datetime import datetime as _dt
         new_date = _dt.strptime(expires_date.strip(), "%Y-%m-%d")
     except ValueError:
-        return RedirectResponse("/admin/licenses?err=Неверный формат даты", status_code=303)
-    con = db()
-    cur = con.cursor()
-    cur.execute(
-        "UPDATE licenses SET expires_at=%s, revoked=FALSE, updated_at=NOW() WHERE key=%s",
-        (new_date, key)
-    )
-    con.commit()
-    cur.close()
-    con.close()
-    return RedirectResponse("/admin/licenses?ok=Дата обновлена", status_code=303)
-
+        return RedirectResponse("/admin/licenses?err=Bad date format", status_code=303)
+    con = db(); cur = con.cursor()
+    cur.execute("UPDATE licenses SET expires_at=%s, revoked=FALSE, updated_at=NOW() WHERE key=%s", (new_date, key))
+    con.commit(); cur.close(); con.close()
+    return RedirectResponse("/admin/licenses?ok=Date updated", status_code=303)
 
 @app.post("/admin/revoke")
 def revoke(request: Request, key: str = Form(...)):
