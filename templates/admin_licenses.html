@@ -8,19 +8,17 @@
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
-    .container { max-width: 1400px; margin: 0 auto; padding: 40px 24px; }
+    .container { max-width: 1500px; margin: 0 auto; padding: 40px 24px; }
     .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; }
     .logo { display: flex; align-items: center; gap: 12px; }
     .logo-icon { width: 48px; height: 48px; background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; border: 1px solid rgba(255,255,255,0.3); }
     .logo-text { font-size: 20px; font-weight: 700; color: #fff; }
-    .logout-btn { background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3); border-radius: 12px; padding: 10px 20px; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+    .logout-btn { background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3); border-radius: 12px; padding: 10px 20px; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; }
     .logout-btn:hover { background: rgba(255,255,255,0.3); }
     .nav { background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); border-radius: 16px; padding: 8px; display: flex; gap: 4px; margin-bottom: 32px; overflow-x: auto; }
     .nav-item { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 10px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s; white-space: nowrap; }
     .nav-item:hover { background: rgba(255,255,255,0.15); color: #fff; }
     .nav-item.active { background: #fff; color: #667eea; box-shadow: 0 4px 14px rgba(0,0,0,0.1); }
-
-    /* Карточка создания */
     .create-card { background: #fff; border-radius: 20px; padding: 28px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 24px; }
     .create-title { font-size: 16px; font-weight: 700; color: #1a202c; margin-bottom: 20px; }
     .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 20px; }
@@ -31,40 +29,66 @@
     .form-input::placeholder { color: #a0aec0; }
     .key-row { display: flex; gap: 8px; }
     .key-row .form-input { flex: 1; font-family: monospace; }
-    .btn-gen { padding: 10px 14px; background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: opacity 0.2s; }
+    .btn-gen { padding: 10px 14px; background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
     .btn-gen:hover { opacity: 0.85; }
     .form-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-    .btn-create { padding: 11px 28px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; border: none; border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer; transition: opacity 0.2s, transform 0.1s; }
-    .btn-create:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-create { padding: 11px 28px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; border: none; border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer; }
+    .btn-create:hover { opacity: 0.9; }
     .form-hint { font-size: 12px; color: #a0aec0; }
-
-    /* Таблица */
     .table-card { background: #fff; border-radius: 20px; padding: 28px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-    .table-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .table-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; gap: 16px; flex-wrap: wrap; }
     .table-title { font-size: 18px; font-weight: 700; color: #1a202c; }
+    .search-box { flex: 1; max-width: 340px; }
+    .search-box input { width: 100%; padding: 9px 14px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-size: 13px; font-family: 'Inter'; outline: none; background: #f7fafc; }
+    .search-box input:focus { border-color: #667eea; background: #fff; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
     thead { background: #f7fafc; }
-    th { padding: 12px 16px; text-align: left; color: #718096; font-weight: 600; font-size: 12px; text-transform: uppercase; }
-    td { padding: 14px 16px; border-top: 1px solid #f7fafc; vertical-align: middle; }
-    tr:hover td { background: #f7fafc; }
-    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-    .badge-active { background: #c6f6d5; color: #22543d; }
+    th { padding: 11px 12px; text-align: left; color: #718096; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap; }
+    td { padding: 0 12px; border-top: 1px solid #f0f4f8; vertical-align: middle; }
+    tr:hover td { background: #fafbff; }
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+    .badge-active  { background: #c6f6d5; color: #22543d; }
     .badge-expired { background: #fed7d7; color: #742a2a; }
     .badge-revoked { background: #e2e8f0; color: #4a5568; }
-    .key-text { font-family: monospace; font-size: 12px; color: #4a5568; font-weight: 600; }
-    .empty { text-align: center; padding: 60px; color: #a0aec0; }
-    .action-btns { display: flex; gap: 6px; flex-wrap: wrap; }
-    .btn-sm { padding: 5px 12px; border-radius: 8px; font-size: 11px; font-weight: 600; cursor: pointer; border: none; transition: opacity 0.2s; }
+    .badge-warn    { background: #fefcbf; color: #744210; }
+    .key-text { font-family: monospace; font-size: 12px; color: #4a5568; font-weight: 600; cursor: pointer; }
+    .key-text:hover { color: #667eea; }
+    .user-link { color: #667eea; text-decoration: none; font-weight: 500; font-size: 12px; }
+    .user-link:hover { text-decoration: underline; }
+    .no-user { color: #cbd5e0; font-size: 12px; font-style: italic; }
+    .days-left { font-size: 12px; font-weight: 700; white-space: nowrap; }
+    .days-ok  { color: #276749; }
+    .days-warn { color: #744210; }
+    .days-bad  { color: #742a2a; }
+    .expires-cell { min-width: 280px; }
+    .expires-row { display: flex; align-items: center; gap: 5px; padding: 8px 0; flex-wrap: wrap; }
+    .expires-date { font-size: 13px; font-weight: 600; color: #2d3748; white-space: nowrap; min-width: 72px; }
+    .day-btns { display: flex; gap: 2px; flex-wrap: wrap; }
+    .day-btn { padding: 3px 7px; border-radius: 7px; font-size: 11px; font-weight: 700; cursor: pointer; border: none; white-space: nowrap; }
+    .day-btn:hover { opacity: 0.75; }
+    .day-btn.plus  { background: #ebf8ff; color: #2b6cb0; }
+    .day-btn.minus { background: #fff5f5; color: #c53030; }
+    .day-btn.set   { background: #f0fff4; color: #276749; }
+    .date-pick-row { display: flex; align-items: center; gap: 6px; margin-top: 5px; flex-wrap: wrap; }
+    .date-pick-row input[type=date] { padding: 4px 8px; border: 1.5px solid #667eea; border-radius: 8px; font-size: 12px; font-family: 'Inter'; outline: none; color: #2d3748; }
+    .btn-set    { padding: 4px 12px; background: #667eea; color: #fff; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .btn-cancel { padding: 4px 8px; background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 12px; cursor: pointer; color: #718096; }
+    .dev-input { width: 54px; padding: 3px 6px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; color: #4a5568; text-align: center; outline: none; transition: border-color .2s; }
+    .dev-input:focus { border-color: #667eea; }
+    .dev-input.saved { border-color: #48bb78; }
+    .action-btns { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; padding: 8px 0; }
+    .btn-sm { padding: 5px 12px; border-radius: 8px; font-size: 11px; font-weight: 600; cursor: pointer; border: none; white-space: nowrap; }
     .btn-sm:hover { opacity: 0.8; }
-    .btn-extend { background: #ebf8ff; color: #2b6cb0; }
-    .btn-revoke { background: #fff5f5; color: #c53030; }
+    .btn-revoke   { background: #fff5f5; color: #c53030; }
     .btn-unrevoke { background: #f0fff4; color: #276749; }
-    .btn-delete { background: #fff5f5; color: #c53030; }
-
-    /* Flash */
+    .btn-delete   { background: #fff5f5; color: #c53030; }
+    .empty { text-align: center; padding: 60px; color: #a0aec0; }
     .flash { padding: 12px 20px; border-radius: 12px; margin-bottom: 20px; font-size: 13px; font-weight: 500; }
-    .flash-ok { background: #c6f6d5; color: #22543d; }
+    .flash-ok  { background: #c6f6d5; color: #22543d; }
     .flash-err { background: #fed7d7; color: #742a2a; }
+    .copy-toast { position: fixed; bottom: 24px; right: 24px; background: #2d3748; color: #fff; padding: 10px 18px; border-radius: 12px; font-size: 13px; font-weight: 600; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 999; }
+    .copy-toast.show { opacity: 1; }
+    .note-cell { max-width: 130px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #718096; font-size: 12px; }
   </style>
 </head>
 <body>
@@ -96,12 +120,10 @@
   <div class="flash flash-err">❌ {{ request.query_params.get('err') }}</div>
   {% endif %}
 
-  <!-- Форма создания лицензии -->
   <div class="create-card">
     <div class="create-title">✨ Создать новую лицензию</div>
     <form method="post" action="/admin/upsert">
       <div class="form-grid">
-
         <div class="form-group">
           <label class="form-label">Ключ лицензии *</label>
           <div class="key-row">
@@ -109,107 +131,190 @@
             <button type="button" class="btn-gen" onclick="generateKey()">🎲 Авто</button>
           </div>
         </div>
-
         <div class="form-group">
           <label class="form-label">HWID устройства</label>
-          <input class="form-input" name="hwid" value="" placeholder="Пусто = привяжется сам при входе">
+          <input class="form-input" name="hwid" value="" placeholder="Пусто = привяжется при входе">
         </div>
-
         <div class="form-group">
           <label class="form-label">Срок действия (дней)</label>
           <input class="form-input" name="days" type="number" value="30" min="1" max="3650" required>
         </div>
-
+        <div class="form-group">
+          <label class="form-label">Лимит устройств</label>
+          <input class="form-input" name="max_devices" type="number" value="1" min="1" max="50">
+        </div>
         <div class="form-group">
           <label class="form-label">План</label>
           <select class="form-input" name="plan">
-            <option value="custom">custom — 1 устройство</option>
-            <option value="m1">m1 — 1 устройство</option>
-            <option value="m3">m3 — 2 устройства</option>
-            <option value="m6">m6 — 3 устройства</option>
-            <option value="y1">y1 — 5 устройств</option>
+            <option value="custom">custom</option>
+            <option value="m1">m1 — 1 мес</option>
+            <option value="m3">m3 — 3 мес</option>
+            <option value="m6">m6 — 6 мес</option>
+            <option value="y1">y1 — 1 год</option>
           </select>
         </div>
-
         <div class="form-group">
           <label class="form-label">Примечание</label>
-          <input class="form-input" name="note" placeholder="Например: Иван, тест, VIP...">
+          <input class="form-input" name="note" placeholder="Иван, тест, VIP...">
         </div>
-
       </div>
       <div class="form-actions">
         <button class="btn-create" type="submit">💾 Создать лицензию</button>
-        <span class="form-hint">💡 Пустой HWID — ключ привяжется к устройству при первой активации пользователем</span>
+        <span class="form-hint">💡 Пустой HWID — привяжется при первой активации</span>
       </div>
     </form>
   </div>
 
-  <!-- Таблица лицензий -->
   <div class="table-card">
     <div class="table-header">
-      <div class="table-title">Лицензии ({{ rows | length }})</div>
+      <div class="table-title">🔑 Лицензии ({{ rows | length }})</div>
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="🔍 Поиск по ключу, email, плану..." oninput="filterTable()">
+      </div>
     </div>
 
     {% if rows %}
-    <table>
+    <table id="licTable">
       <thead>
         <tr>
           <th>Ключ</th>
           <th>Статус</th>
+          <th>Пользователь</th>
           <th>План</th>
           <th>Устройства</th>
-          <th>Истекает</th>
+          <th>Срок действия</th>
+          <th>Осталось</th>
           <th>Примечание</th>
           <th>Действия</th>
         </tr>
       </thead>
       <tbody>
         {% for r in rows %}
-        <tr>
-          <td><div class="key-text">{{ r.key }}</div></td>
+        {% set days_left = ((r.expires_at - now).days) if r.expires_at and not r.revoked and r.expires_at > now else 0 %}
+        <tr data-search="{{ r.key|lower }} {{ (r.user_email or '')|lower }} {{ (r.plan or '')|lower }} {{ (r.note or '')|lower }}">
+
+          <td>
+            <div class="key-text" onclick="copyKey('{{ r.key }}')" title="Нажмите чтобы скопировать">
+              {{ r.key }}
+            </div>
+          </td>
+
           <td>
             {% if r.revoked %}
               <span class="badge badge-revoked">🚫 Отозвана</span>
-            {% elif r.expires_at > now %}
-              <span class="badge badge-active">✅ Активна</span>
+            {% elif r.expires_at and r.expires_at > now %}
+              {% if days_left <= 7 %}
+                <span class="badge badge-warn">⚠️ Скоро истечёт</span>
+              {% else %}
+                <span class="badge badge-active">✅ Активна</span>
+              {% endif %}
             {% else %}
               <span class="badge badge-expired">❌ Истекла</span>
             {% endif %}
           </td>
-          <td style="color:#4a5568; font-weight:500;">{{ r.plan or 'custom' }}</td>
+
           <td>
-            <div style="display:flex;align-items:center;gap:4px;">
-              <input type="number" min="1" max="50"
-                value="{{ r.max_devices or 1 }}"
-                style="width:54px;padding:3px 6px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;color:#4a5568;text-align:center;"
-                onchange="updateLimit('{{ r.key }}', this.value, this)"
-                title="Лимит устройств для ключа"
-              />
+            {% if r.user_id %}
+              <a href="/admin/users/{{ r.user_id }}" class="user-link">{{ r.user_email or '—' }}</a>
+            {% else %}
+              <span class="no-user">Не активирован</span>
+            {% endif %}
+          </td>
+
+          <td style="font-weight:600; color:#4a5568;">{{ r.plan or 'custom' }}</td>
+
+          <td>
+            <input type="number" min="1" max="50"
+              value="{{ r.max_devices or 1 }}"
+              class="dev-input"
+              onchange="updateLimit('{{ r.key }}', this.value, this)"
+              title="Лимит устройств для этого ключа"
+            />
+          </td>
+
+          <td class="expires-cell" id="cell-{{ loop.index }}">
+            <div class="expires-row">
+              <span class="expires-date">
+                {{ r.expires_at.strftime('%d.%m.%Y') if r.expires_at else '—' }}
+              </span>
+              <div class="day-btns">
+                <form method="post" action="/admin/add_days" style="display:inline;">
+                  <input type="hidden" name="key" value="{{ r.key }}">
+                  <input type="hidden" name="add" value="-30">
+                  <button class="day-btn minus" type="submit" title="−30 дней">−30д</button>
+                </form>
+                <form method="post" action="/admin/add_days" style="display:inline;">
+                  <input type="hidden" name="key" value="{{ r.key }}">
+                  <input type="hidden" name="add" value="-7">
+                  <button class="day-btn minus" type="submit" title="−7 дней">−7д</button>
+                </form>
+                <form method="post" action="/admin/add_days" style="display:inline;">
+                  <input type="hidden" name="key" value="{{ r.key }}">
+                  <input type="hidden" name="add" value="-1">
+                  <button class="day-btn minus" type="submit" title="−1 день">−1д</button>
+                </form>
+                <form method="post" action="/admin/add_days" style="display:inline;">
+                  <input type="hidden" name="key" value="{{ r.key }}">
+                  <input type="hidden" name="add" value="1">
+                  <button class="day-btn plus" type="submit" title="+1 день">+1д</button>
+                </form>
+                <form method="post" action="/admin/add_days" style="display:inline;">
+                  <input type="hidden" name="key" value="{{ r.key }}">
+                  <input type="hidden" name="add" value="7">
+                  <button class="day-btn plus" type="submit" title="+7 дней">+7д</button>
+                </form>
+                <form method="post" action="/admin/add_days" style="display:inline;">
+                  <input type="hidden" name="key" value="{{ r.key }}">
+                  <input type="hidden" name="add" value="30">
+                  <button class="day-btn plus" type="submit" title="+30 дней">+30д</button>
+                </form>
+                <button class="day-btn set" type="button"
+                  onclick="toggleDatePicker('{{ loop.index }}', '{{ r.expires_at.strftime('%Y-%m-%d') if r.expires_at else '' }}')"
+                  title="Установить точную дату">📅</button>
+              </div>
+            </div>
+            <div class="date-pick-row" id="datepick-{{ loop.index }}" style="display:none;">
+              <form method="post" action="/admin/set_expires" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                <input type="hidden" name="key" value="{{ r.key }}">
+                <input type="date" name="expires_date" id="dateInput-{{ loop.index }}"
+                  value="{{ r.expires_at.strftime('%Y-%m-%d') if r.expires_at else '' }}">
+                <button class="btn-set" type="submit">Сохранить</button>
+                <button class="btn-cancel" type="button"
+                  onclick="toggleDatePicker('{{ loop.index }}', '')">Отмена</button>
+              </form>
             </div>
           </td>
-          <td style="color:#a0aec0; font-size:12px;">{{ r.expires_at.strftime('%d.%m.%Y') if r.expires_at else '—' }}</td>
-          <td style="color:#a0aec0; font-size:12px;">{{ r.note or '—' }}</td>
+
+          <td>
+            {% if r.revoked %}
+              <span class="days-left" style="color:#a0aec0;">—</span>
+            {% elif r.expires_at and r.expires_at > now %}
+              <span class="days-left {% if days_left <= 3 %}days-bad{% elif days_left <= 14 %}days-warn{% else %}days-ok{% endif %}">
+                {{ days_left }} дн.
+              </span>
+            {% else %}
+              <span class="days-left days-bad">Истекла</span>
+            {% endif %}
+          </td>
+
+          <td class="note-cell" title="{{ r.note or '' }}">{{ r.note or '—' }}</td>
+
           <td>
             <div class="action-btns">
-              <form method="post" action="/admin/add_days" style="display:inline;">
-                <input type="hidden" name="key" value="{{ r.key }}">
-                <input type="hidden" name="add" value="30">
-                <button class="btn-sm btn-extend" type="submit">+30д</button>
-              </form>
               {% if r.revoked %}
               <form method="post" action="/admin/unrevoke" style="display:inline;">
                 <input type="hidden" name="key" value="{{ r.key }}">
-                <button class="btn-sm btn-unrevoke" type="submit">Восстановить</button>
+                <button class="btn-sm btn-unrevoke" type="submit">✅ Восстановить</button>
               </form>
               {% else %}
               <form method="post" action="/admin/revoke" style="display:inline;"
                 onsubmit="return confirm('Отозвать ключ {{ r.key }}?')">
                 <input type="hidden" name="key" value="{{ r.key }}">
-                <button class="btn-sm btn-revoke" type="submit">Отозвать</button>
+                <button class="btn-sm btn-revoke" type="submit">🚫 Отозвать</button>
               </form>
               {% endif %}
               <form method="post" action="/admin/delete" style="display:inline;"
-                onsubmit="return confirm('Удалить ключ {{ r.key }}? Это необратимо!')">
+                onsubmit="return confirm('Удалить ключ {{ r.key }}? Необратимо!')">
                 <input type="hidden" name="key" value="{{ r.key }}">
                 <button class="btn-sm btn-delete" type="submit">🗑</button>
               </form>
@@ -228,6 +333,7 @@
   </div>
 
 </div>
+<div class="copy-toast" id="copyToast">✅ Ключ скопирован</div>
 <script>
   function generateKey() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -235,25 +341,43 @@
     document.getElementById('keyInput').value = 'BEN-' + part(4) + '-' + part(4) + '-' + part(4);
   }
 
+  function copyKey(key) {
+    navigator.clipboard.writeText(key).then(() => {
+      const t = document.getElementById('copyToast');
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2000);
+    });
+  }
+
+  function toggleDatePicker(idx, currentDate) {
+    const dp  = document.getElementById('datepick-' + idx);
+    const inp = document.getElementById('dateInput-' + idx);
+    const isHidden = dp.style.display === 'none';
+    dp.style.display = isHidden ? 'flex' : 'none';
+    if (isHidden && currentDate) inp.value = currentDate;
+  }
+
   async function updateLimit(key, val, el) {
     const max_devices = parseInt(val);
     if (!max_devices || max_devices < 1) return;
     try {
-      const res = await fetch('/admin/api/update-limit', {
+      const res  = await fetch('/admin/api/update-limit', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({key, max_devices})
       });
       const data = await res.json();
-      if (data.success) {
-        el.style.borderColor = '#48bb78';
-        setTimeout(() => el.style.borderColor = '#e2e8f0', 1500);
-      } else {
-        el.style.borderColor = '#fc8181';
-      }
-    } catch(e) {
-      el.style.borderColor = '#fc8181';
-    }
+      el.classList.toggle('saved', data.success);
+      if (data.success) setTimeout(() => el.classList.remove('saved'), 1800);
+      else el.style.borderColor = '#fc8181';
+    } catch { el.style.borderColor = '#fc8181'; }
+  }
+
+  function filterTable() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    document.querySelectorAll('#licTable tbody tr').forEach(row => {
+      row.style.display = (row.dataset.search || '').includes(q) ? '' : 'none';
+    });
   }
 </script>
 </body>
