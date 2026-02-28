@@ -27,8 +27,8 @@ from starlette.middleware.sessions import SessionMiddleware
 # =========================
 # ---
 # =========================
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail, Email
+import sendgrid
+from sendgrid.helpers.mail import Mail, Email, To, Content
 
 from openai import OpenAI
 
@@ -37,151 +37,6 @@ app = FastAPI()
 # =========================
 # ---
 # =========================
-
-
-def _send_mail(message: Mail):
-    if not SENDGRID_API_KEY:
-        raise RuntimeError("SENDGRID_API_KEY is missing")
-
-    try:
-        sg = SendGridAPIClient(SENDGRID_API_KEY)
-        resp = sg.send(message)
-        # Minimal log for Render
-        print(f"[mail] status={resp.status_code}")
-        return resp
-    except Exception as e:
-        print(f"[mail] error: {e}")
-        raise
-
-
-def _email_html_base(title: str, preheader: str, heading: str, body_html: str, button_text: str, button_url: str) -> str:
-    # Bulletproof email HTML (better contrast / Gmail safe link colors / Outlook-friendly button)
-    return f"""<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>{title}</title>
-  <style>
-    body,table,td,a{{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}}
-    table,td{{mso-table-lspace:0pt;mso-table-rspace:0pt;}}
-    img{{-ms-interpolation-mode:bicubic;border:0;outline:none;text-decoration:none;}}
-    table{{border-collapse:collapse !important;}}
-    body{{margin:0;padding:0;width:100% !important;background:#f4f6fb;font-family:Arial,Helvetica,sans-serif;}}
-    .container{{max-width:600px;margin:0 auto;}}
-    .card{{background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 24px rgba(15,23,42,0.08);}}
-    .header{{background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);padding:28px 28px 22px 28px;color:#ffffff;}}
-    .brand{{font-size:20px;font-weight:700;letter-spacing:-0.2px;}}
-    .subbrand{{opacity:.9;font-size:13px;margin-top:6px;}}
-    .content{{padding:28px; color:#0f172a;}}
-    h1{{margin:0 0 10px 0;font-size:22px;line-height:1.25;}}
-    p{{margin:0 0 14px 0;font-size:14px;line-height:1.6;color:#334155;}}
-    .small{{font-size:12px;color:#64748b;}}
-    .footer{{padding:18px 28px;color:#94a3b8;font-size:12px;text-align:center;}}
-    .mono{{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}}
-    .preheader{{display:none !important;visibility:hidden;opacity:0;color:transparent;height:0;width:0;}}
-    /* Force safe link color inside buttons and elsewhere */
-    a{{color:#2563eb;}}
-    .btn-link{{color:#ffffff !important;text-decoration:none !important;}}
-  </style>
-</head>
-<body>
-  <div class="preheader">{preheader}</div>
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-    <tr>
-      <td style="padding:28px 12px;">
-        <div class="container">
-          <div class="card">
-            <div class="header">
-              <div class="brand">TG Leads AI</div>
-              <div class="subbrand">Telegram leads & outreach platform</div>
-            </div>
-            <div class="content">
-              <h1>{heading}</h1>
-              {body_html}
-
-              <!-- Bulletproof button -->
-              <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:10px 0 10px 0;">
-                <tr>
-                  <td bgcolor="#4f46e5" style="border-radius:12px;">
-                    <a href="{button_url}" target="_blank" rel="noopener"
-                       class="btn-link"
-                       style="display:inline-block;padding:12px 18px;font-weight:700;font-size:14px;line-height:14px;border-radius:12px;background:#4f46e5;color:#ffffff !important;text-decoration:none !important;">
-                      {button_text}
-                    </a>
-                  </td>
-                </tr>
-              </table>
-
-              <p class="small">If the button doesn’t work, open this link:</p>
-              <p class="small mono"><a href="{button_url}" target="_blank" rel="noopener" style="color:#2563eb;">{button_url}</a></p>
-              <p class="small">If you didn’t request this, you can safely ignore this email.</p>
-            </div>
-            <div class="footer">
-              © {datetime.utcnow().year} TG Leads AI
-            </div>
-          </div>
-        </div>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>"""
-
-
-
-def send_password_reset_email(email: str, token: str):
-    reset_url = f"{BASE_URL}/reset-password?token={token}"
-
-    html = _email_html_base(
-        title="Reset your password — TG Leads AI",
-        preheader="Your password reset link for TG Leads AI",
-        heading="Reset your password",
-        body_html="""
-          <p>We received a request to reset your password. Click the button below to set a new password.</p>
-          <p class="small">If you didn’t request this, just ignore this email — your password won’t change.</p>
-        """,
-        button_text="🔒 Reset password",
-        button_url=reset_url
-    )
-
-    message = Mail(
-        from_email=Email(FROM_EMAIL, FROM_NAME),
-        to_emails=email,
-        subject="Reset your password — TG Leads AI",
-        html_content=html,
-        plain_text_content=f"Reset password link: {reset_url}"
-    )
-    _send_mail(message)
-
-
-
-
-def send_confirmation_email(email: str, token: str):
-    confirm_url = f"{BASE_URL}/confirm-email?token={token}"
-
-    html = _email_html_base(
-        title="Confirm your email — TG Leads AI",
-        preheader="Confirm your email address for TG Leads AI",
-        heading="Confirm your email",
-        body_html="""
-          <p>Thanks for signing up for <b>TG Leads AI</b>!</p>
-          <p>Please confirm your email address by clicking the button below.</p>
-          <p class="small">If you didn’t create an account, you can safely ignore this email.</p>
-        """,
-        button_text="✅ Confirm email",
-        button_url=confirm_url
-    )
-
-    message = Mail(
-        from_email=Email(FROM_EMAIL, FROM_NAME),
-        to_emails=email,
-        subject="Confirm your email — TG Leads AI",
-        html_content=html,
-        plain_text_content=f"Confirm email link: {confirm_url}"
-    )
-    _send_mail(message)
-
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
@@ -199,10 +54,9 @@ ADMIN_PANEL_SECRET = os.environ.get("ADMIN_PANEL_SECRET", "change-me")
 # =========================
 # ---
 # =========================
-SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "").strip()
-BASE_URL = os.environ.get("BASE_URL", "https://license-check-server-xatc.onrender.com").rstrip("/")
-FROM_EMAIL = os.environ.get("FROM_EMAIL", "noreply@tgparsersender.me").strip()
-FROM_NAME = os.environ.get("FROM_NAME", "TG Parser Sender").strip() or "TG Parser Sender"
+SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "")
+FROM_EMAIL = "noreply@tgparsersender.me"  # ???????? email ???? ???????????????????? ?? SendGrid
+FROM_NAME = "TG Parser Sender"
 
 # =========================
 # OPENAI
@@ -217,54 +71,6 @@ def get_openai_client():
             raise RuntimeError("OPENAI_API_KEY not set")
         _openai_client = OpenAI(api_key=key)
     return _openai_client
-
-# GPT-4.1-mini pricing (USD per token) x2 markup
-_GPT_INPUT_PRICE  = 0.40 / 1_000_000 * 2   # $0.0000008 per input token
-_GPT_OUTPUT_PRICE = 1.60 / 1_000_000 * 2   # $0.0000032 per output token
-
-def _calc_ai_cost(prompt_tokens: int, completion_tokens: int) -> float:
-    cost = prompt_tokens * _GPT_INPUT_PRICE + completion_tokens * _GPT_OUTPUT_PRICE
-    return max(round(cost, 8), 0.00004)  # minimum $0.00004 per call
-
-def _charge_ai_transaction(session_token: str, cost: float, description: str, metadata: dict) -> dict:
-    """Deduct cost from balance and write to transactions. Returns success/error dict."""
-    con = db()
-    cur = con.cursor()
-    try:
-        cur.execute("BEGIN")
-        cur.execute("""
-            SELECT u.id, u.balance, u.license_key
-            FROM users u
-            JOIN user_sessions s ON u.id = s.user_id
-            WHERE s.session_token = %s AND s.expires_at > NOW()
-            FOR UPDATE
-        """, (session_token,))
-        user = cur.fetchone()
-        if not user:
-            cur.execute("ROLLBACK")
-            return {"success": False, "error": "invalid_session"}
-        user_id, balance, license_key = user
-        if float(balance) < cost:
-            cur.execute("ROLLBACK")
-            return {"success": False, "error": "insufficient_funds"}
-        cur.execute("""
-            UPDATE users SET balance = balance - %s, total_spent = COALESCE(total_spent,0) + %s
-            WHERE id = %s RETURNING balance
-        """, (cost, cost, user_id))
-        new_balance = float(cur.fetchone()[0])
-        cur.execute("""
-            INSERT INTO transactions (user_id, license_key, amount, type, description, metadata)
-            VALUES (%s, %s, %s, 'charge', %s, %s)
-        """, (user_id, license_key, -cost, description, json.dumps(metadata)))
-        cur.execute("COMMIT")
-        return {"success": True, "charged": cost, "new_balance": new_balance}
-    except Exception as e:
-        try: cur.execute("ROLLBACK")
-        except Exception: pass
-        return {"success": False, "error": str(e)}
-    finally:
-        try: cur.close(); con.close()
-        except Exception: pass
 
 # =========================
 # ---
@@ -348,7 +154,7 @@ def init_db():
             created_at TIMESTAMPTZ DEFAULT NOW(),
             last_login TIMESTAMPTZ,
             is_active BOOLEAN DEFAULT TRUE,
-            total_spent DECIMAL(14,8) DEFAULT 0.00000000
+            total_spent DECIMAL(10,2) DEFAULT 0.00
         );
         """)
         pass  # log
@@ -415,7 +221,7 @@ def init_db():
             id BIGSERIAL PRIMARY KEY,
             user_id BIGINT REFERENCES users(id),
             license_key TEXT REFERENCES licenses(key),
-            amount DECIMAL(14,8) NOT NULL,
+            amount DECIMAL(10,2) NOT NULL,
             type TEXT NOT NULL,
             description TEXT,
             created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -423,18 +229,7 @@ def init_db():
         );
         """)
         pass  # log
-
-        # Migrate existing columns to higher precision (idempotent)
-        for _col_mig in [
-            "ALTER TABLE transactions ALTER COLUMN amount TYPE DECIMAL(14,8) USING amount::DECIMAL(14,8)",
-            "ALTER TABLE users ALTER COLUMN total_spent TYPE DECIMAL(14,8) USING total_spent::DECIMAL(14,8)",
-            "ALTER TABLE users ALTER COLUMN balance TYPE DECIMAL(14,8) USING balance::DECIMAL(14,8)",
-        ]:
-            try:
-                cur.execute(_col_mig)
-            except Exception:
-                pass  # already correct type or table doesn't exist yet
-
+        
         # ---
         cur.execute("""
         CREATE TABLE IF NOT EXISTS pricing (
@@ -491,7 +286,7 @@ def init_db():
             id BIGSERIAL PRIMARY KEY,
             user_id BIGINT REFERENCES users(id),
             license_key TEXT REFERENCES licenses(key),
-            amount DECIMAL(14,8) NOT NULL,
+            amount DECIMAL(10,2) NOT NULL,
             payment_id TEXT UNIQUE,
             status TEXT DEFAULT 'pending',
             payment_url TEXT,
@@ -1137,61 +932,6 @@ def auth_me(authorization: str = Header(None)):
 class ResendConfirmReq(BaseModel):
     email: str
 
-
-class ChangePasswordReq(BaseModel):
-    session_token: str
-    old_password: str
-    new_password: str
-
-@app.post("/api/auth/change-password")
-def change_password(req: ChangePasswordReq):
-    # Validate
-    if not req.new_password or len(req.new_password) < 6:
-        raise HTTPException(status_code=400, detail="weak_password")
-
-    con = db()
-    cur = con.cursor(cursor_factory=RealDictCursor)
-    try:
-        # Load user by session
-        cur.execute("""
-            SELECT u.id, u.password_hash
-            FROM users u
-            JOIN user_sessions s ON u.id = s.user_id
-            WHERE s.session_token = %s
-        """, (req.session_token,))
-        user = cur.fetchone()
-        if not user:
-            raise HTTPException(status_code=401, detail="invalid_session")
-
-        if not verify_password(req.old_password, user["password_hash"] or ""):
-            raise HTTPException(status_code=400, detail="wrong_password")
-
-        new_hash = hash_password(req.new_password)
-
-        cur.execute("""
-            UPDATE users
-            SET password_hash = %s
-            WHERE id = %s
-        """, (new_hash, user["id"]))
-
-        # Optional: invalidate all password reset tokens for this user (safety)
-        try:
-            cur.execute("UPDATE password_resets SET used = TRUE WHERE user_id = %s AND used = FALSE", (user["id"],))
-        except Exception:
-            pass
-
-        con.commit()
-        return {"success": True}
-    except HTTPException:
-        con.rollback()
-        raise
-    except Exception as e:
-        con.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        cur.close()
-        con.close()
-
 @app.post("/api/auth/resend-confirmation")
 def resend_confirmation(req: ResendConfirmReq, background_tasks: BackgroundTasks):
     con = db()
@@ -1234,150 +974,272 @@ def logout(session_token: str = Form(...)):
         cur.close()
         con.close()
 
-@app.get("/api/auth/confirm", response_class=HTMLResponse)
-def confirm_email(request: Request, token: str):
+@app.get("/api/auth/confirm")
+def confirm_email(token: str):
     con = db()
     cur = con.cursor()
-
-    status = "error"
-    message = "Something went wrong. Please try again later."
-
+    
     try:
         cur.execute("""
-            SELECT user_id, expires_at
-            FROM email_confirmations
+            SELECT user_id, expires_at 
+            FROM email_confirmations 
             WHERE token = %s AND confirmed_at IS NULL
         """, (token,))
-
+        
         row = cur.fetchone()
         if not row:
-            status = "invalid"
-            message = "This confirmation link is invalid or has already been used."
-            return templates.TemplateResponse("confirm_email.html", {"request": request, "status": status, "message": message})
-
+            return HTMLResponse("""
+                <html>
+                <body style="font-family: Arial; text-align: center; padding: 50px;">
+                    <h2>??? ???????????? ??????????????????????????????</h2>
+                    <p>????????????????, ?????? ?????? ???????????????????????? ?????? ??????????????.</p>
+                </body>
+                </html>
+            """)
+        
         user_id, expires_at = row
-
+        
         if now() > expires_at:
-            status = "expired"
-            message = "This confirmation link has expired. Please request a new confirmation email."
-            return templates.TemplateResponse("confirm_email.html", {"request": request, "status": status, "message": message})
-
+            return HTMLResponse("""
+                <html>
+                <body style="font-family: Arial; text-align: center; padding: 50px;">
+                    <h2>??? ???????????? ??????????????</h2>
+                    <p>?????????????????? ?????????? ???????????? ?? ??????????????????.</p>
+                </body>
+                </html>
+            """)
+        
         cur.execute("""
-            UPDATE users
+            UPDATE users 
             SET email_confirmed = TRUE, email_confirmed_at = NOW()
             WHERE id = %s
         """, (user_id,))
-
+        
         cur.execute("""
-            UPDATE email_confirmations
+            UPDATE email_confirmations 
             SET confirmed_at = NOW()
             WHERE token = %s
         """, (token,))
-
+        
         con.commit()
-
-        status = "ok"
-        message = "Email confirmed! You can now return to the app and sign in."
-
-        return templates.TemplateResponse("confirm_email.html", {"request": request, "status": status, "message": message})
-
+        
+        return HTMLResponse("""
+            <html>
+            <body style="font-family: Arial; text-align: center; padding: 50px;">
+                <h2>??? Email ??????????????????????!</h2>
+                <p>???????????? ???? ???????????? ?????????? ?? ??????????????????.</p>
+                <p>?????????????????? ?? ???????????????????? ?? ?????????????? "??????????".</p>
+            </body>
+            </html>
+        """)
+        
     except Exception as e:
-        # Keep user-facing message generic, but include a short detail for debugging if needed
-        status = "error"
-        message = "Confirmation failed. Please try again later."
-        return templates.TemplateResponse("confirm_email.html", {"request": request, "status": status, "message": message})
-
-    finally:
-        try:
-            cur.close()
-            con.close()
-        except Exception:
-            pass
-
-
-
-
-@app.get("/confirm-email", response_class=HTMLResponse)
-def confirm_email_alias(request: Request, token: str):
-    # Friendly public URL for email confirmation
-    return confirm_email(request=request, token=token)
-
-
-@app.get("/forgot-password", response_class=HTMLResponse)
-def forgot_password_page(request: Request):
-    return templates.TemplateResponse("forgot_password.html", {"request": request, "sent": False, "error": ""})
-
-@app.post("/forgot-password", response_class=HTMLResponse)
-def forgot_password_submit(request: Request, email: str = Form(...), background_tasks: BackgroundTasks = None):
-    # ВАЖНО: всегда отвечаем одинаково (не раскрываем, зарегистрирован ли email)
-    email_norm = (email or "").strip().lower()
-    if not email_norm:
-        return templates.TemplateResponse("forgot_password.html", {"request": request, "sent": False, "error": "Введите email."})
-
-    con = db()
-    cur = con.cursor(cursor_factory=RealDictCursor)
-    try:
-        cur.execute("SELECT id, email FROM users WHERE email=%s", (email_norm,))
-        u = cur.fetchone()
-        if u:
-            token = generate_token()
-            expires_at = now() + timedelta(hours=24)
-            cur.execute(
-                "INSERT INTO password_resets (user_id, token, expires_at) VALUES (%s,%s,%s)",
-                (u["id"], token, expires_at)
-            )
-            con.commit()
-
-            if background_tasks is not None:
-                background_tasks.add_task(send_password_reset_email, u["email"], token)
-            else:
-                send_password_reset_email(u["email"], token)
-    except Exception:
-        return templates.TemplateResponse("forgot_password.html", {"request": request, "sent": False, "error": "Не удалось отправить письмо. Попробуйте позже."})
+        return HTMLResponse(f"""
+            <html>
+            <body style="font-family: Arial; text-align: center; padding: 50px;">
+                <h2>??? ????????????</h2>
+                <p>{str(e)}</p>
+            </body>
+            </html>
+        """)
     finally:
         cur.close()
         con.close()
 
-    return templates.TemplateResponse("forgot_password.html", {"request": request, "sent": True, "error": ""})
-
-@app.get("/reset-password", response_class=HTMLResponse)
-def reset_password_page(request: Request, token: str):
-    return templates.TemplateResponse("reset_password.html", {"request": request, "token": token, "error": ""})
-
-class ResetPasswordPublicReq(BaseModel):
-    token: str
-    new_password: str
-
-@app.post("/api/auth/reset-password")
-def reset_password_public(data: ResetPasswordPublicReq):
-    token = (data.token or "").strip()
-    new_password = (data.new_password or "").strip()
-    if len(new_password) < 6:
-        raise HTTPException(status_code=400, detail="password_too_short")
-
-    con = db()
-    cur = con.cursor(cursor_factory=RealDictCursor)
+# =========================
+# ---
+# =========================
+def send_confirmation_email(email: str, token: str):
+    """???????????????? ?????????????????? ???????????? ?? ????????????????????????????"""
+    confirm_url = f"https://license-check-server-xatc.onrender.com/api/auth/confirm?token={token}"
+    
+    # ---
+    if not SENDGRID_API_KEY:
+        print(f"[INFO] email={email} confirm_url={confirm_url}")
+        return
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>?????????????????????????? email</title>
+    </head>
+    <body style="margin:0; padding:0; font-family: 'Segoe UI', Arial, sans-serif; background:#f5f7fa;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin:0 auto; background:white; border-radius:16px; margin-top:40px; box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+            <!-- ?????????? -->
+            <tr>
+                <td style="padding:40px 40px 20px 40px; text-align:center; background:linear-gradient(135deg, #3b82f6, #8b5cf6); border-radius:16px 16px 0 0;">
+                    <h1 style="color:white; margin:0; font-size:28px; font-weight:600;">TG Parser Sender</h1>
+                    <p style="color:rgba(255,255,255,0.9); margin:10px 0 0 0; font-size:16px;">???????????????????????????????? ?????????????? Telegram</p>
+                </td>
+            </tr>
+            
+            <!-- ???????????????? ?????????????? -->
+            <tr>
+                <td style="padding:40px;">
+                    <h2 style="color:#1e293b; margin:0 0 20px 0; font-size:24px;">?????????????????????????? email</h2>
+                    <p style="color:#475569; line-height:1.6; margin:0 0 30px 0; font-size:16px;">
+                        ????????????????????????!<br><br>
+                        ?????? ???????????????????? ?????????????????????? ?? <strong>TG Parser Sender</strong> ?????????????????????? ?????? email ??????????.
+                    </p>
+                    
+                    <!-- ???????????? -->
+                    <table cellpadding="0" cellspacing="0" style="margin:30px auto;">
+                        <tr>
+                            <td style="background:#4CAF50; border-radius:40px; padding:14px 40px;">
+                                <a href="{confirm_url}" style="color:white; text-decoration:none; font-size:16px; font-weight:600; letter-spacing:0.5px;">??? ?????????????????????? EMAIL</a>
+                            </td>
+                        </tr>
+                    </table>
+                    
+                    <!-- ???????????????????????????? ???????????? -->
+                    <p style="color:#64748b; font-size:14px; margin:30px 0 0 0; text-align:center;">
+                        ?????? ?????????????????? ???? ????????????:<br>
+                        <a href="{confirm_url}" style="color:#3b82f6; word-break:break-all;">{confirm_url}</a>
+                    </p>
+                    
+                    <!-- ???????? ???????????????? -->
+                    <p style="color:#94a3b8; font-size:13px; margin:30px 0 0 0; text-align:center; border-top:1px solid #e2e8f0; padding-top:30px;">
+                        ???????????? ?????????????????????????? 24 ????????.<br>
+                        ???????? ???? ???? ????????????????????????????????, ???????????? ???????????????????????????? ?????? ????????????.
+                    </p>
+                </td>
+            </tr>
+            
+            <!-- ???????????? -->
+            <tr>
+                <td style="padding:30px 40px; background:#f8fafc; border-radius:0 0 16px 16px;">
+                    <table width="100%">
+                        <tr>
+                            <td style="text-align:center;">
+                                <p style="color:#64748b; margin:0 0 10px 0; font-size:14px;">
+                                    ?? ??????????????????, ?????????????? TG Parser Sender
+                                </p>
+                                <p style="color:#94a3b8; margin:0; font-size:13px;">
+                                    ???? support@tgparsersender.me | ???? @Ben_bell97
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    """
+    
+    message = Mail(
+        from_email=Email(FROM_EMAIL, FROM_NAME),
+        to_emails=To(email),
+        subject="?????????????????????????? email ?? TG Parser Sender",
+        html_content=Content("text/html", html_content)
+    )
+    
     try:
-        cur.execute(
-            "SELECT user_id, expires_at FROM password_resets WHERE token=%s AND used = FALSE",
-            (token,)
-        )
-        row = cur.fetchone()
-        if not row:
-            raise HTTPException(status_code=400, detail="invalid_or_used_token")
-        if now() > row["expires_at"]:
-            raise HTTPException(status_code=400, detail="token_expired")
+        sg = sendgrid.SendGridAPIClient(api_key=SENDGRID_API_KEY)
+        response = sg.send(message)
+        print(f"[INFO] email={email}")
+    except Exception as e:
+        print(f"[INFO] e={e}")
 
-        user_id = row["user_id"]
-        cur.execute("UPDATE users SET password_hash=%s WHERE id=%s", (hash_password(new_password), user_id))
-        cur.execute("UPDATE password_resets SET used=TRUE WHERE token=%s", (token,))
-        cur.execute("DELETE FROM user_sessions WHERE user_id=%s", (user_id,))
-        con.commit()
-        return {"success": True}
-    finally:
-        cur.close()
-        con.close()
+def send_password_reset_email(email: str, token: str):
+    """???????????????? ?????????????????? ???????????? ?????? ???????????? ????????????"""
+    reset_url = f"https://license-check-server-xatc.onrender.com/reset-password?token={token}"
+    
+    if not SENDGRID_API_KEY:
+        print(f"[INFO] email={email} reset_url={reset_url}")
+        return
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>?????????? ????????????</title>
+    </head>
+    <body style="margin:0; padding:0; font-family: 'Segoe UI', Arial, sans-serif; background:#f5f7fa;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin:0 auto; background:white; border-radius:16px; margin-top:40px; box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+            <!-- ?????????? -->
+            <tr>
+                <td style="padding:40px 40px 20px 40px; text-align:center; background:linear-gradient(135deg, #ef4444, #f97316); border-radius:16px 16px 0 0;">
+                    <h1 style="color:white; margin:0; font-size:28px; font-weight:600;">TG Parser Sender</h1>
+                    <p style="color:rgba(255,255,255,0.9); margin:10px 0 0 0; font-size:16px;">???????????????????????????? ??????????????</p>
+                </td>
+            </tr>
+            
+            <!-- ???????????????? ?????????????? -->
+            <tr>
+                <td style="padding:40px;">
+                    <h2 style="color:#1e293b; margin:0 0 20px 0; font-size:24px;">?????????? ????????????</h2>
+                    <p style="color:#475569; line-height:1.6; margin:0 0 30px 0; font-size:16px;">
+                        ???? ???????????????? ???????????? ???? ?????????? ???????????? ?????? ???????????? ????????????????.
+                    </p>
+                    
+                    <!-- ???????????? -->
+                    <table cellpadding="0" cellspacing="0" style="margin:30px auto;">
+                        <tr>
+                            <td style="background:#3b82f6; border-radius:40px; padding:14px 40px;">
+                                <a href="{reset_url}" style="color:white; text-decoration:none; font-size:16px; font-weight:600; letter-spacing:0.5px;">???? ???????????????? ????????????</a>
+                            </td>
+                        </tr>
+                    </table>
+                    
+                    <!-- ???????????????????????????? ???????????? -->
+                    <p style="color:#64748b; font-size:14px; margin:30px 0 0 0; text-align:center;">
+                        ?????? ?????????????????? ???? ????????????:<br>
+                        <a href="{reset_url}" style="color:#3b82f6; word-break:break-all;">{reset_url}</a>
+                    </p>
+                    
+                    <!-- ???????????????????????????? -->
+                    <p style="color:#94a3b8; font-size:13px; margin:30px 0 0 0; text-align:center; border-top:1px solid #e2e8f0; padding-top:30px;">
+                        ???????????? ?????????????????????????? 1 ??????.<br>
+                        ???????? ???? ???? ?????????????????????? ?????????? ????????????, ???????????????????????????? ?????? ????????????.
+                    </p>
+                </td>
+            </tr>
+            
+            <!-- ???????????? -->
+            <tr>
+                <td style="padding:30px 40px; background:#f8fafc; border-radius:0 0 16px 16px;">
+                    <table width="100%">
+                        <tr>
+                            <td style="text-align:center;">
+                                <p style="color:#64748b; margin:0 0 10px 0; font-size:14px;">
+                                    ?? ??????????????????, ?????????????? TG Parser Sender
+                                </p>
+                                <p style="color:#94a3b8; margin:0; font-size:13px;">
+                                    ???? support@tgparsersender.me | ???? @Ben_bell97
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    """
+    
+    message = Mail(
+        from_email=Email(FROM_EMAIL, FROM_NAME),
+        to_emails=To(email),
+        subject="?????????? ???????????? ?? TG Parser Sender",
+        html_content=Content("text/html", html_content)
+    )
+    
+    try:
+        sg = sendgrid.SendGridAPIClient(api_key=SENDGRID_API_KEY)
+        response = sg.send(message)
+        print(f"[INFO] email={email}")
+    except Exception as e:
+        print(f"[INFO] e={e}")
 
+# =========================
+# ---
+# =========================
 @app.get("/admin/login", response_class=HTMLResponse)
 def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request, "error": ""})
@@ -1542,7 +1404,7 @@ def admin_deposit(request: Request, data: DepositRequest):
             data.user_id, 
             license_key, 
             data.amount, 
-            f"💳 Пополнение баланса: {data.note}" if data.note else "💳 Пополнение баланса (администратор)",
+            f"???????????? ????????????????????: {data.note}" if data.note else "???????????? ????????????????????",
             json.dumps({"method": data.method, "admin": True})
         ))
         
@@ -1733,10 +1595,220 @@ def admin_delete_user(request: Request, data: DeleteUserReq):
     finally:
         cur.close(); con.close()
 
-# USER DETAIL PAGE — роут определён ниже после /admin/users
+# =========================
+# USER DETAIL PAGE
+# =========================
+@app.get("/admin/users/{user_id}", response_class=HTMLResponse)
+def admin_user_detail(user_id: int, request: Request):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT u.*,
+                   l.expires_at AS license_expires,
+                   l.revoked    AS license_revoked,
+                   l.plan       AS license_plan,
+                   l.max_devices
+            FROM users u
+            LEFT JOIN licenses l ON u.license_key = l.key
+            WHERE u.id = %s
+        """, (user_id,))
+        user = cur.fetchone()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        cur.execute("""
+            SELECT * FROM user_devices WHERE user_id = %s ORDER BY last_login DESC
+        """, (user_id,))
+        devices = cur.fetchall()
+
+        cur.execute("""
+            SELECT * FROM transactions WHERE user_id = %s ORDER BY created_at DESC LIMIT 50
+        """, (user_id,))
+        transactions = cur.fetchall()
+    finally:
+        cur.close()
+        con.close()
+
+    return templates.TemplateResponse("admin_user_detail.html", {
+        "request": request,
+        "user": user,
+        "devices": devices,
+        "transactions": transactions,
+        "now": now(),
+        "active_tab": "users",
+    })
 
 
 # --- update email ---
+class UpdateEmailReq(BaseModel):
+    user_id: int
+    email: str
+
+@app.post("/admin/api/update-email")
+def admin_update_email(request: Request, data: UpdateEmailReq):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("UPDATE users SET email = %s WHERE id = %s", (data.email, data.user_id))
+        con.commit()
+        return {"success": True}
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
+
+
+# --- update telegram ---
+class UpdateTelegramReq(BaseModel):
+    user_id: int
+    telegram: str
+
+@app.post("/admin/api/update-telegram")
+def admin_update_telegram(request: Request, data: UpdateTelegramReq):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("UPDATE users SET telegram = %s WHERE id = %s", (data.telegram, data.user_id))
+        con.commit()
+        return {"success": True}
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
+
+
+# --- confirm email ---
+class ConfirmEmailReq(BaseModel):
+    user_id: int
+
+@app.post("/admin/api/confirm-email")
+def admin_confirm_email(request: Request, data: ConfirmEmailReq):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("""
+            UPDATE users SET email_confirmed = TRUE, email_confirmed_at = %s WHERE id = %s
+        """, (now(), data.user_id))
+        con.commit()
+        return {"success": True}
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
+
+
+# --- extend license ---
+class ExtendLicenseReq(BaseModel):
+    user_id: int
+    days: int
+
+@app.post("/admin/api/extend-license")
+def admin_extend_license(request: Request, data: ExtendLicenseReq):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("SELECT license_key FROM users WHERE id = %s", (data.user_id,))
+        row = cur.fetchone()
+        if not row or not row[0]:
+            raise HTTPException(status_code=404, detail="License not found")
+        key = row[0]
+        cur.execute("""
+            UPDATE licenses
+            SET expires_at = GREATEST(expires_at, NOW()) + INTERVAL '%s days'
+            WHERE key = %s
+        """, (data.days, key))
+        con.commit()
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
+
+
+# --- revoke/unrevoke license ---
+class RevokeLicenseReq(BaseModel):
+    user_id: int
+    revoked: bool
+
+@app.post("/admin/api/revoke-license")
+def admin_revoke_license(request: Request, data: RevokeLicenseReq):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("SELECT license_key FROM users WHERE id = %s", (data.user_id,))
+        row = cur.fetchone()
+        if not row or not row[0]:
+            raise HTTPException(status_code=404, detail="License not found")
+        key = row[0]
+        cur.execute("UPDATE licenses SET revoked = %s WHERE key = %s", (data.revoked, key))
+        con.commit()
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
+
+
+# --- add transaction (generic) ---
+class AddTransactionReq(BaseModel):
+    user_id: int
+    amount: float
+    type: str
+    description: str = ""
+
+@app.post("/admin/api/add-transaction")
+def admin_add_transaction(request: Request, data: AddTransactionReq):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("SELECT license_key FROM users WHERE id = %s", (data.user_id,))
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="User not found")
+        key = row[0]
+        cur.execute("""
+            UPDATE users SET balance = balance + %s WHERE id = %s RETURNING balance
+        """, (data.amount, data.user_id))
+        new_balance = float(cur.fetchone()[0])
+        cur.execute("""
+            INSERT INTO transactions (user_id, license_key, amount, type, description)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (data.user_id, key, data.amount, data.type, data.description or data.type))
+        con.commit()
+        return {"success": True, "new_balance": new_balance}
+    except HTTPException:
+        raise
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
+
 @app.get("/admin/licenses", response_class=HTMLResponse)
 def admin_licenses(request: Request):
     if not is_admin(request):
@@ -1826,32 +1898,11 @@ def admin_user_detail(user_id: int, request: Request):
         """, (user_id,))
         devices = cur.fetchall()
 
-        # Transactions (deposits + AI charges)
+        # Transactions
         cur.execute("""
-            SELECT * FROM transactions WHERE user_id = %s ORDER BY created_at DESC LIMIT 200
+            SELECT * FROM transactions WHERE user_id = %s ORDER BY created_at DESC LIMIT 100
         """, (user_id,))
         transactions = cur.fetchall()
-
-        # AI usage stats from usage_logs
-        cur.execute("""
-            SELECT
-                COUNT(*) as total_ops,
-                COALESCE(SUM(cost), 0) as total_ai_cost
-            FROM usage_logs WHERE user_id = %s
-        """, (user_id,))
-        ai_stats_row = cur.fetchone()
-        ai_stats = {
-            "total_ops": int(ai_stats_row["total_ops"]) if ai_stats_row else 0,
-            "total_ai_cost": float(ai_stats_row["total_ai_cost"]) if ai_stats_row else 0.0,
-        }
-
-        # AI spend from transactions (type=charge)
-        cur.execute("""
-            SELECT COALESCE(SUM(ABS(amount)), 0) as total_charged
-            FROM transactions WHERE user_id = %s AND type = 'charge'
-        """, (user_id,))
-        ai_charged_row = cur.fetchone()
-        total_ai_charged = float(ai_charged_row["total_charged"]) if ai_charged_row else 0.0
 
         # Days left on license
         days = None
@@ -1874,8 +1925,6 @@ def admin_user_detail(user_id: int, request: Request):
             "user": user,
             "devices": devices,
             "transactions": transactions,
-            "ai_stats": ai_stats,
-            "total_ai_charged": total_ai_charged,
             "days": days,
             "now": now(),
             "active_tab": "users"
@@ -2237,60 +2286,6 @@ def charge(req: ChargeReq):
         con.close()
 
 # =========================
-# BALANCE TRANSACTIONS API
-# =========================
-class TransactionsReq(BaseModel):
-    session_token: str
-    limit: int = 50
-
-@app.post("/api/balance/transactions")
-def get_balance_transactions(req: TransactionsReq) -> Dict[str, Any]:
-    """Return transaction history (deposits + AI charges) for the authenticated user."""
-    con = db()
-    cur = con.cursor(cursor_factory=RealDictCursor)
-    try:
-        cur.execute("""
-            SELECT u.id FROM users u
-            JOIN user_sessions s ON u.id = s.user_id
-            WHERE s.session_token = %s AND s.expires_at > NOW()
-        """, (req.session_token,))
-        row = cur.fetchone()
-        if not row:
-            raise HTTPException(status_code=401, detail="invalid_session")
-        user_id = row["id"]
-        limit = max(1, min(int(req.limit), 200))
-        cur.execute("""
-            SELECT id, amount, type, description, metadata, created_at
-            FROM transactions
-            WHERE user_id = %s
-            ORDER BY created_at DESC
-            LIMIT %s
-        """, (user_id, limit))
-        rows = cur.fetchall()
-        result = []
-        for r in rows:
-            meta = r["metadata"] or {}
-            if isinstance(meta, str):
-                try: meta = json.loads(meta)
-                except Exception: meta = {}
-            result.append({
-                "id": r["id"],
-                "amount": float(r["amount"]),
-                "type": r["type"],
-                "description": r["description"] or "",
-                "metadata": meta,
-                "created_at": r["created_at"].isoformat() if r["created_at"] else None,
-            })
-        return {"transactions": result}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        try: cur.close(); con.close()
-        except Exception: pass
-
-# =========================
 # AI API
 # =========================
 class AIItem(BaseModel):
@@ -2369,24 +2364,6 @@ def ai_score(req: AIScoreReq) -> Dict[str, Any]:
         if not isinstance(data, dict) or "results" not in data:
             raise ValueError(f"bad_ai_response: {out_text[:200]}")
 
-        # ── Billing: charge based on actual token usage ──
-        usage = resp.usage
-        prompt_tokens     = int(usage.prompt_tokens)     if usage else 300
-        completion_tokens = int(usage.completion_tokens) if usage else 100
-        cost = _calc_ai_cost(prompt_tokens, completion_tokens)
-        n_items = len(items)
-        description = f"🤖 TG Leads AI анализ | {n_items} лид(ов) | {prompt_tokens}вх+{completion_tokens}вых ток."
-        _charge_ai_transaction(
-            req.session_token, cost, description,
-            {
-                "type": "ai_score",
-                "model": "gpt-4.1-mini",
-                "prompt_tokens": prompt_tokens,
-                "completion_tokens": completion_tokens,
-                "items_count": n_items,
-            }
-        )
-
         return data
 
     except Exception as e:
@@ -2406,8 +2383,6 @@ class AIChatReq(BaseModel):
     history: List[AIChatMessage] = []
     message: str
     ai_score_threshold: int = 60
-    username: str = ""       # TG username for transaction description
-    project_name: str = ""   # project name for context
 
 @app.post("/api/ai/chat")
 def ai_chat(req: AIChatReq) -> Dict[str, Any]:
@@ -2449,11 +2424,8 @@ def ai_chat(req: AIChatReq) -> Dict[str, Any]:
             "1. Веди живой, естественный диалог на русском языке.",
             "2. Отвечай кратко и по делу — не пиши длинных монологов.",
             "3. Выявляй потребности и двигай лида к цели.",
-            "4. Когда цель достигнута (договорились о сделке/встрече/демо/покупке) — установи goal_achieved=true и intent=hot.",
-            "5. Если лид явно заинтересован но цель ещё не достигнута — intent=hot, goal_achieved=false.",
-            "6. Если лид явно отказывается и не идёт на контакт — intent=cold, score < 30.",
-            "7. Если диалог продолжается — intent=neutral.",
-            "8. Ты ОБЯЗАН в итоге принять решение: не оставляй лида в подвешенном состоянии.",
+            "4. Когда цель достигнута (договорились о сделке/встрече/демо) — сообщи об этом.",
+            "5. Если лид явно отказывается и не идёт на контакт — сообщи об этом.",
             "",
             "ВАЖНО: Отвечай ТОЛЬКО валидным JSON (без markdown-блоков), строго в формате:",
             '{"reply": "<текст ответа лиду>", "intent": "hot|cold|neutral", '
@@ -2461,8 +2433,7 @@ def ai_chat(req: AIChatReq) -> Dict[str, Any]:
             "intent hot = лид очень заинтересован / готов к сделке",
             "intent cold = лид отказывается, не заинтересован",
             "intent neutral = диалог продолжается",
-            "goal_achieved = true только когда цель ПОЛНОСТЬЮ достигнута (договорились конкретно)",
-            "score = 0-100, где 100 = максимальный интерес",
+            "goal_achieved = true только когда цель полностью достигнута",
         ]
         system_prompt = "\n".join(system_parts)
 
@@ -2487,43 +2458,11 @@ def ai_chat(req: AIChatReq) -> Dict[str, Any]:
         except Exception:
             data = {}
 
-        # ── Billing: charge based on actual token usage ──
-        usage = resp.usage
-        prompt_tokens     = int(usage.prompt_tokens)     if usage else 200
-        completion_tokens = int(usage.completion_tokens) if usage else 80
-        cost = _calc_ai_cost(prompt_tokens, completion_tokens)
-
-        uname = (req.username or "").strip().lstrip("@")
-        proj  = (req.project_name or "").strip()
-        desc_parts = ["🤖 TG Leads AI чат"]
-        if uname:
-            desc_parts.append(f"@{uname}")
-        if proj:
-            desc_parts.append(f"[{proj}]")
-        desc_parts.append(f"{prompt_tokens}вх+{completion_tokens}вых ток.")
-        description = " | ".join(desc_parts)
-
-        charge_result = _charge_ai_transaction(
-            req.session_token, cost, description,
-            {
-                "type": "ai_chat",
-                "model": "gpt-4.1-mini",
-                "prompt_tokens": prompt_tokens,
-                "completion_tokens": completion_tokens,
-                "username": uname,
-                "project": proj,
-            }
-        )
-        charged = charge_result.get("charged", 0.0) if charge_result.get("success") else 0.0
-
         return {
             "reply": str(data.get("reply") or ""),
             "intent": str(data.get("intent") or "neutral").lower(),
             "score": int(data.get("score") or 50),
             "goal_achieved": bool(data.get("goal_achieved", False)),
-            "charged": charged,
-            "prompt_tokens": prompt_tokens,
-            "completion_tokens": completion_tokens,
         }
 
     except HTTPException:
@@ -2587,6 +2526,28 @@ def add_days(request: Request, key: str = Form(...), add: int = Form(...)):
     con.close()
 
     return RedirectResponse("/admin/licenses", status_code=303)
+
+@app.post("/admin/set_expires")
+def set_expires(request: Request, key: str = Form(...), expires_date: str = Form(...)):
+    """Установить точную дату истечения лицензии."""
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+    try:
+        from datetime import datetime as _dt
+        new_date = _dt.strptime(expires_date.strip(), "%Y-%m-%d")
+    except ValueError:
+        return RedirectResponse("/admin/licenses?err=Неверный формат даты", status_code=303)
+    con = db()
+    cur = con.cursor()
+    cur.execute(
+        "UPDATE licenses SET expires_at=%s, revoked=FALSE, updated_at=NOW() WHERE key=%s",
+        (new_date, key)
+    )
+    con.commit()
+    cur.close()
+    con.close()
+    return RedirectResponse("/admin/licenses?ok=Дата обновлена", status_code=303)
+
 
 @app.post("/admin/revoke")
 def revoke(request: Request, key: str = Form(...)):
