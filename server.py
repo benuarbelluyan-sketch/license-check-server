@@ -248,7 +248,8 @@ def init_db():
             ('parse',    0.0005, 0.0005, 100, 'Parsing one message'),
             ('ai_parse', 0.0002, 0.0004,   1, 'AI analysis per person (x2 markup)'),
             ('sender',   0.001,  0.001,   50, 'Sending one message'),
-            ('invite',   0.002,  0.002,   20, 'Inviting one user')
+            ('invite',   0.002,  0.002,   20, 'Inviting one user'),
+            ('ai_leads', 0.0002, 0.0004,   1, 'AI chat per message TG Leads (x2 markup)')
         ON CONFLICT (operation_type) DO UPDATE SET
             base_price  = EXCLUDED.base_price,
             final_price = EXCLUDED.final_price,
@@ -2532,25 +2533,43 @@ class AIChatReq(BaseModel):
     history: List[AIChatMessage] = []
     message: str
     ai_score_threshold: int = 60
+    username: str = ""
+    project_name: str = ""
+
+# GPT-4.1-mini token prices (per 1M tokens, USD)
+_GPT41_MINI_INPUT_PER_TOKEN  = 0.40 / 1_000_000
+_GPT41_MINI_OUTPUT_PER_TOKEN = 1.60 / 1_000_000
 
 @app.post("/api/ai/chat")
 def ai_chat(req: AIChatReq) -> Dict[str, Any]:
     """
     Conversational AI endpoint for TG Leads full-AI mode.
-    Takes conversation history + new message, returns AI reply + intent/score.
+    Charges user balance based on real token usage and records transaction.
     Response: {"reply": str, "intent": "hot|cold|neutral", "score": 0-100,
-               "goal_achieved": bool}
+               "goal_achieved": bool, "charged": float,
+               "prompt_tokens": int, "completion_tokens": int}
     """
     try:
+        # ── 1. Validate session & get user ────────────────────────────────
         con = db()
-        cur = con.cursor()
+        cur = con.cursor(cursor_factory=RealDictCursor)
         try:
-            cur.execute(
-                "SELECT 1 FROM user_sessions WHERE session_token = %s AND expires_at > NOW()",
-                (req.session_token,)
-            )
-            if not cur.fetchone():
+            cur.execute("""
+                SELECT u.id, u.balance, u.license_key
+                FROM users u
+                JOIN user_sessions s ON u.id = s.user_id
+                WHERE s.session_token = %s AND s.expires_at > NOW()
+                FOR UPDATE
+            """, (req.session_token,))
+            user = cur.fetchone()
+            if not user:
                 raise HTTPException(status_code=401, detail="invalid_session")
+            user_id    = user["id"]
+            balance    = float(user["balance"] or 0)
+            license_key = user["license_key"]
+
+            if balance <= 0:
+                raise HTTPException(status_code=403, detail="insufficient_funds")
         finally:
             try:
                 cur.close()
@@ -2558,9 +2577,9 @@ def ai_chat(req: AIChatReq) -> Dict[str, Any]:
             except Exception:
                 pass
 
+        # ── 2. Call OpenAI ────────────────────────────────────────────────
         client = get_openai_client()
 
-        # Build system prompt
         system_parts = [
             "Ты профессиональный менеджер по продажам в Telegram.",
             f"Цель: {req.goal}" if req.goal else "Цель: продать продукт или услугу.",
@@ -2586,7 +2605,6 @@ def ai_chat(req: AIChatReq) -> Dict[str, Any]:
         ]
         system_prompt = "\n".join(system_parts)
 
-        # Build messages list: history + new message
         messages = [{"role": "system", "content": system_prompt}]
         for h in (req.history or []):
             role = "user" if h.role == "user" else "assistant"
@@ -2601,17 +2619,98 @@ def ai_chat(req: AIChatReq) -> Dict[str, Any]:
             max_tokens=500,
         )
 
+        prompt_tokens     = resp.usage.prompt_tokens     if resp.usage else 0
+        completion_tokens = resp.usage.completion_tokens if resp.usage else 0
+        total_cost = (
+            prompt_tokens     * _GPT41_MINI_INPUT_PER_TOKEN +
+            completion_tokens * _GPT41_MINI_OUTPUT_PER_TOKEN
+        )
+        # Apply 2x markup (same as ai_parse)
+        total_cost = round(total_cost * 2, 8)
+
         out_text = resp.choices[0].message.content or ""
         try:
             data = _extract_json(out_text)
         except Exception:
             data = {}
 
+        # ── 3. Charge balance & record transaction ────────────────────────
+        charged = 0.0
+        new_balance = balance
+        if total_cost > 0:
+            con2 = db()
+            cur2 = con2.cursor(cursor_factory=RealDictCursor)
+            try:
+                cur2.execute("BEGIN")
+
+                cur2.execute("""
+                    UPDATE users
+                    SET balance = GREATEST(0, balance - %s),
+                        total_spent = total_spent + %s
+                    WHERE id = %s
+                    RETURNING balance
+                """, (total_cost, total_cost, user_id))
+                row = cur2.fetchone()
+                new_balance = float(row["balance"]) if row else max(0.0, balance - total_cost)
+                charged = total_cost
+
+                # Usage log
+                cur2.execute("""
+                    INSERT INTO usage_logs
+                    (user_id, license_key, operation_type, units_used, cost, details)
+                    VALUES (%s, %s, 'ai_leads', %s, %s, %s)
+                """, (
+                    user_id, license_key,
+                    prompt_tokens + completion_tokens,
+                    total_cost,
+                    json.dumps({
+                        "prompt_tokens": prompt_tokens,
+                        "completion_tokens": completion_tokens,
+                        "username": req.username,
+                        "project": req.project_name,
+                    })
+                ))
+
+                # Transaction (visible in admin + Balance AI dialog)
+                uname_label = f"@{req.username}" if req.username else "lead"
+                proj_label  = f" [{req.project_name}]" if req.project_name else ""
+                desc = f"AI — TG Leads{proj_label}: {uname_label}"
+                cur2.execute("""
+                    INSERT INTO transactions
+                    (user_id, license_key, amount, type, description, metadata)
+                    VALUES (%s, %s, %s, 'charge', %s, %s)
+                """, (
+                    user_id, license_key, -total_cost, desc,
+                    json.dumps({
+                        "operation": "ai_leads",
+                        "prompt_tokens": prompt_tokens,
+                        "completion_tokens": completion_tokens,
+                        "username": req.username,
+                        "project": req.project_name,
+                    })
+                ))
+
+                cur2.execute("COMMIT")
+            except Exception as charge_err:
+                try: cur2.execute("ROLLBACK")
+                except Exception: pass
+                print(f"[ERROR] ai_chat charge failed: {charge_err}")
+            finally:
+                try:
+                    cur2.close()
+                    con2.close()
+                except Exception:
+                    pass
+
         return {
-            "reply": str(data.get("reply") or ""),
-            "intent": str(data.get("intent") or "neutral").lower(),
-            "score": int(data.get("score") or 50),
-            "goal_achieved": bool(data.get("goal_achieved", False)),
+            "reply":             str(data.get("reply") or ""),
+            "intent":            str(data.get("intent") or "neutral").lower(),
+            "score":             int(data.get("score") or 50),
+            "goal_achieved":     bool(data.get("goal_achieved", False)),
+            "charged":           charged,
+            "new_balance":       new_balance,
+            "prompt_tokens":     prompt_tokens,
+            "completion_tokens": completion_tokens,
         }
 
     except HTTPException:
