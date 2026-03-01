@@ -78,7 +78,16 @@
             {% else %}<span class="badge" style="background:#e2e8f0; color:#4a5568;">{{ t.type }}</span>{% endif %}
           </td>
           <td style="font-weight:600; {% if t.amount >= 0 %}color:#48bb78;{% else %}color:#f56565;{% endif %}">
-            {% if t.amount >= 0 %}+{% endif %}${{ "%.2f" | format(t.amount | float) }}
+            {% set amt = t.amount | float %}
+            {% if amt >= 0 %}+{% endif %}
+            {%- if amt | abs >= 0.01 -%}
+              ${{ "%.4f" | format(amt | abs) }}
+            {%- elif amt | abs >= 0.0001 -%}
+              ${{ "%.6f" | format(amt | abs) }}
+            {%- else -%}
+              ${{ "%.8f" | format(amt | abs) }}
+            {%- endif -%}
+            {% if amt < 0 %}<br><small style="color:#a0aec0;font-weight:400;font-size:10px;">списание</small>{% endif %}
           </td>
           <td style="color:#718096;">{{ t.description or '—' }}</td>
         </tr>
