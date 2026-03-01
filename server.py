@@ -1034,6 +1034,128 @@ def confirm_email(request: Request, token: str):
         con.close()
 
 # =========================
+# Forgot Password / Reset Password (public pages)
+# =========================
+
+@app.get("/forgot-password", response_class=HTMLResponse)
+def forgot_password_page(request: Request):
+    return templates.TemplateResponse("forgot_password.html", {
+        "request": request,
+        "error": "",
+        "sent": False
+    })
+
+@app.post("/forgot-password", response_class=HTMLResponse)
+def forgot_password_submit(request: Request, background_tasks: BackgroundTasks, email: str = Form(...)):
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("SELECT id, email FROM users WHERE email = %s", (email.strip().lower(),))
+        user = cur.fetchone()
+        if user:
+            reset_token = generate_token()
+            expires_at = now() + timedelta(hours=1)
+            cur.execute("""
+                INSERT INTO password_resets (user_id, token, expires_at)
+                VALUES (%s, %s, %s)
+            """, (user["id"], reset_token, expires_at))
+            con.commit()
+            background_tasks.add_task(send_password_reset_email, user["email"], reset_token)
+        # Always show success (security: don't reveal if email exists)
+        return templates.TemplateResponse("forgot_password.html", {
+            "request": request,
+            "error": "",
+            "sent": True
+        })
+    except Exception as e:
+        con.rollback()
+        return templates.TemplateResponse("forgot_password.html", {
+            "request": request,
+            "error": "Something went wrong. Please try again.",
+            "sent": False
+        })
+    finally:
+        cur.close()
+        con.close()
+
+@app.get("/reset-password", response_class=HTMLResponse)
+def reset_password_page(request: Request, token: str = ""):
+    if not token:
+        return templates.TemplateResponse("forgot_password.html", {
+            "request": request,
+            "error": "Invalid or missing reset token.",
+            "sent": False
+        })
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("""
+            SELECT id, expires_at, used FROM password_resets WHERE token = %s
+        """, (token,))
+        row = cur.fetchone()
+        if not row:
+            return templates.TemplateResponse("forgot_password.html", {
+                "request": request,
+                "error": "This reset link is invalid. Please request a new one.",
+                "sent": False
+            })
+        if row["used"]:
+            return templates.TemplateResponse("forgot_password.html", {
+                "request": request,
+                "error": "This reset link has already been used. Please request a new one.",
+                "sent": False
+            })
+        if now() > row["expires_at"]:
+            return templates.TemplateResponse("forgot_password.html", {
+                "request": request,
+                "error": "This reset link has expired. Please request a new one.",
+                "sent": False
+            })
+        return templates.TemplateResponse("reset_password.html", {
+            "request": request,
+            "token": token
+        })
+    finally:
+        cur.close()
+        con.close()
+
+class ResetPasswordPublicReq(BaseModel):
+    token: str
+    new_password: str
+
+@app.post("/api/auth/reset-password")
+def reset_password_api(req: ResetPasswordPublicReq):
+    if len(req.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters.")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("""
+            SELECT id, user_id, expires_at, used FROM password_resets WHERE token = %s
+        """, (req.token,))
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=400, detail="Invalid reset token.")
+        if row["used"]:
+            raise HTTPException(status_code=400, detail="This reset link has already been used.")
+        if now() > row["expires_at"]:
+            raise HTTPException(status_code=400, detail="This reset link has expired.")
+
+        new_hash = hash_password(req.new_password)
+        cur.execute("UPDATE users SET password_hash = %s WHERE id = %s", (new_hash, row["user_id"]))
+        cur.execute("UPDATE password_resets SET used = TRUE WHERE id = %s", (row["id"],))
+        con.commit()
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+# =========================
 # ---
 # =========================
 def send_confirmation_email(email: str, token: str):
