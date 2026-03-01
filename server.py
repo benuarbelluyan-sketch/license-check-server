@@ -1048,9 +1048,9 @@ def forgot_password_page(request: Request):
 @app.post("/forgot-password", response_class=HTMLResponse)
 def forgot_password_submit(request: Request, background_tasks: BackgroundTasks, email: str = Form(...)):
     con = db()
-    cur = con.cursor()
+    cur = con.cursor(cursor_factory=RealDictCursor)
     try:
-        cur.execute("SELECT id, email FROM users WHERE email = %s", (email.strip().lower(),))
+        cur.execute("SELECT id, email FROM users WHERE email = %s", (email.strip(),))
         user = cur.fetchone()
         if user:
             reset_token = generate_token()
@@ -1069,6 +1069,7 @@ def forgot_password_submit(request: Request, background_tasks: BackgroundTasks, 
         })
     except Exception as e:
         con.rollback()
+        print(f"[ERROR] forgot_password_submit: {e}")
         return templates.TemplateResponse("forgot_password.html", {
             "request": request,
             "error": "Something went wrong. Please try again.",
@@ -1087,7 +1088,7 @@ def reset_password_page(request: Request, token: str = ""):
             "sent": False
         })
     con = db()
-    cur = con.cursor()
+    cur = con.cursor(cursor_factory=RealDictCursor)
     try:
         cur.execute("""
             SELECT id, expires_at, used FROM password_resets WHERE token = %s
@@ -1128,7 +1129,7 @@ def reset_password_api(req: ResetPasswordPublicReq):
     if len(req.new_password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters.")
     con = db()
-    cur = con.cursor()
+    cur = con.cursor(cursor_factory=RealDictCursor)
     try:
         cur.execute("""
             SELECT id, user_id, expires_at, used FROM password_resets WHERE token = %s
