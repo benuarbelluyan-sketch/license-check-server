@@ -551,7 +551,15 @@
             </div>
           </div>
           <div class="trans-amount {% if t.amount >= 0 %}positive{% else %}negative{% endif %}">
-            {% if t.amount >= 0 %}+{% endif %}${{ "%.2f" | format(t.amount | float) }}
+            {% set amt = t.amount | float %}
+            {% if amt >= 0 %}+{% endif %}
+            {%- if amt | abs >= 0.01 -%}
+              ${{ "%.4f" | format(amt | abs) }}
+            {%- elif amt | abs >= 0.0001 -%}
+              ${{ "%.6f" | format(amt | abs) }}
+            {%- else -%}
+              ${{ "%.8f" | format(amt | abs) }}
+            {%- endif -%}
           </div>
         </div>
         {% endfor %}
