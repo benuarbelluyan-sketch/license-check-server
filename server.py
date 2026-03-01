@@ -603,7 +603,7 @@ def login(req: LoginReq, request: Request):
                 detail={
                     "error": "email_not_confirmed",
                     "email": user['email'],
-                    "message": "?????????????????????? email"
+                    "message": "Email not confirmed. A new confirmation link has been sent to your email."
                 }
             )
         
@@ -975,73 +975,60 @@ def logout(session_token: str = Form(...)):
         con.close()
 
 @app.get("/api/auth/confirm")
-def confirm_email(token: str):
+def confirm_email(request: Request, token: str):
     con = db()
     cur = con.cursor()
-    
+
     try:
         cur.execute("""
             SELECT user_id, expires_at 
             FROM email_confirmations 
             WHERE token = %s AND confirmed_at IS NULL
         """, (token,))
-        
+
         row = cur.fetchone()
         if not row:
-            return HTMLResponse("""
-                <html>
-                <body style="font-family: Arial; text-align: center; padding: 50px;">
-                    <h2>??? ???????????? ??????????????????????????????</h2>
-                    <p>????????????????, ?????? ?????? ???????????????????????? ?????? ??????????????.</p>
-                </body>
-                </html>
-            """)
-        
+            return templates.TemplateResponse("confirm_email.html", {
+                "request": request,
+                "status": "invalid",
+                "message": "This confirmation link is invalid or has already been used. Please request a new one."
+            })
+
         user_id, expires_at = row
-        
+
         if now() > expires_at:
-            return HTMLResponse("""
-                <html>
-                <body style="font-family: Arial; text-align: center; padding: 50px;">
-                    <h2>??? ???????????? ??????????????</h2>
-                    <p>?????????????????? ?????????? ???????????? ?? ??????????????????.</p>
-                </body>
-                </html>
-            """)
-        
+            return templates.TemplateResponse("confirm_email.html", {
+                "request": request,
+                "status": "expired",
+                "message": "This confirmation link has expired. Please register again or request a new confirmation email."
+            })
+
         cur.execute("""
             UPDATE users 
             SET email_confirmed = TRUE, email_confirmed_at = NOW()
             WHERE id = %s
         """, (user_id,))
-        
+
         cur.execute("""
             UPDATE email_confirmations 
             SET confirmed_at = NOW()
             WHERE token = %s
         """, (token,))
-        
+
         con.commit()
-        
-        return HTMLResponse("""
-            <html>
-            <body style="font-family: Arial; text-align: center; padding: 50px;">
-                <h2>??? Email ??????????????????????!</h2>
-                <p>???????????? ???? ???????????? ?????????? ?? ??????????????????.</p>
-                <p>?????????????????? ?? ???????????????????? ?? ?????????????? "??????????".</p>
-            </body>
-            </html>
-        """)
-        
+
+        return templates.TemplateResponse("confirm_email.html", {
+            "request": request,
+            "status": "ok",
+            "message": "Your email has been successfully confirmed. You can now log in to the application and click \"Login\"."
+        })
+
     except Exception as e:
-        return HTMLResponse(f"""
-            <html>
-            <body style="font-family: Arial; text-align: center; padding: 50px;">
-                <h2>??? ????????????</h2>
-                <p>{str(e)}</p>
-            </body>
-            </html>
-        """)
+        return templates.TemplateResponse("confirm_email.html", {
+            "request": request,
+            "status": "error",
+            "message": f"An unexpected error occurred. Please try again later. ({str(e)})"
+        })
     finally:
         cur.close()
         con.close()
@@ -1050,7 +1037,7 @@ def confirm_email(token: str):
 # ---
 # =========================
 def send_confirmation_email(email: str, token: str):
-    """Отправляет письмо подтверждения email."""
+    """Send email confirmation letter."""
     confirm_url = f"https://license-check-server-xatc.onrender.com/api/auth/confirm?token={token}"
 
     if not SENDGRID_API_KEY:
@@ -1058,45 +1045,62 @@ def send_confirmation_email(email: str, token: str):
         return
 
     html_content = (
-        "<!DOCTYPE html><html><head>"
+        "<!DOCTYPE html><html lang=\"en\"><head>"
         "<meta charset=\"UTF-8\">"
         "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+        "<title>Confirm your email — TG Leads AI</title>"
         "</head>"
-        "<body style=\"margin:0;padding:0;font-family:Arial,sans-serif;background:#f5f7fa;\">"
-        "<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:600px;margin:40px auto;background:#fff;border-radius:16px;box-shadow:0 4px 12px rgba(0,0,0,0.08);\">"
-        "<tr><td style=\"padding:40px;text-align:center;background:linear-gradient(135deg,#3b82f6,#8b5cf6);border-radius:16px 16px 0 0;\">"
-        "<h1 style=\"color:#fff;margin:0;font-size:26px;font-weight:700;\">TG Parser Sender</h1>"
-        "<p style=\"color:rgba(255,255,255,0.85);margin:8px 0 0;font-size:14px;\">TG Leads AI</p>"
+        "<body style=\"margin:0;padding:0;font-family:'Helvetica Neue',Arial,sans-serif;background:#f0f4ff;\">"
+        "<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">"
+        "<tr><td align=\"center\" style=\"padding:48px 16px;\">"
+        "<table width=\"600\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:600px;width:100%;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 8px 32px rgba(79,70,229,0.12);\">"
+        # Header
+        "<tr><td style=\"background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);padding:40px 48px;text-align:center;\">"
+        "<div style=\"width:56px;height:56px;background:rgba(255,255,255,0.2);border-radius:16px;margin:0 auto 16px;display:inline-flex;align-items:center;justify-content:center;\">"
+        "<span style=\"font-size:28px;\">&#9993;</span></div>"
+        "<h1 style=\"color:#ffffff;margin:0;font-size:26px;font-weight:700;letter-spacing:-0.5px;\">TG Leads AI</h1>"
+        "<p style=\"color:rgba(255,255,255,0.75);margin:6px 0 0;font-size:13px;letter-spacing:0.5px;text-transform:uppercase;\">Email Confirmation</p>"
         "</td></tr>"
-        "<tr><td style=\"padding:40px;\">"
-        "<h2 style=\"color:#1e293b;margin:0 0 16px;font-size:22px;\">Подтвердите email</h2>"
-        "<p style=\"color:#475569;line-height:1.7;margin:0 0 28px;font-size:15px;\">"
-        "Здравствуйте!<br><br>"
-        "Для завершения регистрации в <strong>TG Parser Sender</strong> нажмите кнопку ниже."
+        # Body
+        "<tr><td style=\"padding:48px;\">"
+        "<h2 style=\"color:#0f172a;margin:0 0 16px;font-size:22px;font-weight:700;\">Confirm your email address</h2>"
+        "<p style=\"color:#475569;line-height:1.8;margin:0 0 12px;font-size:15px;\">Hello!</p>"
+        "<p style=\"color:#475569;line-height:1.8;margin:0 0 32px;font-size:15px;\">"
+        "Thank you for registering with <strong style=\"color:#4f46e5;\">TG Leads AI</strong>. "
+        "To complete your registration and activate your account, please confirm your email address by clicking the button below."
         "</p>"
-        "<table cellpadding=\"0\" cellspacing=\"0\" style=\"margin:0 auto 28px;\">"
-        "<tr><td style=\"background:#22c55e;border-radius:40px;padding:14px 40px;\">"
-        f"<a href=\"{confirm_url}\" style=\"color:#fff;text-decoration:none;font-size:16px;font-weight:600;\">Подтвердить email</a>"
+        # Button
+        "<table cellpadding=\"0\" cellspacing=\"0\" style=\"margin:0 auto 32px;\">"
+        "<tr><td style=\"background:linear-gradient(135deg,#22c55e 0%,#16a34a 100%);border-radius:50px;\">"
+        f"<a href=\"{confirm_url}\" style=\"display:inline-block;padding:16px 48px;color:#ffffff;text-decoration:none;font-size:16px;font-weight:700;letter-spacing:0.2px;\">&#10003;&nbsp; Confirm Email</a>"
         "</td></tr></table>"
-        "<p style=\"color:#64748b;font-size:13px;text-align:center;margin:0 0 20px;\">"
-        "Или скопируйте ссылку:<br>"
-        f"<a href=\"{confirm_url}\" style=\"color:#3b82f6;word-break:break-all;\">{confirm_url}</a>"
+        # Fallback link
+        "<div style=\"background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px;margin-bottom:32px;\">"
+        "<p style=\"color:#64748b;font-size:12px;margin:0 0 8px;\">Or copy and paste this link into your browser:</p>"
+        f"<a href=\"{confirm_url}\" style=\"color:#4f46e5;font-size:12px;word-break:break-all;text-decoration:none;\">{confirm_url}</a>"
+        "</div>"
+        # Warning
+        "<div style=\"border-top:1px solid #f1f5f9;padding-top:24px;\">"
+        "<p style=\"color:#94a3b8;font-size:12px;line-height:1.7;margin:0;\">"
+        "<strong>&#128274; This link expires in 24 hours.</strong><br>"
+        "If you did not create an account with TG Leads AI, you can safely ignore this email."
         "</p>"
-        "<p style=\"color:#94a3b8;font-size:12px;text-align:center;border-top:1px solid #e2e8f0;padding-top:20px;margin:0;\">"
-        "Ссылка действительна 24 часа. Если вы не регистрировались — проигнорируйте письмо."
-        "</p>"
+        "</div>"
         "</td></tr>"
-        "<tr><td style=\"padding:24px 40px;background:#f8fafc;border-radius:0 0 16px 16px;text-align:center;\">"
-        "<p style=\"color:#64748b;margin:0 0 4px;font-size:13px;\">С уважением, команда TG Parser Sender</p>"
-        "<p style=\"color:#94a3b8;margin:0;font-size:12px;\">support@tgparsersender.me | @Ben_bell97</p>"
+        # Footer
+        "<tr><td style=\"background:#f8fafc;padding:24px 48px;text-align:center;border-top:1px solid #f1f5f9;\">"
+        "<p style=\"color:#64748b;margin:0 0 6px;font-size:13px;font-weight:600;\">TG Leads AI Team</p>"
+        "<p style=\"color:#94a3b8;margin:0;font-size:12px;\">support@tgparsersender.me &nbsp;|&nbsp; @Ben_bell97</p>"
         "</td></tr>"
-        "</table></body></html>"
+        "</table>"
+        "</td></tr></table>"
+        "</body></html>"
     )
 
     message = Mail(
         from_email=Email(FROM_EMAIL, FROM_NAME),
         to_emails=To(email),
-        subject="Подтверждение email — TG Parser Sender",
+        subject="Confirm your email — TG Leads AI",
         html_content=Content("text/html", html_content)
     )
     try:
@@ -1108,7 +1112,7 @@ def send_confirmation_email(email: str, token: str):
 
 
 def send_password_reset_email(email: str, token: str):
-    """Отправляет письмо для сброса пароля."""
+    """Send password reset letter."""
     reset_url = f"https://license-check-server-xatc.onrender.com/reset-password?token={token}"
 
     if not SENDGRID_API_KEY:
@@ -1116,45 +1120,67 @@ def send_password_reset_email(email: str, token: str):
         return
 
     html_content = (
-        "<!DOCTYPE html><html><head>"
+        "<!DOCTYPE html><html lang=\"en\"><head>"
         "<meta charset=\"UTF-8\">"
         "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+        "<title>Password Reset — TG Leads AI</title>"
         "</head>"
-        "<body style=\"margin:0;padding:0;font-family:Arial,sans-serif;background:#f5f7fa;\">"
-        "<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:600px;margin:40px auto;background:#fff;border-radius:16px;box-shadow:0 4px 12px rgba(0,0,0,0.08);\">"
-        "<tr><td style=\"padding:40px;text-align:center;background:linear-gradient(135deg,#ef4444,#f97316);border-radius:16px 16px 0 0;\">"
-        "<h1 style=\"color:#fff;margin:0;font-size:26px;font-weight:700;\">TG Parser Sender</h1>"
-        "<p style=\"color:rgba(255,255,255,0.85);margin:8px 0 0;font-size:14px;\">Безопасность аккаунта</p>"
+        "<body style=\"margin:0;padding:0;font-family:'Helvetica Neue',Arial,sans-serif;background:#f0f4ff;\">"
+        "<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">"
+        "<tr><td align=\"center\" style=\"padding:48px 16px;\">"
+        "<table width=\"600\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:600px;width:100%;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 8px 32px rgba(239,68,68,0.12);\">"
+        # Header
+        "<tr><td style=\"background:linear-gradient(135deg,#ef4444 0%,#f97316 100%);padding:40px 48px;text-align:center;\">"
+        "<div style=\"width:56px;height:56px;background:rgba(255,255,255,0.2);border-radius:16px;margin:0 auto 16px;display:inline-flex;align-items:center;justify-content:center;\">"
+        "<span style=\"font-size:28px;\">&#128274;</span></div>"
+        "<h1 style=\"color:#ffffff;margin:0;font-size:26px;font-weight:700;letter-spacing:-0.5px;\">TG Leads AI</h1>"
+        "<p style=\"color:rgba(255,255,255,0.75);margin:6px 0 0;font-size:13px;letter-spacing:0.5px;text-transform:uppercase;\">Account Security</p>"
         "</td></tr>"
-        "<tr><td style=\"padding:40px;\">"
-        "<h2 style=\"color:#1e293b;margin:0 0 16px;font-size:22px;\">Сброс пароля</h2>"
-        "<p style=\"color:#475569;line-height:1.7;margin:0 0 28px;font-size:15px;\">"
-        "Мы получили запрос на сброс пароля для вашего аккаунта.<br><br>"
-        "Нажмите кнопку ниже чтобы задать новый пароль. Если вы не запрашивали сброс — проигнорируйте письмо."
+        # Body
+        "<tr><td style=\"padding:48px;\">"
+        "<h2 style=\"color:#0f172a;margin:0 0 16px;font-size:22px;font-weight:700;\">Reset your password</h2>"
+        "<p style=\"color:#475569;line-height:1.8;margin:0 0 12px;font-size:15px;\">Hello!</p>"
+        "<p style=\"color:#475569;line-height:1.8;margin:0 0 32px;font-size:15px;\">"
+        "We received a request to reset the password for your <strong style=\"color:#ef4444;\">TG Leads AI</strong> account. "
+        "Click the button below to create a new password."
         "</p>"
-        "<table cellpadding=\"0\" cellspacing=\"0\" style=\"margin:0 auto 28px;\">"
-        "<tr><td style=\"background:#3b82f6;border-radius:40px;padding:14px 40px;\">"
-        f"<a href=\"{reset_url}\" style=\"color:#fff;text-decoration:none;font-size:16px;font-weight:600;\">Сбросить пароль</a>"
+        # Button
+        "<table cellpadding=\"0\" cellspacing=\"0\" style=\"margin:0 auto 32px;\">"
+        "<tr><td style=\"background:linear-gradient(135deg,#3b82f6 0%,#4f46e5 100%);border-radius:50px;\">"
+        f"<a href=\"{reset_url}\" style=\"display:inline-block;padding:16px 48px;color:#ffffff;text-decoration:none;font-size:16px;font-weight:700;letter-spacing:0.2px;\">&#128274;&nbsp; Reset Password</a>"
         "</td></tr></table>"
-        "<p style=\"color:#64748b;font-size:13px;text-align:center;margin:0 0 20px;\">"
-        "Или скопируйте ссылку:<br>"
-        f"<a href=\"{reset_url}\" style=\"color:#3b82f6;word-break:break-all;\">{reset_url}</a>"
+        # Fallback link
+        "<div style=\"background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px;margin-bottom:32px;\">"
+        "<p style=\"color:#64748b;font-size:12px;margin:0 0 8px;\">Or copy and paste this link into your browser:</p>"
+        f"<a href=\"{reset_url}\" style=\"color:#3b82f6;font-size:12px;word-break:break-all;text-decoration:none;\">{reset_url}</a>"
+        "</div>"
+        # Warning
+        "<div style=\"background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:16px 20px;margin-bottom:24px;\">"
+        "<p style=\"color:#9a3412;font-size:13px;line-height:1.7;margin:0;\">"
+        "<strong>&#9888; Didn't request a password reset?</strong><br>"
+        "If you didn't make this request, please ignore this email. Your password will remain unchanged."
         "</p>"
-        "<p style=\"color:#94a3b8;font-size:12px;text-align:center;border-top:1px solid #e2e8f0;padding-top:20px;margin:0;\">"
-        "Ссылка действительна 1 час. После использования ссылка становится недействительной."
+        "</div>"
+        "<div style=\"border-top:1px solid #f1f5f9;padding-top:24px;\">"
+        "<p style=\"color:#94a3b8;font-size:12px;line-height:1.7;margin:0;\">"
+        "&#128274; This link is valid for <strong>1 hour</strong> and can only be used once."
         "</p>"
+        "</div>"
         "</td></tr>"
-        "<tr><td style=\"padding:24px 40px;background:#f8fafc;border-radius:0 0 16px 16px;text-align:center;\">"
-        "<p style=\"color:#64748b;margin:0 0 4px;font-size:13px;\">С уважением, команда TG Parser Sender</p>"
-        "<p style=\"color:#94a3b8;margin:0;font-size:12px;\">support@tgparsersender.me | @Ben_bell97</p>"
+        # Footer
+        "<tr><td style=\"background:#f8fafc;padding:24px 48px;text-align:center;border-top:1px solid #f1f5f9;\">"
+        "<p style=\"color:#64748b;margin:0 0 6px;font-size:13px;font-weight:600;\">TG Leads AI Team</p>"
+        "<p style=\"color:#94a3b8;margin:0;font-size:12px;\">support@tgparsersender.me &nbsp;|&nbsp; @Ben_bell97</p>"
         "</td></tr>"
-        "</table></body></html>"
+        "</table>"
+        "</td></tr></table>"
+        "</body></html>"
     )
 
     message = Mail(
         from_email=Email(FROM_EMAIL, FROM_NAME),
         to_emails=To(email),
-        subject="Сброс пароля — TG Parser Sender",
+        subject="Reset your password — TG Leads AI",
         html_content=Content("text/html", html_content)
     )
     try:
