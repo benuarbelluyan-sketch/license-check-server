@@ -337,6 +337,17 @@ def init_db():
             cur.execute("ALTER TABLE users ADD COLUMN telegram TEXT DEFAULT '';")
             print('telegram column added')
 
+        # Migration: increase amount precision in transactions (DECIMAL(10,2) → DECIMAL(18,8))
+        cur.execute("""
+            SELECT numeric_precision, numeric_scale
+            FROM information_schema.columns
+            WHERE table_name='transactions' AND column_name='amount';
+        """)
+        prec_row = cur.fetchone()
+        if prec_row and (prec_row[0] != 18 or prec_row[1] != 8):
+            cur.execute("ALTER TABLE transactions ALTER COLUMN amount TYPE DECIMAL(18,8);")
+            print('[MIGRATION] transactions.amount upgraded to DECIMAL(18,8)')
+
         con.commit()
         pass  # log
         
@@ -2338,11 +2349,24 @@ def charge(req: ChargeReq):
             INSERT INTO usage_logs 
             (user_id, license_key, operation_type, units_used, cost, details)
             VALUES (%s, %s, %s, %s, %s, %s)
-        """, (user_id, license_key, req.operation, units, total_cost, 
+        """, (user_id, license_key, req.operation, units, total_cost,
               json.dumps({"description": req.description})))
-        
+
+        # Write to transactions so it appears in admin history and AI balance widget
+        op_labels = {
+            "ai_parse":    "AI — Telegram Parser",
+            "ai_comments": "AI — Commentators Parser",
+            "ai_leads":    "AI — TG Leads",
+        }
+        desc_label = req.description or op_labels.get(req.operation, f"AI — {req.operation}")
+        cur.execute("""
+            INSERT INTO transactions (user_id, license_key, amount, type, description, metadata)
+            VALUES (%s, %s, %s, 'charge', %s, %s)
+        """, (user_id, license_key, -total_cost, desc_label,
+              json.dumps({"operation": req.operation, "units": units, "unit_price": float(final_price)})))
+
         cur.execute("COMMIT")
-        
+
         return {
             "success": True,
             "charged": float(total_cost),
