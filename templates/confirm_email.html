@@ -1,47 +1,221 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Email confirmation · TG Leads AI</title>
+  <title>Email Confirmation · TG Leads AI</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-    *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:Inter,system-ui,-apple-system,sans-serif;background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-    .card{background:#fff;border-radius:24px;padding:44px;max-width:560px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.2);text-align:left}
-    .title{font-size:26px;font-weight:800;color:#0f172a;margin-bottom:8px}
-    .sub{color:#64748b;font-size:14px;margin-bottom:18px;line-height:1.6}
-    .badge{display:inline-block;border-radius:999px;padding:6px 12px;font-weight:800;font-size:12px;margin-bottom:14px}
-    .ok{background:#dcfce7;color:#14532d}
-    .warn{background:#fef9c3;color:#713f12}
-    .err{background:#fee2e2;color:#7f1d1d}
-    .btn{display:inline-block;margin-top:10px;background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);color:#fff;text-decoration:none;padding:12px 16px;border-radius:14px;font-weight:800}
-    .foot{margin-top:18px;color:#94a3b8;font-size:12px;text-align:center}
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    /* Gradient backgrounds per status */
+    body.status-ok   { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #06b6d4 100%); }
+    body.status-expired { background: linear-gradient(135deg, #d97706 0%, #f59e0b 50%, #fbbf24 100%); }
+    body.status-invalid,
+    body.status-error { background: linear-gradient(135deg, #dc2626 0%, #e11d48 50%, #9333ea 100%); }
+
+    /* Animated background blobs */
+    body::before, body::after {
+      content: '';
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.3;
+      pointer-events: none;
+      z-index: 0;
+    }
+    body::before { width: 400px; height: 400px; top: -100px; left: -100px; background: rgba(255,255,255,0.4); }
+    body::after  { width: 300px; height: 300px; bottom: -80px; right: -80px; background: rgba(255,255,255,0.3); }
+
+    .card {
+      position: relative;
+      z-index: 1;
+      background: #ffffff;
+      border-radius: 28px;
+      padding: 52px 48px 44px;
+      max-width: 520px;
+      width: 100%;
+      box-shadow:
+        0 32px 80px rgba(0,0,0,0.18),
+        0 0 0 1px rgba(255,255,255,0.12) inset;
+      text-align: center;
+      animation: slideUp 0.5s cubic-bezier(0.22,1,0.36,1) both;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(30px) scale(0.97); }
+      to   { opacity: 1; transform: translateY(0)    scale(1); }
+    }
+
+    /* Icon circle */
+    .icon-wrap {
+      width: 88px;
+      height: 88px;
+      border-radius: 50%;
+      margin: 0 auto 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      animation: popIn 0.6s 0.2s cubic-bezier(0.22,1,0.36,1) both;
+    }
+    @keyframes popIn {
+      from { opacity:0; transform: scale(0.5); }
+      to   { opacity:1; transform: scale(1); }
+    }
+
+    .status-ok    .icon-wrap { background: linear-gradient(135deg,#dcfce7,#bbf7d0); }
+    .status-expired .icon-wrap { background: linear-gradient(135deg,#fef9c3,#fde68a); }
+    .status-invalid .icon-wrap,
+    .status-error .icon-wrap { background: linear-gradient(135deg,#fee2e2,#fecaca); }
+
+    /* Badge */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 100px;
+      padding: 5px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+    .status-ok    .badge { background: #dcfce7; color: #14532d; }
+    .status-expired .badge { background: #fef9c3; color: #713f12; }
+    .status-invalid .badge,
+    .status-error .badge { background: #fee2e2; color: #7f1d1d; }
+
+    .title {
+      font-size: 26px;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 12px;
+      letter-spacing: -0.5px;
+      line-height: 1.2;
+    }
+
+    .message {
+      color: #64748b;
+      font-size: 15px;
+      line-height: 1.7;
+      margin-bottom: 36px;
+    }
+
+    /* Buttons */
+    .btn-primary {
+      display: inline-block;
+      padding: 14px 32px;
+      border-radius: 14px;
+      font-weight: 700;
+      font-size: 15px;
+      text-decoration: none;
+      color: #fff;
+      transition: transform 0.15s, box-shadow 0.15s;
+      cursor: pointer;
+      border: none;
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.18); }
+    .btn-primary:active { transform: translateY(0); }
+
+    .status-ok    .btn-primary { background: linear-gradient(135deg,#4f46e5,#7c3aed); }
+    .status-expired .btn-primary { background: linear-gradient(135deg,#d97706,#f59e0b); }
+    .status-invalid .btn-primary,
+    .status-error .btn-primary { background: linear-gradient(135deg,#dc2626,#e11d48); }
+
+    .btn-secondary {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #64748b;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      text-decoration: none;
+      transition: background 0.15s, color 0.15s;
+      cursor: pointer;
+    }
+    .btn-secondary:hover { background: #f1f5f9; color: #334155; }
+
+    .divider {
+      height: 1px;
+      background: #f1f5f9;
+      margin: 32px 0;
+    }
+
+    .footer {
+      font-size: 12px;
+      color: #94a3b8;
+    }
+    .footer span { font-weight: 700; color: #64748b; }
+
+    /* App icon row */
+    .app-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 8px 14px;
+      margin-bottom: 24px;
+    }
+    .app-badge .dot { width: 8px; height: 8px; border-radius: 50%; background: #4f46e5; }
+    .app-badge span { font-size: 13px; font-weight: 600; color: #334155; }
   </style>
 </head>
-<body>
+<body class="status-{{ status }}">
   <div class="card">
+
     {% if status == "ok" %}
-      <div class="badge ok">✅ Confirmed</div>
-      <div class="title">Email confirmed</div>
-      <div class="sub">{{ message }}</div>
+      <div class="icon-wrap">✅</div>
+      <div class="badge">✓ Confirmed</div>
+      <h1 class="title">Email Confirmed!</h1>
+      <p class="message">{{ message }}</p>
+      <a class="btn-primary" href="#" onclick="window.close(); return false;">Open the App →</a>
+      <br>
+      <button class="btn-secondary" onclick="window.close()">Close this tab</button>
+
     {% elif status == "expired" %}
-      <div class="badge warn">⏳ Expired</div>
-      <div class="title">Link expired</div>
-      <div class="sub">{{ message }}</div>
+      <div class="icon-wrap">⏳</div>
+      <div class="badge">⏳ Expired</div>
+      <h1 class="title">Link Expired</h1>
+      <p class="message">{{ message }}</p>
+      <a class="btn-primary" href="#">Request New Link</a>
+      <br>
+      <button class="btn-secondary" onclick="window.close()">Close this tab</button>
+
     {% elif status == "invalid" %}
-      <div class="badge err">⚠️ Invalid</div>
-      <div class="title">Invalid link</div>
-      <div class="sub">{{ message }}</div>
+      <div class="icon-wrap">⚠️</div>
+      <div class="badge">⚠ Invalid</div>
+      <h1 class="title">Invalid Link</h1>
+      <p class="message">{{ message }}</p>
+      <button class="btn-primary" onclick="window.close()">Close this tab</button>
+
     {% else %}
-      <div class="badge err">❌ Error</div>
-      <div class="title">Confirmation error</div>
-      <div class="sub">{{ message }}</div>
+      <div class="icon-wrap">❌</div>
+      <div class="badge">✕ Error</div>
+      <h1 class="title">Something Went Wrong</h1>
+      <p class="message">{{ message }}</p>
+      <button class="btn-primary" onclick="window.close()">Close this tab</button>
     {% endif %}
 
-    <a class="btn" href="#" onclick="window.close(); return false;">Close</a>
+    <div class="divider"></div>
 
-    <div class="foot">TG Leads AI</div>
+    <p class="footer"><span>TG Leads AI</span> · support@tgparsersender.me</p>
   </div>
 </body>
 </html>
