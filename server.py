@@ -1489,7 +1489,7 @@ def admin_deposit(request: Request, data: DepositRequest):
             data.user_id, 
             license_key, 
             data.amount, 
-            f"???????????? ????????????????????: {data.note}" if data.note else "???????????? ????????????????????",
+            f"Admin deposit: {data.note}" if data.note else "Admin deposit",
             json.dumps({"method": data.method, "admin": True})
         ))
         
@@ -2295,6 +2295,57 @@ class ChargeReq(BaseModel):
     operation: str
     units: int
     description: str = ""
+
+# ── Transaction history for BalanceDialog ──────────────────────────────────
+class TransactionsReq(BaseModel):
+    session_token: str
+    limit: int = 100
+
+@app.post("/api/balance/transactions")
+def get_balance_transactions(req: TransactionsReq):
+    """Return transaction history for the logged-in user (used by Balance AI dialog)."""
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT u.id AS user_id
+            FROM users u
+            JOIN user_sessions s ON u.id = s.user_id
+            WHERE s.session_token = %s AND s.expires_at > NOW()
+        """, (req.session_token,))
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=401, detail="invalid_session")
+
+        limit = max(1, min(int(req.limit), 500))
+        cur.execute("""
+            SELECT id, amount, type, description, created_at, metadata
+            FROM transactions
+            WHERE user_id = %s
+            ORDER BY created_at DESC
+            LIMIT %s
+        """, (row["user_id"], limit))
+        rows = cur.fetchall()
+
+        result = []
+        for r in rows:
+            result.append({
+                "id":          r["id"],
+                "amount":      float(r["amount"]),
+                "type":        r["type"],
+                "description": r["description"] or "",
+                "created_at":  r["created_at"].isoformat() if r["created_at"] else None,
+                "metadata":    r["metadata"] or {},
+            })
+        return {"transactions": result}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
 
 @app.post("/api/balance/charge")
 def charge(req: ChargeReq):
