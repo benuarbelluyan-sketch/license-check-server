@@ -1,0 +1,419 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Обновления · TG Parser Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+    .container { max-width: 1400px; margin: 0 auto; padding: 40px 24px; }
+
+    /* ── Header ── */
+    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; }
+    .logo { display: flex; align-items: center; gap: 12px; }
+    .logo-icon { width: 48px; height: 48px; background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; border: 1px solid rgba(255,255,255,0.3); }
+    .logo-text { font-size: 20px; font-weight: 700; color: #fff; }
+    .logout-btn { background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3); border-radius: 12px; padding: 10px 20px; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+    .logout-btn:hover { background: rgba(255,255,255,0.3); }
+
+    /* ── Nav ── */
+    .nav { background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); border-radius: 16px; padding: 8px; display: flex; gap: 4px; margin-bottom: 32px; overflow-x: auto; }
+    .nav-item { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 10px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s; white-space: nowrap; }
+    .nav-item:hover { background: rgba(255,255,255,0.15); color: #fff; }
+    .nav-item.active { background: #fff; color: #667eea; box-shadow: 0 4px 14px rgba(0,0,0,0.1); }
+
+    /* ── Cards ── */
+    .card { background: #fff; border-radius: 20px; padding: 32px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 24px; }
+    .card-title { font-size: 18px; font-weight: 700; color: #1a202c; margin-bottom: 24px; display: flex; align-items: center; gap: 10px; }
+
+    /* ── Upload form ── */
+    .upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 768px) { .upload-grid { grid-template-columns: 1fr; } }
+
+    .form-group { display: flex; flex-direction: column; gap: 8px; }
+    .form-group.full { grid-column: 1 / -1; }
+    .form-label { font-size: 12px; font-weight: 700; color: #4a5568; text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-input, .form-select, .form-textarea {
+      background: #f7fafc; border: 2px solid #e2e8f0; border-radius: 12px;
+      padding: 12px 16px; font-size: 14px; color: #1a202c; font-family: inherit;
+      transition: all 0.2s;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      outline: none; border-color: #667eea; background: #fff;
+      box-shadow: 0 0 0 3px rgba(102,126,234,0.12);
+    }
+    .form-textarea { min-height: 80px; resize: vertical; }
+
+    /* ── File drop zone ── */
+    .drop-zone {
+      border: 2.5px dashed #cbd5e0; border-radius: 14px; padding: 32px;
+      text-align: center; cursor: pointer; transition: all 0.2s; background: #f7fafc;
+      position: relative;
+    }
+    .drop-zone:hover, .drop-zone.drag-over { border-color: #667eea; background: #eef2ff; }
+    .drop-zone input[type=file] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .drop-icon { font-size: 36px; margin-bottom: 8px; }
+    .drop-text { font-size: 14px; font-weight: 600; color: #4a5568; }
+    .drop-sub  { font-size: 12px; color: #a0aec0; margin-top: 4px; }
+    .drop-filename { font-size: 13px; font-weight: 700; color: #667eea; margin-top: 8px; display: none; }
+
+    /* ── Toggle checkbox ── */
+    .toggle-row { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+    .toggle { width: 44px; height: 24px; background: #e2e8f0; border-radius: 99px; cursor: pointer; position: relative; transition: background 0.2s; appearance: none; -webkit-appearance: none; border: none; outline: none; }
+    .toggle:checked { background: #ed8936; }
+    .toggle::after { content: ''; position: absolute; width: 18px; height: 18px; background: #fff; border-radius: 50%; top: 3px; left: 3px; transition: transform 0.2s; box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+    .toggle:checked::after { transform: translateX(20px); }
+    .toggle-label { font-size: 13px; font-weight: 600; color: #4a5568; }
+
+    /* ── Submit button ── */
+    .btn-upload {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff; border: none; border-radius: 12px; padding: 14px 32px;
+      font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+      box-shadow: 0 4px 14px rgba(102,126,234,0.35); display: inline-flex; align-items: center; gap: 8px;
+    }
+    .btn-upload:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(102,126,234,0.45); }
+    .btn-upload:disabled { opacity: 0.6; transform: none; cursor: not-allowed; }
+
+    /* ── Progress bar ── */
+    .progress-wrap { display: none; margin-top: 16px; background: #e2e8f0; border-radius: 99px; height: 8px; overflow: hidden; }
+    .progress-bar { height: 100%; background: linear-gradient(90deg,#667eea,#764ba2); border-radius: 99px; width: 0%; transition: width 0.3s; }
+    .progress-text { margin-top: 6px; font-size: 12px; color: #718096; text-align: center; display: none; }
+
+    /* ── Success toast ── */
+    .toast { display: none; background: #c6f6d5; border: 2px solid #9ae6b4; border-radius: 14px; padding: 14px 20px; color: #22543d; font-weight: 700; font-size: 14px; margin-top: 16px; }
+    .toast.show { display: block; }
+
+    /* ── Releases table ── */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead { background: #f7fafc; }
+    th { padding: 12px 16px; text-align: left; color: #718096; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+    td { padding: 16px; border-top: 1px solid #f7fafc; vertical-align: middle; }
+    tr:hover td { background: #fafbff; }
+
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+    .badge-stable   { background: #c6f6d5; color: #22543d; }
+    .badge-beta     { background: #bee3f8; color: #2a4365; }
+    .badge-mandatory{ background: #fed7aa; color: #7c2d12; }
+    .badge-optional { background: #e2e8f0; color: #4a5568; }
+
+    .version-tag { font-family: monospace; font-size: 15px; font-weight: 700; color: #1a202c; }
+    .sha-text { font-family: monospace; font-size: 10px; color: #a0aec0; }
+
+    .btn-delete {
+      background: #fff5f5; border: 1.5px solid #fed7d7; border-radius: 8px;
+      padding: 6px 12px; font-size: 12px; font-weight: 700; color: #e53e3e;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .btn-delete:hover { background: #fed7d7; border-color: #f56565; }
+
+    .btn-toggle {
+      background: #f7fafc; border: 1.5px solid #e2e8f0; border-radius: 8px;
+      padding: 6px 12px; font-size: 12px; font-weight: 700; color: #4a5568;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .btn-toggle:hover { background: #edf2f7; }
+
+    .latest-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: linear-gradient(135deg,#667eea,#764ba2); color: #fff;
+      font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 6px; margin-left: 8px;
+    }
+
+    .empty { text-align: center; padding: 60px; color: #a0aec0; }
+    .empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.3; }
+
+    /* ── API info box ── */
+    .info-box { background: #eef2ff; border: 2px solid #c7d2fe; border-radius: 14px; padding: 20px 24px; }
+    .info-box h3 { font-size: 14px; font-weight: 700; color: #4338ca; margin-bottom: 12px; }
+    .endpoint-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .method { font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 6px; }
+    .method-get  { background: #c6f6d5; color: #22543d; }
+    .method-post { background: #bee3f8; color: #2a4365; }
+    .ep-url { font-family: monospace; font-size: 13px; color: #1a202c; }
+    .ep-desc { font-size: 12px; color: #718096; margin-left: auto; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">🚀</div>
+      <div class="logo-text">TG Parser Admin</div>
+    </div>
+    <form method="post" action="/admin/logout" style="margin:0;">
+      <button class="logout-btn" type="submit">Выйти</button>
+    </form>
+  </div>
+
+  <!-- Nav -->
+  <nav class="nav">
+    <a href="/admin"              class="nav-item">📊 Дашборд</a>
+    <a href="/admin/users"        class="nav-item">👥 Пользователи</a>
+    <a href="/admin/licenses"     class="nav-item">🔑 Лицензии</a>
+    <a href="/admin/devices"      class="nav-item">💻 Устройства</a>
+    <a href="/admin/transactions" class="nav-item">💳 Транзакции</a>
+    <a href="/admin/releases"     class="nav-item active">🚀 Обновления</a>
+    <a href="/admin/settings"     class="nav-item">⚙️ Настройки</a>
+  </nav>
+
+  {% if request.query_params.get('uploaded') %}
+  <div class="toast show">✅ Обновление успешно загружено! Пользователи получат уведомление при следующем запуске приложения.</div>
+  {% endif %}
+
+  <!-- Upload new release -->
+  <div class="card">
+    <div class="card-title">🚀 Загрузить новый релиз</div>
+
+    <form id="uploadForm" method="post" action="/admin/releases/upload" enctype="multipart/form-data">
+      <div class="upload-grid">
+
+        <div class="form-group">
+          <label class="form-label">Версия *</label>
+          <input type="text" name="version" class="form-input" placeholder="например: 1.2.0" required />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Канал</label>
+          <select name="channel" class="form-select">
+            <option value="stable">🟢 Stable (рекомендуется)</option>
+            <option value="beta">🔵 Beta (тестовый)</option>
+          </select>
+        </div>
+
+        <div class="form-group full">
+          <label class="form-label">Что нового (release notes)</label>
+          <textarea name="release_notes" class="form-textarea" placeholder="— Исправлен ресайз окна&#10;— Добавлена новая функция X&#10;— Улучшена скорость работы"></textarea>
+        </div>
+
+        <div class="form-group full">
+          <label class="form-label">Файл .exe *</label>
+          <div class="drop-zone" id="dropZone">
+            <input type="file" name="file" id="fileInput" accept=".exe,.zip,.msi" required />
+            <div class="drop-icon">📦</div>
+            <div class="drop-text">Перетащите .exe сюда или нажмите для выбора</div>
+            <div class="drop-sub">Поддерживаются: .exe, .zip, .msi</div>
+            <div class="drop-filename" id="dropFilename"></div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Обязательное обновление?</label>
+          <div class="toggle-row">
+            <input type="checkbox" name="is_mandatory" id="mandatoryToggle" class="toggle" value="true" />
+            <label for="mandatoryToggle" class="toggle-label">Принудительно обновить у всех пользователей</label>
+          </div>
+        </div>
+
+        <div class="form-group" style="align-self:end;">
+          <button type="submit" class="btn-upload" id="uploadBtn">
+            <span>🚀</span> Опубликовать обновление
+          </button>
+        </div>
+
+      </div><!-- /grid -->
+
+      <div class="progress-wrap" id="progressWrap">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+      <div class="progress-text" id="progressText"></div>
+
+    </form>
+  </div><!-- /upload card -->
+
+  <!-- API endpoints info -->
+  <div class="card">
+    <div class="card-title">🔌 API эндпоинты (для разработки)</div>
+    <div class="info-box">
+      <h3>Приложение использует эти URLs:</h3>
+      <div class="endpoint-row">
+        <span class="method method-get">GET</span>
+        <span class="ep-url">/api/version?channel=stable</span>
+        <span class="ep-desc">Проверить наличие обновления</span>
+      </div>
+      <div class="endpoint-row">
+        <span class="method method-get">GET</span>
+        <span class="ep-url">/api/download/{release_id}</span>
+        <span class="ep-desc">Скачать .exe (требует X-License-Key заголовок)</span>
+      </div>
+      <div style="margin-top:12px; font-size:12px; color:#718096;">
+        Сервер: <code style="background:#e8eaf6; padding:2px 6px; border-radius:4px;">https://license-check-server-xatc.onrender.com</code>
+      </div>
+    </div>
+  </div>
+
+  <!-- Releases table -->
+  <div class="card">
+    <div class="card-title">📋 История релизов ({{ releases | length }})</div>
+
+    {% if releases %}
+    <table>
+      <thead>
+        <tr>
+          <th>Версия</th>
+          <th>Канал</th>
+          <th>Файл</th>
+          <th>Размер</th>
+          <th>SHA256</th>
+          <th>Обязательное</th>
+          <th>Дата</th>
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in releases %}
+        <tr>
+          <td>
+            <span class="version-tag">v{{ r.version }}</span>
+            {% if loop.first %}<span class="latest-tag">✦ latest</span>{% endif %}
+          </td>
+          <td>
+            {% if r.channel == 'stable' %}
+              <span class="badge badge-stable">🟢 stable</span>
+            {% else %}
+              <span class="badge badge-beta">🔵 beta</span>
+            {% endif %}
+          </td>
+          <td style="color:#4a5568; font-size:12px;">{{ r.file_name }}</td>
+          <td style="color:#718096; font-size:12px;">{{ r.size_str }}</td>
+          <td>
+            {% if r.sha256 %}
+              <span class="sha-text">{{ r.sha256[:16] }}…</span>
+            {% else %}
+              <span style="color:#cbd5e0;">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if r.is_mandatory %}
+              <span class="badge badge-mandatory">🔴 Обязательное</span>
+            {% else %}
+              <span class="badge badge-optional">⬜ Опциональное</span>
+            {% endif %}
+          </td>
+          <td style="color:#a0aec0; font-size:12px;">
+            {% if r.created_at %}{{ r.created_at.strftime('%d.%m.%Y %H:%M') }}{% endif %}
+          </td>
+          <td>
+            <div style="display:flex; gap:6px;">
+              <button class="btn-toggle"
+                onclick="toggleMandatory({{ r.id }}, this)"
+                title="Переключить обязательность">
+                {% if r.is_mandatory %}🔓 Сделать опц.{% else %}🔒 Сделать обяз.{% endif %}
+              </button>
+              <form method="post" action="/admin/releases/delete/{{ r.id }}"
+                    onsubmit="return confirm('Удалить v{{ r.version }}? Это действие необратимо.')">
+                <button type="submit" class="btn-delete">🗑 Удалить</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">
+      <div class="empty-icon">🚀</div>
+      <div style="font-weight:600; color:#4a5568; margin-bottom:6px;">Релизов ещё нет</div>
+      <div>Загрузите первый .exe файл выше</div>
+    </div>
+    {% endif %}
+  </div>
+
+</div><!-- /container -->
+
+<script>
+// ── File drop zone ──
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const dropFilename = document.getElementById('dropFilename');
+
+fileInput.addEventListener('change', () => {
+  if (fileInput.files[0]) {
+    const f = fileInput.files[0];
+    const mb = (f.size / 1048576).toFixed(1);
+    dropFilename.textContent = `📦 ${f.name} (${mb} MB)`;
+    dropFilename.style.display = 'block';
+    dropZone.style.borderColor = '#667eea';
+    dropZone.style.background = '#eef2ff';
+  }
+});
+
+['dragover', 'dragenter'].forEach(e => {
+  dropZone.addEventListener(e, ev => { ev.preventDefault(); dropZone.classList.add('drag-over'); });
+});
+['dragleave', 'drop'].forEach(e => {
+  dropZone.addEventListener(e, ev => { ev.preventDefault(); dropZone.classList.remove('drag-over'); });
+});
+
+// ── Upload progress via XHR (shows progress bar) ──
+document.getElementById('uploadForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const btn = document.getElementById('uploadBtn');
+  const progressWrap = document.getElementById('progressWrap');
+  const progressBar  = document.getElementById('progressBar');
+  const progressText = document.getElementById('progressText');
+
+  if (!fileInput.files[0]) {
+    alert('Выберите файл для загрузки!');
+    return;
+  }
+
+  const formData = new FormData(this);
+  const xhr = new XMLHttpRequest();
+
+  btn.disabled = true;
+  btn.innerHTML = '<span>⏳</span> Загружаем…';
+  progressWrap.style.display = 'block';
+  progressText.style.display = 'block';
+
+  xhr.upload.addEventListener('progress', (ev) => {
+    if (ev.lengthComputable) {
+      const pct = Math.round((ev.loaded / ev.total) * 100);
+      progressBar.style.width = pct + '%';
+      const mb = (ev.loaded / 1048576).toFixed(1);
+      const total = (ev.total / 1048576).toFixed(1);
+      progressText.textContent = `${mb} MB / ${total} MB (${pct}%)`;
+    }
+  });
+
+  xhr.addEventListener('load', () => {
+    if (xhr.status === 200 || xhr.status === 303 || xhr.responseURL.includes('uploaded=')) {
+      window.location.href = '/admin/releases?uploaded=1';
+    } else {
+      btn.disabled = false;
+      btn.innerHTML = '<span>🚀</span> Опубликовать обновление';
+      progressWrap.style.display = 'none';
+      progressText.style.display = 'none';
+      alert('Ошибка загрузки: ' + xhr.status + '\n' + xhr.responseText);
+    }
+  });
+
+  xhr.addEventListener('error', () => {
+    btn.disabled = false;
+    btn.innerHTML = '<span>🚀</span> Опубликовать обновление';
+    alert('Сетевая ошибка при загрузке');
+  });
+
+  xhr.open('POST', '/admin/releases/upload');
+  xhr.send(formData);
+});
+
+// ── Toggle mandatory ──
+async function toggleMandatory(id, btn) {
+  try {
+    const r = await fetch(`/admin/api/releases/${id}/toggle-mandatory`, {method: 'POST'});
+    if (r.ok) window.location.reload();
+    else alert('Ошибка: ' + await r.text());
+  } catch(e) {
+    alert('Сетевая ошибка');
+  }
+}
+</script>
+</body>
+</html>
