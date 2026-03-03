@@ -171,7 +171,7 @@
   <div class="card">
     <div class="card-title">🚀 Загрузить новый релиз</div>
 
-    <form id="uploadForm" method="post" action="/admin/releases/upload" enctype="multipart/form-data">
+    <form id="uploadForm" method="post" action="/admin/releases/upload">
       <div class="upload-grid">
 
         <div class="form-group">
@@ -193,14 +193,19 @@
         </div>
 
         <div class="form-group full">
-          <label class="form-label">Файл .exe *</label>
-          <div class="drop-zone" id="dropZone">
-            <input type="file" name="file" id="fileInput" accept=".exe,.zip,.msi" required />
-            <div class="drop-icon">📦</div>
-            <div class="drop-text">Перетащите .exe сюда или нажмите для выбора</div>
-            <div class="drop-sub">Поддерживаются: .exe, .zip, .msi</div>
-            <div class="drop-filename" id="dropFilename"></div>
+          <label class="form-label">Ссылка на файл GitHub Releases *</label>
+          <input type="url" name="download_url" class="form-input" id="downloadUrlInput"
+            placeholder="https://github.com/user/tgleads-releases/releases/download/v1.0.1/TGLeadsAI_Setup_v1.0.1.exe"
+            required oninput="onUrlInput(this.value)" />
+          <div style="margin-top:6px; font-size:12px; color:#718096;">
+            GitHub → репозиторий → Releases → скопируй ссылку на .exe файл
           </div>
+          <div id="urlPreview" style="display:none; margin-top:10px; background:#f0fff4; border:2px solid #9ae6b4; border-radius:10px; padding:10px 14px;">
+            <div style="font-size:12px; color:#22543d; font-weight:700;">✅ Файл определён:</div>
+            <div id="urlFilename" style="font-size:13px; font-weight:700; color:#276749; margin-top:2px;"></div>
+          </div>
+          <input type="hidden" name="file_name" id="fileNameHidden" />
+          <input type="hidden" name="file_size" value="0" />
         </div>
 
         <div class="form-group">
@@ -260,7 +265,7 @@
           <th>Канал</th>
           <th>Файл</th>
           <th>Размер</th>
-          <th>SHA256</th>
+          <th>Источник</th>
           <th>Обязательное</th>
           <th>Дата</th>
           <th>Действия</th>
@@ -280,11 +285,19 @@
               <span class="badge badge-beta">🔵 beta</span>
             {% endif %}
           </td>
-          <td style="color:#4a5568; font-size:12px;">{{ r.file_name }}</td>
+          <td style="color:#4a5568; font-size:12px;">
+            {% if r.download_url %}
+              <a href="{{ r.download_url }}" target="_blank" style="color:#667eea; text-decoration:none; font-weight:600;">
+                📦 {{ r.file_name }}
+              </a>
+            {% else %}
+              {{ r.file_name }}
+            {% endif %}
+          </td>
           <td style="color:#718096; font-size:12px;">{{ r.size_str }}</td>
           <td>
-            {% if r.sha256 %}
-              <span class="sha-text">{{ r.sha256[:16] }}…</span>
+            {% if r.download_url %}
+              <span style="font-size:11px; color:#667eea; font-family:monospace;">GitHub ✓</span>
             {% else %}
               <span style="color:#cbd5e0;">—</span>
             {% endif %}
@@ -328,80 +341,36 @@
 </div><!-- /container -->
 
 <script>
-// ── File drop zone ──
-const dropZone = document.getElementById('dropZone');
-const fileInput = document.getElementById('fileInput');
-const dropFilename = document.getElementById('dropFilename');
-
-fileInput.addEventListener('change', () => {
-  if (fileInput.files[0]) {
-    const f = fileInput.files[0];
-    const mb = (f.size / 1048576).toFixed(1);
-    dropFilename.textContent = `📦 ${f.name} (${mb} MB)`;
-    dropFilename.style.display = 'block';
-    dropZone.style.borderColor = '#667eea';
-    dropZone.style.background = '#eef2ff';
+// ── URL input handler ──
+function onUrlInput(url) {
+  const preview = document.getElementById('urlPreview');
+  const filenameLbl = document.getElementById('urlFilename');
+  const fileNameHidden = document.getElementById('fileNameHidden');
+  url = url.trim();
+  if (url && url.includes('/')) {
+    const fname = url.split('/').pop().split('?')[0];
+    if (fname) {
+      filenameLbl.textContent = '📦 ' + fname;
+      fileNameHidden.value = fname;
+      preview.style.display = 'block';
+      return;
+    }
   }
-});
+  preview.style.display = 'none';
+  fileNameHidden.value = '';
+}
 
-['dragover', 'dragenter'].forEach(e => {
-  dropZone.addEventListener(e, ev => { ev.preventDefault(); dropZone.classList.add('drag-over'); });
-});
-['dragleave', 'drop'].forEach(e => {
-  dropZone.addEventListener(e, ev => { ev.preventDefault(); dropZone.classList.remove('drag-over'); });
-});
-
-// ── Upload progress via XHR (shows progress bar) ──
+// ── Form submit ──
 document.getElementById('uploadForm').addEventListener('submit', function(e) {
-  e.preventDefault();
-  const btn = document.getElementById('uploadBtn');
-  const progressWrap = document.getElementById('progressWrap');
-  const progressBar  = document.getElementById('progressBar');
-  const progressText = document.getElementById('progressText');
-
-  if (!fileInput.files[0]) {
-    alert('Выберите файл для загрузки!');
+  const url = document.getElementById('downloadUrlInput').value.trim();
+  if (!url) {
+    e.preventDefault();
+    alert('Введите ссылку на файл GitHub Releases!');
     return;
   }
-
-  const formData = new FormData(this);
-  const xhr = new XMLHttpRequest();
-
+  const btn = document.getElementById('uploadBtn');
   btn.disabled = true;
-  btn.innerHTML = '<span>⏳</span> Загружаем…';
-  progressWrap.style.display = 'block';
-  progressText.style.display = 'block';
-
-  xhr.upload.addEventListener('progress', (ev) => {
-    if (ev.lengthComputable) {
-      const pct = Math.round((ev.loaded / ev.total) * 100);
-      progressBar.style.width = pct + '%';
-      const mb = (ev.loaded / 1048576).toFixed(1);
-      const total = (ev.total / 1048576).toFixed(1);
-      progressText.textContent = `${mb} MB / ${total} MB (${pct}%)`;
-    }
-  });
-
-  xhr.addEventListener('load', () => {
-    if (xhr.status === 200 || xhr.status === 303 || xhr.responseURL.includes('uploaded=')) {
-      window.location.href = '/admin/releases?uploaded=1';
-    } else {
-      btn.disabled = false;
-      btn.innerHTML = '<span>🚀</span> Опубликовать обновление';
-      progressWrap.style.display = 'none';
-      progressText.style.display = 'none';
-      alert('Ошибка загрузки: ' + xhr.status + '\n' + xhr.responseText);
-    }
-  });
-
-  xhr.addEventListener('error', () => {
-    btn.disabled = false;
-    btn.innerHTML = '<span>🚀</span> Опубликовать обновление';
-    alert('Сетевая ошибка при загрузке');
-  });
-
-  xhr.open('POST', '/admin/releases/upload');
-  xhr.send(formData);
+  btn.innerHTML = '<span>⏳</span> Публикуем…';
 });
 
 // ── Toggle mandatory ──
