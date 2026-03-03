@@ -319,13 +319,18 @@ def init_db():
             release_notes TEXT DEFAULT '',
             file_name TEXT NOT NULL,
             file_size BIGINT DEFAULT 0,
-            file_data BYTEA,
+            download_url TEXT DEFAULT '',
             sha256 TEXT DEFAULT '',
             is_mandatory BOOLEAN DEFAULT FALSE,
             created_at TIMESTAMPTZ DEFAULT NOW(),
             created_by TEXT DEFAULT 'admin'
         );
         """)
+        # Migrate: add download_url if missing in existing DB
+        try:
+            cur.execute("ALTER TABLE app_releases ADD COLUMN IF NOT EXISTS download_url TEXT DEFAULT '';")
+        except Exception:
+            pass
         pass  # log
         
         # ---
@@ -3069,13 +3074,13 @@ import hashlib as _hashlib
 def api_get_latest_version(channel: str = "stable"):
     """
     Public endpoint — called by the app on startup to check for updates.
-    Returns latest release info (no binary, just metadata).
+    Returns latest release info with direct GitHub download_url.
     """
     con = db()
     cur = con.cursor()
     try:
         cur.execute("""
-            SELECT id, version, channel, release_notes, file_name, file_size, sha256, is_mandatory, created_at
+            SELECT id, version, channel, release_notes, file_name, file_size, download_url, sha256, is_mandatory, created_at
             FROM app_releases
             WHERE channel = %s
             ORDER BY created_at DESC
@@ -3084,7 +3089,7 @@ def api_get_latest_version(channel: str = "stable"):
         row = cur.fetchone()
         if not row:
             return {"latest_version": None, "has_update": False}
-        rid, version, ch, notes, fname, fsize, sha256, mandatory, created_at = row
+        rid, version, ch, notes, fname, fsize, dl_url, sha256, mandatory, created_at = row
         return {
             "latest_version": version,
             "channel": ch,
@@ -3094,7 +3099,7 @@ def api_get_latest_version(channel: str = "stable"):
             "sha256": sha256 or "",
             "is_mandatory": bool(mandatory),
             "released_at": created_at.isoformat() if created_at else None,
-            "download_url": f"/api/download/{rid}",
+            "download_url": dl_url or "",
         }
     finally:
         cur.close(); con.close()
@@ -3103,8 +3108,9 @@ def api_get_latest_version(channel: str = "stable"):
 @app.get("/api/download/{release_id}")
 def api_download_release(release_id: int, request: Request):
     """
-    Public endpoint — app downloads the .exe by release id.
+    Returns the GitHub direct download URL for the release.
     Protected: requires valid license key in header X-License-Key.
+    The app downloads directly from GitHub using this URL.
     """
     license_key = request.headers.get("X-License-Key", "").strip()
     if not license_key:
@@ -3122,21 +3128,13 @@ def api_download_release(release_id: int, request: Request):
         if now() > lic[1]:
             raise HTTPException(status_code=403, detail="License expired")
 
-        cur.execute("""
-            SELECT file_name, file_data, file_size FROM app_releases WHERE id=%s
-        """, (release_id,))
+        cur.execute("SELECT file_name, download_url, file_size FROM app_releases WHERE id=%s", (release_id,))
         row = cur.fetchone()
-        if not row or row[1] is None:
-            raise HTTPException(status_code=404, detail="Release file not found")
-        fname, fdata, fsize = row
-        return StreamingResponse(
-            iter([bytes(fdata)]),
-            media_type="application/octet-stream",
-            headers={
-                "Content-Disposition": f'attachment; filename="{fname}"',
-                "Content-Length": str(fsize or len(fdata)),
-            }
-        )
+        if not row or not row[1]:
+            raise HTTPException(status_code=404, detail="Release not found or no download URL")
+        fname, dl_url, fsize = row
+        # Return JSON with the direct download URL - app downloads from GitHub directly
+        return {"download_url": dl_url, "file_name": fname, "file_size": fsize or 0}
     finally:
         cur.close(); con.close()
 
@@ -3150,7 +3148,7 @@ def admin_releases_page(request: Request):
     cur = con.cursor()
     try:
         cur.execute("""
-            SELECT id, version, channel, release_notes, file_name, file_size, sha256, is_mandatory, created_at
+            SELECT id, version, channel, release_notes, file_name, file_size, download_url, sha256, is_mandatory, created_at
             FROM app_releases ORDER BY created_at DESC LIMIT 50
         """)
         cols = [d[0] for d in cur.description]
@@ -3173,7 +3171,7 @@ def admin_releases_page(request: Request):
         cur.close(); con.close()
 
 
-# --- Admin: upload new release
+# --- Admin: publish new release (GitHub URL, no file upload)
 @app.post("/admin/releases/upload")
 async def admin_upload_release(
     request: Request,
@@ -3181,33 +3179,40 @@ async def admin_upload_release(
     channel: str = Form("stable"),
     release_notes: str = Form(""),
     is_mandatory: bool = Form(False),
-    file: UploadFile = File(...),
+    download_url: str = Form(...),
+    file_name: str = Form(""),
+    file_size: int = Form(0),
 ):
     if not is_admin(request):
         raise HTTPException(status_code=403, detail="Unauthorized")
 
-    content = await file.read()
-    if len(content) == 0:
-        raise HTTPException(status_code=400, detail="Empty file uploaded")
+    dl_url = download_url.strip()
+    if not dl_url:
+        raise HTTPException(status_code=400, detail="Download URL is required")
 
-    sha256 = _hashlib.sha256(content).hexdigest()
+    # Auto-detect file name from URL if not provided
+    fname = file_name.strip()
+    if not fname and "/" in dl_url:
+        fname = dl_url.rstrip("/").split("/")[-1]
+    if not fname:
+        fname = f"TGLeadsAI_Setup_v{version.strip()}.exe"
 
     con = db()
     cur = con.cursor()
     try:
         cur.execute("""
             INSERT INTO app_releases
-                (version, channel, release_notes, file_name, file_size, file_data, sha256, is_mandatory)
+                (version, channel, release_notes, file_name, file_size, download_url, sha256, is_mandatory)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
         """, (
             version.strip(),
             channel.strip(),
             release_notes.strip(),
-            file.filename,
-            len(content),
-            content,
-            sha256,
+            fname,
+            file_size,
+            dl_url,
+            "",
             is_mandatory,
         ))
         new_id = cur.fetchone()[0]
