@@ -467,6 +467,7 @@ class RegisterReq(BaseModel):
 def register(req: RegisterReq, background_tasks: BackgroundTasks, request: Request):
     pass  # log
     pass  # log
+    req.email = req.email.strip().lower()  # ✅ normalize email
     
     con = db()
     cur = con.cursor()
@@ -597,6 +598,7 @@ class LoginReq(BaseModel):
 @app.post("/api/auth/login")
 def login(req: LoginReq, request: Request):
     pass  # log
+    req.email = req.email.strip().lower()  # ✅ normalize email
     
     con = db()
     cur = con.cursor(cursor_factory=RealDictCursor)
@@ -784,6 +786,7 @@ def login_with_key(req: LoginWithKeyReq, background_tasks: BackgroundTasks, requ
     cur = con.cursor(cursor_factory=RealDictCursor)
     try:
         # ---
+        req.email = (req.email or "").strip().lower()  # ✅ normalize email
         cur.execute("SELECT * FROM users WHERE email=%s", (req.email,))
         user = cur.fetchone()
         if not user:
@@ -972,6 +975,7 @@ def resend_confirmation(req: ResendConfirmReq, background_tasks: BackgroundTasks
     con = db()
     cur = con.cursor(cursor_factory=RealDictCursor)
     try:
+        req.email = req.email.strip().lower()  # ✅ normalize email
         cur.execute("SELECT id, email, email_confirmed FROM users WHERE email=%s", (req.email,))
         u = cur.fetchone()
         if not u:
@@ -1085,7 +1089,7 @@ def forgot_password_submit(request: Request, background_tasks: BackgroundTasks, 
     con = db()
     cur = con.cursor(cursor_factory=RealDictCursor)
     try:
-        cur.execute("SELECT id, email FROM users WHERE email = %s", (email.strip(),))
+        cur.execute("SELECT id, email FROM users WHERE email = %s", (email.strip().lower(),))  # ✅ normalize
         user = cur.fetchone()
         if user:
             reset_token = generate_token()
@@ -1641,33 +1645,6 @@ class UpdateLimitRequest(BaseModel):
     key: str
     max_devices: int
 
-class ResetHwidRequest(BaseModel):
-    key: str
-
-@app.post("/admin/api/reset-hwid")
-def admin_reset_hwid(request: Request, data: ResetHwidRequest):
-    """Reset HWID binding for a license key — allows user to log in from a new device."""
-    if not is_admin(request):
-        raise HTTPException(status_code=403, detail="forbidden")
-    con = db()
-    cur = con.cursor()
-    try:
-        cur.execute("SELECT key FROM licenses WHERE key=%s", (data.key,))
-        if not cur.fetchone():
-            raise HTTPException(status_code=404, detail="key_not_found")
-        cur.execute("UPDATE licenses SET hwid=NULL, updated_at=NOW() WHERE key=%s", (data.key,))
-        con.commit()
-        return {"success": True}
-    except HTTPException:
-        con.rollback()
-        raise
-    except Exception as e:
-        con.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        cur.close()
-        con.close()
-
 @app.post("/admin/api/update-limit")
 def admin_update_limit(request: Request, data: UpdateLimitRequest):
     if not is_admin(request):
@@ -1791,7 +1768,7 @@ def admin_update_email(request: Request, data: UpdateEmailReq):
     con = db()
     cur = con.cursor()
     try:
-        cur.execute("UPDATE users SET email = %s WHERE id = %s", (data.email, data.user_id))
+        cur.execute("UPDATE users SET email = %s WHERE id = %s", (data.email.strip().lower(), data.user_id))  # ✅ normalize
         con.commit()
         return {"success": True}
     except Exception as e:
@@ -2949,7 +2926,7 @@ def admin_update_email(request: Request, data: UpdateEmailRequest):
     con = db()
     cur = con.cursor()
     try:
-        cur.execute("UPDATE users SET email=%s WHERE id=%s", (data.email, data.user_id))
+        cur.execute("UPDATE users SET email=%s WHERE id=%s", (data.email.strip().lower(), data.user_id))  # ✅ normalize
         con.commit()
         return {"success": True}
     except Exception as e:
