@@ -89,6 +89,10 @@
     .copy-toast { position: fixed; bottom: 24px; right: 24px; background: #2d3748; color: #fff; padding: 10px 18px; border-radius: 12px; font-size: 13px; font-weight: 600; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 999; }
     .copy-toast.show { opacity: 1; }
     .note-cell { max-width: 130px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #718096; font-size: 12px; }
+    .hwid-cell { font-family: monospace; font-size: 10px; color: #718096; max-width: 160px; word-break: break-all; }
+    .hwid-none { color: #cbd5e0; font-size: 11px; font-style: italic; }
+    .btn-reset-hwid { padding: 3px 8px; background: #fff5f5; color: #c53030; border: 1px solid #fed7d7; border-radius: 6px; font-size: 10px; font-weight: 600; cursor: pointer; margin-top: 3px; }
+    .btn-reset-hwid:hover { background: #fed7d7; }
   </style>
 </head>
 <body>
@@ -181,6 +185,7 @@
           <th>Ключ</th>
           <th>Статус</th>
           <th>Пользователь</th>
+          <th>HWID (привязка)</th>
           <th>План</th>
           <th>Устройства</th>
           <th>Срок действия</th>
@@ -192,7 +197,7 @@
       <tbody>
         {% for r in rows %}
         {% set days_left = ((r.expires_at - now).days) if r.expires_at and not r.revoked and r.expires_at > now else 0 %}
-        <tr data-search="{{ r.key|lower }} {{ (r.user_email or '')|lower }} {{ (r.plan or '')|lower }} {{ (r.note or '')|lower }}">
+        <tr data-search="{{ r.key|lower }} {{ (r.user_email or '')|lower }} {{ (r.plan or '')|lower }} {{ (r.note or '')|lower }} {{ (r.hwid or '')|lower }}">
 
           <td>
             <div class="key-text" onclick="copyKey('{{ r.key }}')" title="Нажмите чтобы скопировать">
@@ -219,6 +224,15 @@
               <a href="/admin/users/{{ r.user_id }}" class="user-link">{{ r.user_email or '—' }}</a>
             {% else %}
               <span class="no-user">Не активирован</span>
+            {% endif %}
+          </td>
+
+          <td>
+            {% if r.hwid %}
+              <div class="hwid-cell" title="{{ r.hwid }}">{{ r.hwid[:32] }}{% if r.hwid|length > 32 %}…{% endif %}</div>
+              <button class="btn-reset-hwid" onclick="resetHwid('{{ r.key }}')" title="Сбросить HWID — позволит зайти с другого устройства">🔓 Сбросить</button>
+            {% else %}
+              <span class="hwid-none">Не привязан</span>
             {% endif %}
           </td>
 
@@ -379,6 +393,23 @@
     document.querySelectorAll('#licTable tbody tr').forEach(row => {
       row.style.display = (row.dataset.search || '').includes(q) ? '' : 'none';
     });
+  }
+
+  async function resetHwid(key) {
+    if (!confirm('Сбросить HWID для ключа ' + key + '?\n\nПользователь сможет войти с нового устройства.')) return;
+    try {
+      const res = await fetch('/admin/api/reset-hwid', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({key})
+      });
+      const data = await res.json();
+      if (data.success) {
+        location.reload();
+      } else {
+        alert('Ошибка: ' + (data.detail || 'неизвестная ошибка'));
+      }
+    } catch(e) { alert('Ошибка сети: ' + e); }
   }
 </script>
 </body>
