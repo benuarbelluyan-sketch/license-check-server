@@ -549,6 +549,18 @@ def register(req: RegisterReq, background_tasks: BackgroundTasks, request: Reque
         """, (user_id, confirm_token, confirm_expires))
         pass  # log
         
+        # ✅ FIX: bind HWID on first registration if license has none yet.
+        # This ensures /api/check recognises the device from day 1.
+        cur.execute("SELECT hwid FROM licenses WHERE key=%s", (req.license_key,))
+        lic_row = cur.fetchone()
+        stored_hwid = (lic_row[0] or "").strip().upper() if lic_row else ""
+        incoming_hwid = (req.device_fingerprint or "").strip().upper()
+        if incoming_hwid and (not stored_hwid or stored_hwid in {"TEMP", "NONE", "NULL", "-"}):
+            cur.execute(
+                "UPDATE licenses SET hwid=%s WHERE key=%s",
+                (incoming_hwid, req.license_key)
+            )
+
         con.commit()
         pass  # log
         
@@ -1378,7 +1390,16 @@ def admin_dashboard(request: Request):
     cur = con.cursor(cursor_factory=RealDictCursor)
     
     try:
-        cur.execute("SELECT * FROM licenses ORDER BY updated_at DESC LIMIT 500")
+        cur.execute("""
+            SELECT
+                l.*,
+                u.id   AS user_id,
+                u.email AS user_email
+            FROM licenses l
+            LEFT JOIN users u ON u.license_key = l.key
+            ORDER BY l.updated_at DESC
+            LIMIT 500
+        """)
         rows = cur.fetchall()
         
         now_ts = now()
@@ -1927,7 +1948,16 @@ def admin_licenses(request: Request):
     cur = con.cursor(cursor_factory=RealDictCursor)
     
     try:
-        cur.execute("SELECT * FROM licenses ORDER BY updated_at DESC LIMIT 500")
+        cur.execute("""
+            SELECT
+                l.*,
+                u.id   AS user_id,
+                u.email AS user_email
+            FROM licenses l
+            LEFT JOIN users u ON u.license_key = l.key
+            ORDER BY l.updated_at DESC
+            LIMIT 500
+        """)
         rows = cur.fetchall()
     except:
         rows = []
