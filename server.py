@@ -1712,6 +1712,42 @@ def admin_unlink_device(request: Request, data: UnlinkSingleDeviceRequest):
         cur.close()
         con.close()
 
+class UnlinkAccountRequest(BaseModel):
+    email: str
+    key: str
+
+@app.post("/admin/api/unlink-account")
+def admin_unlink_account(request: Request, data: UnlinkAccountRequest):
+    """Отвязать аккаунт (email) от лицензионного ключа."""
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        # Verify this user actually has this key
+        cur.execute("SELECT id FROM users WHERE email=%s AND license_key=%s", (data.email, data.key))
+        user = cur.fetchone()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found or key mismatch")
+        user_id = user[0]
+
+        # Remove all sessions
+        cur.execute("DELETE FROM user_sessions WHERE user_id=%s", (user_id,))
+        # Deactivate all devices
+        cur.execute("UPDATE user_devices SET is_active=FALSE WHERE user_id=%s", (user_id,))
+        # Unlink license key from user
+        cur.execute("UPDATE users SET license_key=NULL WHERE id=%s", (user_id,))
+        con.commit()
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
 class UpdateLimitRequest(BaseModel):
     key: str
     max_devices: int
