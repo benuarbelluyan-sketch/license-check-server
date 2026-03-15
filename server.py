@@ -2709,6 +2709,7 @@ def ai_chat(req: AIChatReq) -> Dict[str, Any]:
                     prompt_tokens + completion_tokens,
                     total_cost,
                     json.dumps({
+                        "model": _model,
                         "prompt_tokens": prompt_tokens,
                         "completion_tokens": completion_tokens,
                         "username": req.username,
@@ -2719,7 +2720,7 @@ def ai_chat(req: AIChatReq) -> Dict[str, Any]:
                 # Transaction (visible in admin + Balance AI dialog)
                 uname_label = f"@{req.username}" if req.username else "lead"
                 proj_label  = f" [{req.project_name}]" if req.project_name else ""
-                desc = f"AI — TG Leads{proj_label}: {uname_label}"
+                desc = f"AI — TG Leads{proj_label}: {uname_label} [{_model}]"
                 cur2.execute("""
                     INSERT INTO transactions
                     (user_id, license_key, amount, type, description, metadata)
@@ -2728,6 +2729,7 @@ def ai_chat(req: AIChatReq) -> Dict[str, Any]:
                     user_id, license_key, -total_cost, desc,
                     json.dumps({
                         "operation": "ai_leads",
+                        "model": _model,
                         "prompt_tokens": prompt_tokens,
                         "completion_tokens": completion_tokens,
                         "username": req.username,
