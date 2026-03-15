@@ -1200,7 +1200,7 @@ def reset_password_api(req: ResetPasswordPublicReq):
 # =========================
 def send_confirmation_email(email: str, token: str):
     """Send email confirmation letter."""
-    confirm_url = f"https://license-check-server-xatc.onrender.com/api/auth/confirm?token={token}"
+    confirm_url = f"https://api.tgleads.ai/api/auth/confirm?token={token}"
 
     if not SENDGRID_API_KEY:
         print(f"[INFO] NO SENDGRID_API_KEY — confirm_url={confirm_url}")
@@ -1218,8 +1218,8 @@ def send_confirmation_email(email: str, token: str):
         "<table width=\"600\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:600px;width:100%;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 8px 32px rgba(79,70,229,0.12);\">"
         # Header
         "<tr><td style=\"background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);padding:40px 48px;text-align:center;\">"
-        "<div style=\"width:56px;height:56px;background:rgba(255,255,255,0.2);border-radius:16px;margin:0 auto 16px;display:inline-flex;align-items:center;justify-content:center;\">"
-        "<span style=\"font-size:28px;\">&#9993;</span></div>"
+        "<div style=\"width:56px;height:56px;background:rgba(255,255,255,0.2);border-radius:16px;margin:0 auto 16px;display:block;text-align:center;line-height:56px;\">"
+        "<span style=\"font-size:28px;line-height:56px;\">&#9993;</span></div>"
         "<h1 style=\"color:#ffffff;margin:0;font-size:26px;font-weight:700;letter-spacing:-0.5px;\">TG Leads AI</h1>"
         "<p style=\"color:rgba(255,255,255,0.75);margin:6px 0 0;font-size:13px;letter-spacing:0.5px;text-transform:uppercase;\">Email Confirmation</p>"
         "</td></tr>"
@@ -1252,7 +1252,7 @@ def send_confirmation_email(email: str, token: str):
         # Footer
         "<tr><td style=\"background:#f8fafc;padding:24px 48px;text-align:center;border-top:1px solid #f1f5f9;\">"
         "<p style=\"color:#64748b;margin:0 0 6px;font-size:13px;font-weight:600;\">TG Leads AI Team</p>"
-        "<p style=\"color:#94a3b8;margin:0;font-size:12px;\">support@tgparsersender.me &nbsp;|&nbsp; @Ben_bell97</p>"
+        "<p style=\"color:#94a3b8;margin:0;font-size:12px;\">support@tgleads.ai &nbsp;|&nbsp; @Ben_bell97</p>"
         "</td></tr>"
         "</table>"
         "</td></tr></table>"
@@ -1275,7 +1275,7 @@ def send_confirmation_email(email: str, token: str):
 
 def send_password_reset_email(email: str, token: str):
     """Send password reset letter."""
-    reset_url = f"https://license-check-server-xatc.onrender.com/reset-password?token={token}"
+    reset_url = f"https://api.tgleads.ai/reset-password?token={token}"
 
     if not SENDGRID_API_KEY:
         print(f"[INFO] NO SENDGRID_API_KEY — reset_url={reset_url}")
@@ -1332,7 +1332,7 @@ def send_password_reset_email(email: str, token: str):
         # Footer
         "<tr><td style=\"background:#f8fafc;padding:24px 48px;text-align:center;border-top:1px solid #f1f5f9;\">"
         "<p style=\"color:#64748b;margin:0 0 6px;font-size:13px;font-weight:600;\">TG Leads AI Team</p>"
-        "<p style=\"color:#94a3b8;margin:0;font-size:12px;\">support@tgparsersender.me &nbsp;|&nbsp; @Ben_bell97</p>"
+        "<p style=\"color:#94a3b8;margin:0;font-size:12px;\">support@tgleads.ai &nbsp;|&nbsp; @Ben_bell97</p>"
         "</td></tr>"
         "</table>"
         "</td></tr></table>"
