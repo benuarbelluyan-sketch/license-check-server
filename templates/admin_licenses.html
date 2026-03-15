@@ -221,14 +221,17 @@
 
           <td>
             {% if r.account_count and r.account_count > 0 %}
-              <div style="font-size:11px; color:#667eea; font-weight:600;">
-                {{ r.user_email or '—' }}
+              {% for email in (r.user_email or '').split(', ') %}
+              <div style="display:flex;align-items:center;gap:4px;margin-bottom:3px;">
+                <span style="font-size:11px;color:#667eea;font-weight:600;">{{ email }}</span>
+                <button onclick="unlinkAccount('{{ r.key }}', '{{ email }}')"
+                  style="background:#fff5f5;border:1px solid #fed7d7;color:#c53030;border-radius:4px;font-size:10px;padding:1px 5px;cursor:pointer;" 
+                  title="Отвязать аккаунт от ключа">✕</button>
               </div>
-              {% if r.max_accounts and r.max_accounts > 1 %}
-              <div style="font-size:10px; color:#a0aec0; margin-top:2px;">
-                {{ r.account_count }}/{{ r.max_accounts }} аккаунтов
+              {% endfor %}
+              <div style="font-size:10px;color:#a0aec0;margin-top:2px;">
+                {{ r.account_count }}/{{ r.max_accounts or 1 }} аккаунтов
               </div>
-              {% endif %}
             {% else %}
               <span class="no-user">Не активирован</span>
             {% endif %}
@@ -400,6 +403,22 @@
     document.querySelectorAll('#licTable tbody tr').forEach(row => {
       row.style.display = (row.dataset.search || '').includes(q) ? '' : 'none';
     });
+  }
+
+  async function unlinkAccount(key, email) {
+    if (!confirm('Отвязать ' + email + ' от ключа ' + key + '?
+
+Пользователь потеряет доступ.')) return;
+    try {
+      const res = await fetch('/admin/api/unlink-account', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({key, email})
+      });
+      const data = await res.json();
+      if (data.success) location.reload();
+      else alert('Ошибка: ' + (data.detail || 'неизвестная ошибка'));
+    } catch(e) { alert('Ошибка сети: ' + e); }
   }
 
   async function resetHwid(key) {
