@@ -829,10 +829,14 @@ def login_with_key(req: LoginWithKeyReq, background_tasks: BackgroundTasks, requ
             raise HTTPException(status_code=403, detail="license_key_mismatch")
 
         if not current_key:
-            # ---
-            cur.execute("SELECT id FROM users WHERE license_key=%s AND id<>%s", (incoming_key, user["id"]))
-            if cur.fetchone():
-                raise HTTPException(status_code=403, detail="license_key_already_used")
+            # --- Check max_accounts limit
+            cur.execute("SELECT COUNT(*) FROM users WHERE license_key=%s", (incoming_key,))
+            account_count = int(cur.fetchone()["count"] or 0)
+            cur.execute("SELECT max_accounts FROM licenses WHERE key=%s", (incoming_key,))
+            max_acc_row = cur.fetchone()
+            max_acc = int((max_acc_row["max_accounts"] if max_acc_row else None) or 1)
+            if account_count >= max_acc:
+                raise HTTPException(status_code=403, detail="license_accounts_limit_exceeded")
 
             cur.execute("UPDATE users SET license_key=%s WHERE id=%s", (incoming_key, user["id"]))
             user["license_key"] = incoming_key
