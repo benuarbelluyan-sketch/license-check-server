@@ -499,6 +499,12 @@ def register(req: RegisterReq, background_tasks: BackgroundTasks, request: Reque
         
         # ---
         pass  # log
+        cur.execute("SELECT id FROM users WHERE license_key = %s", (req.license_key,))
+        if cur.fetchone():
+            raise HTTPException(status_code=403, detail="license_key_already_used")
+
+        # ---
+        pass  # log
         cur.execute("SELECT id FROM users WHERE email = %s", (req.email,))
         if cur.fetchone():
             pass  # log
