@@ -372,6 +372,15 @@ def init_db():
             cur.execute("ALTER TABLE transactions ALTER COLUMN amount TYPE DECIMAL(18,8);")
             print('[MIGRATION] transactions.amount upgraded to DECIMAL(18,8)')
 
+        # Migration: add max_accounts column to licenses
+        cur.execute("""
+            SELECT column_name FROM information_schema.columns
+            WHERE table_name='licenses' AND column_name='max_accounts';
+        """)
+        if not cur.fetchone():
+            cur.execute("ALTER TABLE licenses ADD COLUMN max_accounts INTEGER DEFAULT 1;")
+            print('[MIGRATION] licenses.max_accounts added')
+
         con.commit()
         pass  # log
         
@@ -476,7 +485,7 @@ def register(req: RegisterReq, background_tasks: BackgroundTasks, request: Reque
         # ---
         pass  # log
         cur.execute("""
-            SELECT key, max_devices, expires_at, revoked 
+            SELECT key, max_devices, max_accounts, expires_at, revoked 
             FROM licenses 
             WHERE key = %s
         """, (req.license_key,))
@@ -486,8 +495,9 @@ def register(req: RegisterReq, background_tasks: BackgroundTasks, request: Reque
             pass  # log
             raise HTTPException(status_code=404, detail="license_not_found")
         
-        key, max_devices, expires_at, revoked = license
-        print(f"[INFO] key={key} expires_at={expires_at} revoked={revoked} max_devices={max_devices}")
+        key, max_devices, max_accounts, expires_at, revoked = license
+        max_accounts = int(max_accounts or 1)
+        print(f"[INFO] key={key} expires_at={expires_at} revoked={revoked} max_devices={max_devices} max_accounts={max_accounts}")
         
         if revoked:
             pass  # log
@@ -497,11 +507,12 @@ def register(req: RegisterReq, background_tasks: BackgroundTasks, request: Reque
             pass  # log
             raise HTTPException(status_code=403, detail="license_expired")
         
-        # ---
+        # --- Check max_accounts limit
         pass  # log
-        cur.execute("SELECT id FROM users WHERE license_key = %s", (req.license_key,))
-        if cur.fetchone():
-            raise HTTPException(status_code=403, detail="license_key_already_used")
+        cur.execute("SELECT COUNT(*) FROM users WHERE license_key = %s", (req.license_key,))
+        account_count = cur.fetchone()[0]
+        if account_count >= max_accounts:
+            raise HTTPException(status_code=403, detail="license_accounts_limit_exceeded")
 
         # ---
         pass  # log
@@ -1730,6 +1741,35 @@ def admin_update_limit(request: Request, data: UpdateLimitRequest):
 # ---
 # =========================
 
+class UpdateAccountsRequest(BaseModel):
+    key: str
+    max_accounts: int
+
+@app.post("/admin/api/update-accounts")
+def admin_update_accounts(request: Request, data: UpdateAccountsRequest):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("""
+            UPDATE licenses 
+            SET max_accounts = %s 
+            WHERE key = %s
+        """, (data.max_accounts, data.key))
+        con.commit()
+        return {"success": True}
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+# =========================
+# ---
+# =========================
+
 
 
 
@@ -2835,7 +2875,10 @@ def upsert_license(
     key: str = Form(...),
     hwid: str = Form(""),
     days: int = Form(...),
-    note: str = Form("")
+    note: str = Form(""),
+    max_devices: int = Form(1),
+    max_accounts: int = Form(1),
+    plan: str = Form("custom"),
 ):
     if not is_admin(request):
         return RedirectResponse("/admin/login", status_code=303)
@@ -2848,20 +2891,23 @@ def upsert_license(
     hwid_value = hwid.strip() if hwid.strip() else "temp"
     
     cur.execute("""
-        INSERT INTO licenses(key, hwid, expires_at, revoked, note, updated_at)
-        VALUES (%s,%s,%s,FALSE,%s,NOW())
+        INSERT INTO licenses(key, hwid, expires_at, revoked, note, max_devices, max_accounts, plan, updated_at)
+        VALUES (%s,%s,%s,FALSE,%s,%s,%s,%s,NOW())
         ON CONFLICT (key) DO UPDATE SET
             hwid=EXCLUDED.hwid,
             expires_at=EXCLUDED.expires_at,
             revoked=FALSE,
             note=EXCLUDED.note,
+            max_devices=EXCLUDED.max_devices,
+            max_accounts=EXCLUDED.max_accounts,
+            plan=EXCLUDED.plan,
             updated_at=NOW()
-    """, (key.strip(), hwid_value, expires, note.strip()))
+    """, (key.strip(), hwid_value, expires, note.strip(), max_devices, max_accounts, plan))
     con.commit()
     cur.close()
     con.close()
 
-    return RedirectResponse("/admin", status_code=303)
+    return RedirectResponse("/admin/licenses", status_code=303)
 
 @app.post("/admin/add_days")
 def add_days(request: Request, key: str = Form(...), add: int = Form(...)):
