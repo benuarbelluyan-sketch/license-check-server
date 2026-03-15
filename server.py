@@ -91,7 +91,13 @@ def now():
     return datetime.now(timezone.utc)
 
 def is_admin(request: Request):
-    return request.session.get("is_admin")
+    if request.session.get("is_admin"):
+        return True
+    # Also accept token via header for AJAX calls
+    token = request.headers.get("X-Admin-Token", "")
+    if token and ADMIN_TOKEN and token == ADMIN_TOKEN:
+        return True
+    return False
 
 def hash_password(password: str) -> str:
     salt = secrets.token_hex(16)
@@ -2093,7 +2099,8 @@ def admin_licenses(request: Request):
             "request": request,
             "rows": rows,
             "now": now(),
-            "active_tab": "licenses"
+            "active_tab": "licenses",
+            "admin_token": ADMIN_TOKEN,
         }
     )
 
