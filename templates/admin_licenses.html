@@ -370,6 +370,8 @@
 </div>
 <div class="copy-toast" id="copyToast">✅ Ключ скопирован</div>
 <script>
+  const ADMIN_TOKEN = "{{ admin_token }}";
+
   function generateKey() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     const part = (n) => Array.from({length: n}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
@@ -398,7 +400,8 @@
     try {
       const res  = await fetch('/admin/api/update-limit', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: {'Content-Type': 'application/json', 'X-Admin-Token': ADMIN_TOKEN},
+        credentials: 'include',
         body: JSON.stringify({key, max_devices})
       });
       const data = await res.json();
@@ -421,7 +424,8 @@
     try {
       const res = await fetch('/admin/api/update-accounts', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: {'Content-Type': 'application/json', 'X-Admin-Token': ADMIN_TOKEN},
+        credentials: 'include',
         body: JSON.stringify({key, max_accounts})
       });
       const data = await res.json();
@@ -438,7 +442,8 @@
     try {
       const res = await fetch('/admin/api/unlink-account', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: {'Content-Type': 'application/json', 'X-Admin-Token': ADMIN_TOKEN},
+        credentials: 'include',
         body: JSON.stringify({key, email})
       });
       const data = await res.json();
@@ -452,7 +457,8 @@
     try {
       const res = await fetch('/admin/api/reset-hwid', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: {'Content-Type': 'application/json', 'X-Admin-Token': ADMIN_TOKEN},
+        credentials: 'include',
         body: JSON.stringify({key})
       });
       const data = await res.json();
