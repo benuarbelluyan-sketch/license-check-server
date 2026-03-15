@@ -1754,6 +1754,38 @@ def admin_unlink_account(request: Request, data: UnlinkAccountRequest):
         cur.close()
         con.close()
 
+@app.post("/admin/api/set-devices")
+def admin_set_devices(request: Request, key: str = Form(...), max_devices: int = Form(...)):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("UPDATE licenses SET max_devices=%s WHERE key=%s", (max_devices, key))
+        con.commit()
+    except Exception as e:
+        con.rollback()
+    finally:
+        cur.close()
+        con.close()
+    return RedirectResponse("/admin/licenses", status_code=303)
+
+@app.post("/admin/api/set-accounts")
+def admin_set_accounts(request: Request, key: str = Form(...), max_accounts: int = Form(...)):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("UPDATE licenses SET max_accounts=%s WHERE key=%s", (max_accounts, key))
+        con.commit()
+    except Exception as e:
+        con.rollback()
+    finally:
+        cur.close()
+        con.close()
+    return RedirectResponse("/admin/licenses", status_code=303)
+
 class UpdateLimitRequest(BaseModel):
     key: str
     max_devices: int
