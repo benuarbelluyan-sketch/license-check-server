@@ -1198,6 +1198,56 @@ def reset_password_api(req: ResetPasswordPublicReq):
 # =========================
 # ---
 # =========================
+class ChangePasswordReq(BaseModel):
+    session_token: str
+    old_password: str
+    new_password: str
+
+@app.post("/api/auth/change-password")
+def change_password_api(req: ChangePasswordReq):
+    if len(req.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters.")
+    if not req.old_password:
+        raise HTTPException(status_code=400, detail="Current password is required.")
+
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    try:
+        # Validate session
+        row = _get_session_user(cur, req.session_token)
+        if not row:
+            raise HTTPException(status_code=401, detail="invalid_session")
+        if now() > row["expires_at"]:
+            raise HTTPException(status_code=401, detail="session_expired")
+
+        # Get current password hash
+        cur.execute("SELECT password_hash FROM users WHERE id = %s", (row["user_id"],))
+        user = cur.fetchone()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found.")
+
+        # Verify old password
+        if not verify_password(req.old_password, user["password_hash"]):
+            raise HTTPException(status_code=400, detail="wrong_password")
+
+        # Set new password
+        new_hash = hash_password(req.new_password)
+        cur.execute("UPDATE users SET password_hash = %s WHERE id = %s", (new_hash, row["user_id"]))
+        con.commit()
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+
+# =========================
+# ---
+# =========================
 def send_confirmation_email(email: str, token: str):
     """Send email confirmation letter."""
     confirm_url = f"https://api.tgleads.ai/api/auth/confirm?token={token}"
