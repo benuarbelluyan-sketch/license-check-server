@@ -1988,7 +1988,7 @@ def admin_licenses(request: Request):
     
     try:
         cur.execute("""
-            SELECT l.*, u.email as user_email
+            SELECT l.*, u.id as user_id, u.email as user_email
             FROM licenses l
             LEFT JOIN users u ON u.license_key = l.key
             ORDER BY l.updated_at DESC LIMIT 500
