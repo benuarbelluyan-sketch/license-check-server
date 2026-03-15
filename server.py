@@ -2032,9 +2032,16 @@ def admin_licenses(request: Request):
     
     try:
         cur.execute("""
-            SELECT l.*, u.id as user_id, u.email as user_email
+            SELECT 
+                l.*,
+                COUNT(u.id) as account_count,
+                MIN(u.id) as user_id,
+                STRING_AGG(u.email, ', ' ORDER BY u.id) as user_email
             FROM licenses l
             LEFT JOIN users u ON u.license_key = l.key
+            GROUP BY l.key, l.hwid, l.expires_at, l.revoked, l.note, l.plan, 
+                     l.max_devices, l.max_accounts, l.created_at, l.updated_at,
+                     l.last_check_at, l.check_count
             ORDER BY l.updated_at DESC LIMIT 500
         """)
         rows = cur.fetchall()
