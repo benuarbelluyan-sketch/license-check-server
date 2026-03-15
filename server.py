@@ -1343,8 +1343,8 @@ def send_password_reset_email(email: str, token: str):
         "<table width=\"600\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:600px;width:100%;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 8px 32px rgba(239,68,68,0.12);\">"
         # Header
         "<tr><td style=\"background:linear-gradient(135deg,#ef4444 0%,#f97316 100%);padding:40px 48px;text-align:center;\">"
-        "<div style=\"width:56px;height:56px;background:rgba(255,255,255,0.2);border-radius:16px;margin:0 auto 16px;display:inline-flex;align-items:center;justify-content:center;\">"
-        "<span style=\"font-size:28px;\">&#128274;</span></div>"
+        "<div style=\"width:56px;height:56px;background:rgba(255,255,255,0.2);border-radius:16px;margin:0 auto 16px;display:block;text-align:center;line-height:56px;\">"
+        "<span style=\"font-size:28px;line-height:56px;\">&#128274;</span></div>"
         "<h1 style=\"color:#ffffff;margin:0;font-size:26px;font-weight:700;letter-spacing:-0.5px;\">TG Leads AI</h1>"
         "<p style=\"color:rgba(255,255,255,0.75);margin:6px 0 0;font-size:13px;letter-spacing:0.5px;text-transform:uppercase;\">Account Security</p>"
         "</td></tr>"
@@ -1981,7 +1981,12 @@ def admin_licenses(request: Request):
     cur = con.cursor(cursor_factory=RealDictCursor)
     
     try:
-        cur.execute("SELECT * FROM licenses ORDER BY updated_at DESC LIMIT 500")
+        cur.execute("""
+            SELECT l.*, u.email as user_email
+            FROM licenses l
+            LEFT JOIN users u ON u.license_key = l.key
+            ORDER BY l.updated_at DESC LIMIT 500
+        """)
         rows = cur.fetchall()
     except:
         rows = []
