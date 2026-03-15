@@ -188,6 +188,7 @@
           <th>HWID (привязка)</th>
           <th>План</th>
           <th>Устройства</th>
+          <th>Аккаунты</th>
           <th>Срок действия</th>
           <th>Осталось</th>
           <th>Примечание</th>
@@ -254,6 +255,15 @@
               class="dev-input"
               onchange="updateLimit('{{ r.key }}', this.value, this)"
               title="Лимит устройств для этого ключа"
+            />
+          </td>
+
+          <td>
+            <input type="number" min="1" max="100"
+              value="{{ r.max_accounts or 1 }}"
+              class="dev-input"
+              onchange="updateAccounts('{{ r.key }}', this.value, this)"
+              title="Лимит аккаунтов (email) для этого ключа"
             />
           </td>
 
@@ -403,6 +413,22 @@
     document.querySelectorAll('#licTable tbody tr').forEach(row => {
       row.style.display = (row.dataset.search || '').includes(q) ? '' : 'none';
     });
+  }
+
+  async function updateAccounts(key, val, el) {
+    const max_accounts = parseInt(val);
+    if (!max_accounts || max_accounts < 1) return;
+    try {
+      const res = await fetch('/admin/api/update-accounts', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({key, max_accounts})
+      });
+      const data = await res.json();
+      el.classList.toggle('saved', data.success);
+      if (data.success) setTimeout(() => el.classList.remove('saved'), 1800);
+      else el.style.borderColor = '#fc8181';
+    } catch { el.style.borderColor = '#fc8181'; }
   }
 
   async function unlinkAccount(key, email) {
