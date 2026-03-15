@@ -2562,10 +2562,26 @@ class AIChatReq(BaseModel):
     ai_score_threshold: int = 60
     username: str = ""
     project_name: str = ""
+    model: str = "gpt-4.1-mini"
 
-# GPT-4.1-mini token prices (per 1M tokens, USD)
+# Token prices per 1M tokens (USD) — x2 markup applied later
+_MODEL_PRICES = {
+    "gpt-4.1-mini": {"input": 0.40 / 1_000_000, "output": 1.60 / 1_000_000},
+    "gpt-4.1":      {"input": 2.00 / 1_000_000, "output": 8.00 / 1_000_000},
+    "gpt-5":        {"input": 1.75 / 1_000_000, "output": 14.0 / 1_000_000},
+}
+_DEFAULT_MODEL = "gpt-4.1-mini"
+# Legacy aliases
 _GPT41_MINI_INPUT_PER_TOKEN  = 0.40 / 1_000_000
 _GPT41_MINI_OUTPUT_PER_TOKEN = 1.60 / 1_000_000
+
+def _get_model_prices(model: str) -> dict:
+    return _MODEL_PRICES.get(model, _MODEL_PRICES[_DEFAULT_MODEL])
+
+def _validate_model(model: str) -> str:
+    """Validate and return safe model name."""
+    allowed = set(_MODEL_PRICES.keys())
+    return model if model in allowed else _DEFAULT_MODEL
 
 @app.post("/api/ai/chat")
 def ai_chat(req: AIChatReq) -> Dict[str, Any]:
@@ -2638,8 +2654,10 @@ def ai_chat(req: AIChatReq) -> Dict[str, Any]:
             messages.append({"role": role, "content": (h.text or "")[:1000]})
         messages.append({"role": "user", "content": (req.message or "")[:1000]})
 
+        _model = _validate_model(getattr(req, "model", _DEFAULT_MODEL))
+        _prices = _get_model_prices(_model)
         resp = client.chat.completions.create(
-            model="gpt-4.1-mini",
+            model=_model,
             messages=messages,
             response_format={"type": "json_object"},
             temperature=0.7,
@@ -2649,10 +2667,10 @@ def ai_chat(req: AIChatReq) -> Dict[str, Any]:
         prompt_tokens     = resp.usage.prompt_tokens     if resp.usage else 0
         completion_tokens = resp.usage.completion_tokens if resp.usage else 0
         total_cost = (
-            prompt_tokens     * _GPT41_MINI_INPUT_PER_TOKEN +
-            completion_tokens * _GPT41_MINI_OUTPUT_PER_TOKEN
+            prompt_tokens     * _prices["input"] +
+            completion_tokens * _prices["output"]
         )
-        # Apply 2x markup (same as ai_parse)
+        # Apply 2x markup
         total_cost = round(total_cost * 2, 8)
 
         out_text = resp.choices[0].message.content or ""
