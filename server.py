@@ -668,37 +668,24 @@ def login(req: LoginReq, request: Request):
             """, (client_ip, device_id))
         else:
             pass  # log
+            # Считаем активные устройства по всему ключу (не только по этому аккаунту)
             cur.execute("""
-                SELECT COUNT(*) FROM user_devices 
-                WHERE user_id = %s AND is_active = TRUE
-            """, (user['id'],))
+                SELECT COUNT(*) FROM user_devices d
+                JOIN users u ON u.id = d.user_id
+                WHERE u.license_key = %s AND d.is_active = TRUE
+            """, (user['license_key'],))
             device_count = cur.fetchone()['count']
             
-            print(f"Active devices: {device_count}, max: {user['max_devices']}")
+            print(f"Active devices by key: {device_count}, max: {user['max_devices']}")
             
             if device_count >= user['max_devices']:
                 pass  # log
-                cur.execute("""
-                    SELECT * FROM user_devices 
-                    WHERE user_id = %s
-                    ORDER BY last_login DESC
-                """, (user['id'],))
-                devices = cur.fetchall()
-                
                 raise HTTPException(
                     status_code=403,
                     detail={
                         "error": "device_limit_exceeded",
                         "max_devices": user['max_devices'],
                         "current_devices": device_count,
-                        "devices": [
-                            {
-                                "id": d['id'],
-                                "name": d['device_name'],
-                                "last_login": d['last_login'].isoformat() if d['last_login'] else None
-                            }
-                            for d in devices
-                        ]
                     }
                 )
             
@@ -848,9 +835,10 @@ def login_with_key(req: LoginWithKeyReq, background_tasks: BackgroundTasks, requ
             """, (client_ip, req.device_name, device_id))
         else:
             cur.execute("""
-                SELECT COUNT(*) AS cnt FROM user_devices
-                WHERE user_id=%s AND is_active=TRUE
-            """, (user["id"],))
+                SELECT COUNT(*) AS cnt FROM user_devices d
+                JOIN users u ON u.id = d.user_id
+                WHERE u.license_key = %s AND d.is_active = TRUE
+            """, (req.license_key,))
             cnt = int(cur.fetchone()["cnt"] or 0)
             if cnt >= max_devices:
                 raise HTTPException(status_code=403, detail={"error": "device_limit_exceeded", "max_devices": max_devices, "current_devices": cnt})
