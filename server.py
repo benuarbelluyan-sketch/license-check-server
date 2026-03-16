@@ -2718,7 +2718,7 @@ class AIChatReq(BaseModel):
 # Token prices per 1M tokens (USD) — x2 markup applied later
 _MODEL_PRICES = {
     "gpt-4.1-mini": {"input": 0.40 / 1_000_000, "output": 1.60 / 1_000_000},
-    "gpt-5-mini":   {"input": 2.00 / 1_000_000, "output": 8.00 / 1_000_000},
+    "gpt-4o":       {"input": 2.50 / 1_000_000, "output": 10.0 / 1_000_000},
 }
 _DEFAULT_MODEL = "gpt-4.1-mini"
 # Legacy aliases
@@ -2735,6 +2735,7 @@ def _validate_model(model: str) -> str:
 
 @app.post("/api/ai/chat")
 def ai_chat(req: AIChatReq) -> Dict[str, Any]:
+    print(f"[AI CHAT] model={req.model} session={req.session_token[:8]}... msg_len={len(req.message or '')}")
     """
     Conversational AI endpoint for TG Leads full-AI mode.
     Charges user balance based on real token usage and records transaction.
@@ -2811,7 +2812,7 @@ def ai_chat(req: AIChatReq) -> Dict[str, Any]:
             messages=messages,
             response_format={"type": "json_object"},
             temperature=0.7,
-            max_tokens=500,
+            max_completion_tokens=500,
         )
 
         prompt_tokens     = resp.usage.prompt_tokens     if resp.usage else 0
