@@ -2807,13 +2807,17 @@ def ai_chat(req: AIChatReq) -> Dict[str, Any]:
 
         _model = _validate_model(getattr(req, "model", _DEFAULT_MODEL))
         _prices = _get_model_prices(_model)
-        resp = client.chat.completions.create(
+        # gpt-5 family does not support custom temperature
+        _is_gpt5 = _model.startswith("gpt-5")
+        _create_kwargs = dict(
             model=_model,
             messages=messages,
             response_format={"type": "json_object"},
-            temperature=0.7,
             max_completion_tokens=500,
         )
+        if not _is_gpt5:
+            _create_kwargs["temperature"] = 0.7
+        resp = client.chat.completions.create(**_create_kwargs)
 
         prompt_tokens     = resp.usage.prompt_tokens     if resp.usage else 0
         completion_tokens = resp.usage.completion_tokens if resp.usage else 0
