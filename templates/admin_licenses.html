@@ -190,7 +190,6 @@
           <th>HWID (привязка)</th>
           <th>План</th>
           <th>Устройства</th>
-          <th>Аккаунты</th>
           <th>Срок действия</th>
           <th>Осталось</th>
           <th>Примечание</th>
@@ -223,25 +222,12 @@
           </td>
 
           <td>
-            {% if r.account_count and r.account_count > 0 %}
-              {% for email in (r.user_email or '').split(', ') %}
-              <div style="display:flex;align-items:center;gap:4px;margin-bottom:3px;">
-                <span style="font-size:11px;color:#667eea;font-weight:600;">{{ email }}</span>
-                <form method="post" action="/admin/api/unlink-account-form" style="display:inline;margin:0;"
-                  onsubmit="return confirm('Отвязать {{ email }} от ключа {{ r.key }}?')">
-                  <input type="hidden" name="key" value="{{ r.key }}">
-                  <input type="hidden" name="email" value="{{ email }}">
-                  <button type="submit"
-                    style="background:#fff5f5;border:1px solid #fed7d7;color:#c53030;border-radius:4px;font-size:10px;padding:1px 5px;cursor:pointer;" 
-                    title="Отвязать аккаунт от ключа">✕</button>
-                </form>
-              </div>
+            {% if r.user_email %}
+              {% for email in r.user_email.split(', ') %}
+                <div style="font-size:11px;color:#667eea;font-weight:600;margin-bottom:2px;">{{ email }}</div>
               {% endfor %}
-              <div style="font-size:10px;color:#a0aec0;margin-top:2px;">
-                {{ r.account_count }}/{{ r.max_accounts or 1 }} аккаунтов
-              </div>
             {% else %}
-              <span class="no-user">Не активирован</span>
+              <span class="no-user">—</span>
             {% endif %}
           </td>
 
@@ -263,18 +249,6 @@
                 value="{{ r.max_devices or 1 }}"
                 class="dev-input"
                 title="Лимит устройств"
-              />
-              <button type="submit" class="btn-save" title="Сохранить">💾</button>
-            </form>
-          </td>
-
-          <td>
-            <form method="post" action="/admin/api/set-accounts" style="display:flex;gap:4px;align-items:center;">
-              <input type="hidden" name="key" value="{{ r.key }}">
-              <input type="number" name="max_accounts" min="1" max="100"
-                value="{{ r.max_accounts or 1 }}"
-                class="dev-input"
-                title="Лимит аккаунтов"
               />
               <button type="submit" class="btn-save" title="Сохранить">💾</button>
             </form>
@@ -383,8 +357,6 @@
 </div>
 <div class="copy-toast" id="copyToast">✅ Ключ скопирован</div>
 <script>
-  const ADMIN_TOKEN = "{{ admin_token }}";
-
   function generateKey() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     const part = (n) => Array.from({length: n}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
@@ -413,8 +385,7 @@
     try {
       const res  = await fetch('/admin/api/update-limit', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json', 'X-Admin-Token': ADMIN_TOKEN},
-        credentials: 'include',
+        headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({key, max_devices})
       });
       const data = await res.json();
@@ -431,47 +402,12 @@
     });
   }
 
-  async function updateAccounts(key, val, el) {
-    const max_accounts = parseInt(val);
-    if (!max_accounts || max_accounts < 1) return;
-    try {
-      const res = await fetch('/admin/api/update-accounts', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json', 'X-Admin-Token': ADMIN_TOKEN},
-        credentials: 'include',
-        body: JSON.stringify({key, max_accounts})
-      });
-      const data = await res.json();
-      el.classList.toggle('saved', data.success);
-      if (data.success) setTimeout(() => el.classList.remove('saved'), 1800);
-      else el.style.borderColor = '#fc8181';
-    } catch { el.style.borderColor = '#fc8181'; }
-  }
-
-  async function unlinkAccount(key, email) {
-    if (!confirm('Отвязать ' + email + ' от ключа ' + key + '?
-
-Пользователь потеряет доступ.')) return;
-    try {
-      const res = await fetch('/admin/api/unlink-account', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json', 'X-Admin-Token': ADMIN_TOKEN},
-        credentials: 'include',
-        body: JSON.stringify({key, email})
-      });
-      const data = await res.json();
-      if (data.success) location.reload();
-      else alert('Ошибка: ' + (data.detail || 'неизвестная ошибка'));
-    } catch(e) { alert('Ошибка сети: ' + e); }
-  }
-
   async function resetHwid(key) {
     if (!confirm('Сбросить HWID для ключа ' + key + '?\n\nПользователь сможет войти с нового устройства.')) return;
     try {
       const res = await fetch('/admin/api/reset-hwid', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json', 'X-Admin-Token': ADMIN_TOKEN},
-        credentials: 'include',
+        headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({key})
       });
       const data = await res.json();
