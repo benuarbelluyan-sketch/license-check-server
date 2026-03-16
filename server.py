@@ -2110,7 +2110,7 @@ def admin_licenses(request: Request):
 # ---
 # =========================
 @app.get("/admin/users", response_class=HTMLResponse)
-def admin_users(request: Request):
+def admin_users(request: Request, q: str = ""):
     if not is_admin(request):
         return RedirectResponse("/admin/login", status_code=303)
     
@@ -2118,13 +2118,37 @@ def admin_users(request: Request):
     cur = con.cursor(cursor_factory=RealDictCursor)
     
     try:
-        cur.execute("""
-            SELECT u.*, l.plan, l.expires_at as license_expires 
-            FROM users u
-            LEFT JOIN licenses l ON u.license_key = l.key
-            ORDER BY u.created_at DESC
-            LIMIT 500
-        """)
+        if q:
+            cur.execute("""
+                SELECT u.*, 
+                       l.plan, 
+                       l.expires_at as license_expires,
+                       l.revoked as license_revoked,
+                       l.max_devices,
+                       COUNT(d.id) FILTER (WHERE d.is_active = TRUE) as active_devices
+                FROM users u
+                LEFT JOIN licenses l ON u.license_key = l.key
+                LEFT JOIN user_devices d ON d.user_id = u.id
+                WHERE u.email ILIKE %s OR u.telegram ILIKE %s OR u.license_key ILIKE %s
+                GROUP BY u.id, l.plan, l.expires_at, l.revoked, l.max_devices
+                ORDER BY u.created_at DESC
+                LIMIT 500
+            """, (f"%{q}%", f"%{q}%", f"%{q}%"))
+        else:
+            cur.execute("""
+                SELECT u.*, 
+                       l.plan, 
+                       l.expires_at as license_expires,
+                       l.revoked as license_revoked,
+                       l.max_devices,
+                       COUNT(d.id) FILTER (WHERE d.is_active = TRUE) as active_devices
+                FROM users u
+                LEFT JOIN licenses l ON u.license_key = l.key
+                LEFT JOIN user_devices d ON d.user_id = u.id
+                GROUP BY u.id, l.plan, l.expires_at, l.revoked, l.max_devices
+                ORDER BY u.created_at DESC
+                LIMIT 500
+            """)
         users = cur.fetchall()
     except:
         users = []
@@ -2138,6 +2162,7 @@ def admin_users(request: Request):
             "request": request,
             "users": users,
             "now": now(),
+            "q": q,
             "active_tab": "users"
         }
     )
