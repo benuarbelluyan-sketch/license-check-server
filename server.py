@@ -2718,7 +2718,7 @@ class AIChatReq(BaseModel):
 # Token prices per 1M tokens (USD) — x2 markup applied later
 _MODEL_PRICES = {
     "gpt-4.1-mini": {"input": 0.40 / 1_000_000, "output": 1.60 / 1_000_000},
-    "gpt-4o":       {"input": 2.50 / 1_000_000, "output": 10.0 / 1_000_000},
+    "gpt-5-mini":   {"input": 0.25 / 1_000_000, "output": 2.00 / 1_000_000},
 }
 _DEFAULT_MODEL = "gpt-4.1-mini"
 # Legacy aliases
