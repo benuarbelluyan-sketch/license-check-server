@@ -227,9 +227,14 @@
               {% for email in (r.user_email or '').split(', ') %}
               <div style="display:flex;align-items:center;gap:4px;margin-bottom:3px;">
                 <span style="font-size:11px;color:#667eea;font-weight:600;">{{ email }}</span>
-                <button onclick="unlinkAccount('{{ r.key }}', '{{ email }}')"
-                  style="background:#fff5f5;border:1px solid #fed7d7;color:#c53030;border-radius:4px;font-size:10px;padding:1px 5px;cursor:pointer;" 
-                  title="Отвязать аккаунт от ключа">✕</button>
+                <form method="post" action="/admin/api/unlink-account-form" style="display:inline;margin:0;"
+                  onsubmit="return confirm('Отвязать {{ email }} от ключа {{ r.key }}?')">
+                  <input type="hidden" name="key" value="{{ r.key }}">
+                  <input type="hidden" name="email" value="{{ email }}">
+                  <button type="submit"
+                    style="background:#fff5f5;border:1px solid #fed7d7;color:#c53030;border-radius:4px;font-size:10px;padding:1px 5px;cursor:pointer;" 
+                    title="Отвязать аккаунт от ключа">✕</button>
+                </form>
               </div>
               {% endfor %}
               <div style="font-size:10px;color:#a0aec0;margin-top:2px;">
