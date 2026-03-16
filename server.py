@@ -628,9 +628,9 @@ def login(req: LoginReq, request: Request):
     
     try:
         cur.execute("""
-            SELECT u.*, l.max_devices 
+            SELECT u.*, COALESCE(l.max_devices, 1) as max_devices
             FROM users u
-            JOIN licenses l ON u.license_key = l.key
+            LEFT JOIN licenses l ON u.license_key = l.key
             WHERE u.email = %s
         """, (req.email,))
         
@@ -644,6 +644,12 @@ def login(req: LoginReq, request: Request):
         if not verify_password(req.password, user['password_hash']):
             pass  # log
             raise HTTPException(status_code=401, detail="invalid_credentials")
+        
+        pass  # log
+        
+        # Если license_key=NULL — аккаунт отвязан, не пускаем
+        if not user.get('license_key'):
+            raise HTTPException(status_code=403, detail="license_not_linked")
         
         pass  # log
         
