@@ -2096,37 +2096,28 @@ def admin_users(request: Request, q: str = ""):
     cur = con.cursor(cursor_factory=RealDictCursor)
     
     try:
+        # Подзапрос считает активные устройства по всему ключу (не только по аккаунту)
+        base_q = """
+            SELECT u.*, 
+                   l.plan, 
+                   l.expires_at as license_expires,
+                   l.revoked as license_revoked,
+                   l.max_devices,
+                   (
+                       SELECT COUNT(*) FROM user_devices d2
+                       JOIN users u2 ON u2.id = d2.user_id
+                       WHERE u2.license_key = u.license_key AND d2.is_active = TRUE
+                   ) as active_devices
+            FROM users u
+            LEFT JOIN licenses l ON u.license_key = l.key
+        """
         if q:
-            cur.execute("""
-                SELECT u.*, 
-                       l.plan, 
-                       l.expires_at as license_expires,
-                       l.revoked as license_revoked,
-                       l.max_devices,
-                       COUNT(d.id) FILTER (WHERE d.is_active = TRUE) as active_devices
-                FROM users u
-                LEFT JOIN licenses l ON u.license_key = l.key
-                LEFT JOIN user_devices d ON d.user_id = u.id
+            cur.execute(base_q + """
                 WHERE u.email ILIKE %s OR u.telegram ILIKE %s OR u.license_key ILIKE %s
-                GROUP BY u.id, l.plan, l.expires_at, l.revoked, l.max_devices
-                ORDER BY u.created_at DESC
-                LIMIT 500
+                ORDER BY u.created_at DESC LIMIT 500
             """, (f"%{q}%", f"%{q}%", f"%{q}%"))
         else:
-            cur.execute("""
-                SELECT u.*, 
-                       l.plan, 
-                       l.expires_at as license_expires,
-                       l.revoked as license_revoked,
-                       l.max_devices,
-                       COUNT(d.id) FILTER (WHERE d.is_active = TRUE) as active_devices
-                FROM users u
-                LEFT JOIN licenses l ON u.license_key = l.key
-                LEFT JOIN user_devices d ON d.user_id = u.id
-                GROUP BY u.id, l.plan, l.expires_at, l.revoked, l.max_devices
-                ORDER BY u.created_at DESC
-                LIMIT 500
-            """)
+            cur.execute(base_q + " ORDER BY u.created_at DESC LIMIT 500")
         users = cur.fetchall()
     except:
         users = []
