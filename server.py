@@ -1,423 +1,3499 @@
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>Лицензии · TG Parser Admin</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
-    .container { max-width: 1500px; margin: 0 auto; padding: 40px 24px; }
-    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; }
-    .logo { display: flex; align-items: center; gap: 12px; }
-    .logo-icon { width: 48px; height: 48px; background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; border: 1px solid rgba(255,255,255,0.3); }
-    .logo-text { font-size: 20px; font-weight: 700; color: #fff; }
-    .logout-btn { background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3); border-radius: 12px; padding: 10px 20px; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; }
-    .logout-btn:hover { background: rgba(255,255,255,0.3); }
-    .nav { background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); border-radius: 16px; padding: 8px; display: flex; gap: 4px; margin-bottom: 32px; overflow-x: auto; }
-    .nav-item { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 10px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s; white-space: nowrap; }
-    .nav-item:hover { background: rgba(255,255,255,0.15); color: #fff; }
-    .nav-item.active { background: #fff; color: #667eea; box-shadow: 0 4px 14px rgba(0,0,0,0.1); }
-    .create-card { background: #fff; border-radius: 20px; padding: 28px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 24px; }
-    .create-title { font-size: 16px; font-weight: 700; color: #1a202c; margin-bottom: 20px; }
-    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 20px; }
-    .form-group { display: flex; flex-direction: column; gap: 6px; }
-    .form-label { font-size: 11px; font-weight: 600; color: #718096; text-transform: uppercase; letter-spacing: 0.5px; }
-    .form-input { padding: 10px 14px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-size: 13px; font-family: 'Inter', sans-serif; color: #2d3748; background: #f7fafc; transition: border-color 0.2s; outline: none; }
-    .form-input:focus { border-color: #667eea; background: #fff; }
-    .form-input::placeholder { color: #a0aec0; }
-    .key-row { display: flex; gap: 8px; }
-    .key-row .form-input { flex: 1; font-family: monospace; }
-    .btn-gen { padding: 10px 14px; background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
-    .btn-gen:hover { opacity: 0.85; }
-    .form-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-    .btn-create { padding: 11px 28px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; border: none; border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer; }
-    .btn-create:hover { opacity: 0.9; }
-    .form-hint { font-size: 12px; color: #a0aec0; }
-    .table-card { background: #fff; border-radius: 20px; padding: 28px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-    .table-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; gap: 16px; flex-wrap: wrap; }
-    .table-title { font-size: 18px; font-weight: 700; color: #1a202c; }
-    .search-box { flex: 1; max-width: 340px; }
-    .search-box input { width: 100%; padding: 9px 14px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-size: 13px; font-family: 'Inter'; outline: none; background: #f7fafc; }
-    .search-box input:focus { border-color: #667eea; background: #fff; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    thead { background: #f7fafc; }
-    th { padding: 11px 12px; text-align: left; color: #718096; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap; }
-    td { padding: 0 12px; border-top: 1px solid #f0f4f8; vertical-align: middle; }
-    tr:hover td { background: #fafbff; }
-    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
-    .badge-active  { background: #c6f6d5; color: #22543d; }
-    .badge-expired { background: #fed7d7; color: #742a2a; }
-    .badge-revoked { background: #e2e8f0; color: #4a5568; }
-    .badge-warn    { background: #fefcbf; color: #744210; }
-    .key-text { font-family: monospace; font-size: 12px; color: #4a5568; font-weight: 600; cursor: pointer; }
-    .key-text:hover { color: #667eea; }
-    .user-link { color: #667eea; text-decoration: none; font-weight: 500; font-size: 12px; }
-    .user-link:hover { text-decoration: underline; }
-    .no-user { color: #cbd5e0; font-size: 12px; font-style: italic; }
-    .days-left { font-size: 12px; font-weight: 700; white-space: nowrap; }
-    .days-ok  { color: #276749; }
-    .days-warn { color: #744210; }
-    .days-bad  { color: #742a2a; }
-    .expires-cell { min-width: 280px; }
-    .expires-row { display: flex; align-items: center; gap: 5px; padding: 8px 0; flex-wrap: wrap; }
-    .expires-date { font-size: 13px; font-weight: 600; color: #2d3748; white-space: nowrap; min-width: 72px; }
-    .day-btns { display: flex; gap: 2px; flex-wrap: wrap; }
-    .day-btn { padding: 3px 7px; border-radius: 7px; font-size: 11px; font-weight: 700; cursor: pointer; border: none; white-space: nowrap; }
-    .day-btn:hover { opacity: 0.75; }
-    .day-btn.plus  { background: #ebf8ff; color: #2b6cb0; }
-    .day-btn.minus { background: #fff5f5; color: #c53030; }
-    .day-btn.set   { background: #f0fff4; color: #276749; }
-    .date-pick-row { display: flex; align-items: center; gap: 6px; margin-top: 5px; flex-wrap: wrap; }
-    .date-pick-row input[type=date] { padding: 4px 8px; border: 1.5px solid #667eea; border-radius: 8px; font-size: 12px; font-family: 'Inter'; outline: none; color: #2d3748; }
-    .btn-set    { padding: 4px 12px; background: #667eea; color: #fff; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; }
-    .btn-cancel { padding: 4px 8px; background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 12px; cursor: pointer; color: #718096; }
-    .dev-input { width: 54px; padding: 3px 6px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; color: #4a5568; text-align: center; outline: none; transition: border-color .2s; }
-    .dev-input:focus { border-color: #667eea; }
-    .dev-input.saved { border-color: #48bb78; }
-    .action-btns { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; padding: 8px 0; }
-    .btn-sm { padding: 5px 12px; border-radius: 8px; font-size: 11px; font-weight: 600; cursor: pointer; border: none; white-space: nowrap; }
-    .btn-sm:hover { opacity: 0.8; }
-    .btn-revoke   { background: #fff5f5; color: #c53030; }
-    .btn-unrevoke { background: #f0fff4; color: #276749; }
-    .btn-delete   { background: #fff5f5; color: #c53030; }
-    .empty { text-align: center; padding: 60px; color: #a0aec0; }
-    .flash { padding: 12px 20px; border-radius: 12px; margin-bottom: 20px; font-size: 13px; font-weight: 500; }
-    .flash-ok  { background: #c6f6d5; color: #22543d; }
-    .flash-err { background: #fed7d7; color: #742a2a; }
-    .copy-toast { position: fixed; bottom: 24px; right: 24px; background: #2d3748; color: #fff; padding: 10px 18px; border-radius: 12px; font-size: 13px; font-weight: 600; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 999; }
-    .copy-toast.show { opacity: 1; }
-    .note-cell { max-width: 130px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #718096; font-size: 12px; }
-    .hwid-cell { font-family: monospace; font-size: 10px; color: #718096; max-width: 160px; word-break: break-all; }
-    .hwid-none { color: #cbd5e0; font-size: 11px; font-style: italic; }
-    .btn-reset-hwid { padding: 3px 8px; background: #fff5f5; color: #c53030; border: 1px solid #fed7d7; border-radius: 6px; font-size: 10px; font-weight: 600; cursor: pointer; margin-top: 3px; }
-    .btn-reset-hwid:hover { background: #fed7d7; }
-    .btn-save { padding: 4px 8px; background: #ebf8ff; color: #2b6cb0; border: 1px solid #bee3f8; border-radius: 6px; font-size: 12px; cursor: pointer; }
-    .btn-save:hover { background: #bee3f8; }
-  </style>
-</head>
-<body>
-<div class="container">
+import os
+import csv
+import io
+import json
+import re
+import secrets
+import hashlib
+import hmac
+from datetime import datetime, timedelta, timezone
+from typing import List, Dict, Any, Optional
 
-  <div class="header">
-    <div class="logo">
-      <div class="logo-icon">🔑</div>
-      <div class="logo-text">TG Parser Admin</div>
-    </div>
-    <form method="post" action="/admin/logout" style="margin:0;">
-      <button class="logout-btn" type="submit">Выйти</button>
-    </form>
-  </div>
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
-  <nav class="nav">
-    <a href="/admin" class="nav-item">📊 Дашборд</a>
-    <a href="/admin/users" class="nav-item">👥 Пользователи</a>
-    <a href="/admin/licenses" class="nav-item active">🔑 Лицензии</a>
-    <a href="/admin/devices" class="nav-item">💻 Устройства</a>
-    <a href="/admin/transactions" class="nav-item">💳 Транзакции</a>
-    <a href="/admin/releases"     class="nav-item">🚀 Обновления</a>
-    <a href="/admin/settings" class="nav-item">⚙️ Настройки</a>
-  </nav>
+from fastapi import FastAPI, HTTPException, Request, Form, BackgroundTasks, Header, UploadFile, File
+from fastapi.responses import (
+    HTMLResponse,
+    RedirectResponse,
+    StreamingResponse,
+    PlainTextResponse,
+    JSONResponse,
+)
+from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
+from starlette.middleware.sessions import SessionMiddleware
 
-  {% if request.query_params.get('ok') %}
-  <div class="flash flash-ok">✅ {{ request.query_params.get('ok') }}</div>
-  {% endif %}
-  {% if request.query_params.get('err') %}
-  <div class="flash flash-err">❌ {{ request.query_params.get('err') }}</div>
-  {% endif %}
+# =========================
+# ---
+# =========================
+import sendgrid
+from sendgrid.helpers.mail import Mail, Email, To, Content
 
-  <div class="create-card">
-    <div class="create-title">✨ Создать новую лицензию</div>
-    <form method="post" action="/admin/upsert">
-      <div class="form-grid">
-        <div class="form-group">
-          <label class="form-label">Ключ лицензии *</label>
-          <div class="key-row">
-            <input class="form-input" name="key" id="keyInput" placeholder="BEN-XXXX-XXXX-XXXX" required>
-            <button type="button" class="btn-gen" onclick="generateKey()">🎲 Авто</button>
-          </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">HWID устройства</label>
-          <input class="form-input" name="hwid" value="" placeholder="Пусто = привяжется при входе">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Срок действия (дней)</label>
-          <input class="form-input" name="days" type="number" value="30" min="1" max="3650" required>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Лимит устройств</label>
-          <input class="form-input" name="max_devices" type="number" value="1" min="1" max="50">
-        </div>
-        <div class="form-group">
-          <label class="form-label">План</label>
-          <select class="form-input" name="plan">
-            <option value="custom">custom</option>
-            <option value="m1">m1 — 1 мес</option>
-            <option value="m3">m3 — 3 мес</option>
-            <option value="m6">m6 — 6 мес</option>
-            <option value="y1">y1 — 1 год</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Примечание</label>
-          <input class="form-input" name="note" placeholder="Иван, тест, VIP...">
-        </div>
-      </div>
-      <div class="form-actions">
-        <button class="btn-create" type="submit">💾 Создать лицензию</button>
-        <span class="form-hint">💡 Пустой HWID — привяжется при первой активации</span>
-      </div>
-    </form>
-  </div>
+from openai import OpenAI
 
-  <div class="table-card">
-    <div class="table-header">
-      <div class="table-title">🔑 Лицензии ({{ rows | length }})</div>
-      <div class="search-box">
-        <input type="text" id="searchInput" placeholder="🔍 Поиск по ключу, email, плану..." oninput="filterTable()">
-      </div>
-    </div>
+app = FastAPI()
 
-    {% if rows %}
-    <table id="licTable">
-      <thead>
-        <tr>
-          <th>Ключ</th>
-          <th>Статус</th>
-          <th>Пользователь</th>
-          <th>HWID (привязка)</th>
-          <th>План</th>
-          <th>Устройства</th>
-          <th>Срок действия</th>
-          <th>Осталось</th>
-          <th>Примечание</th>
-          <th>Действия</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for r in rows %}
-        {% set days_left = ((r.expires_at - now).days) if r.expires_at and not r.revoked and r.expires_at > now else 0 %}
-        <tr data-search="{{ r.key|lower }} {{ (r.user_email or '')|lower }} {{ (r.plan or '')|lower }} {{ (r.note or '')|lower }} {{ (r.hwid or '')|lower }}">
+# =========================
+# ---
+# =========================
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=500,
+        content={"error": type(exc).__name__, "message": str(exc)}
+    )
 
-          <td>
-            <div class="key-text" onclick="copyKey('{{ r.key }}')" title="Нажмите чтобы скопировать">
-              {{ r.key }}
-            </div>
-          </td>
+# =========================
+# ---
+# =========================
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
+ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
+ADMIN_PANEL_SECRET = os.environ.get("ADMIN_PANEL_SECRET", "change-me")
 
-          <td>
-            {% if r.revoked %}
-              <span class="badge badge-revoked">🚫 Отозвана</span>
-            {% elif r.expires_at and r.expires_at > now %}
-              {% if days_left <= 7 %}
-                <span class="badge badge-warn">⚠️ Скоро истечёт</span>
-              {% else %}
-                <span class="badge badge-active">✅ Активна</span>
-              {% endif %}
-            {% else %}
-              <span class="badge badge-expired">❌ Истекла</span>
-            {% endif %}
-          </td>
+# =========================
+# ---
+# =========================
+SENDGRID_API_KEY = os.environ.get("SENDGRID_API_KEY", "")
+FROM_EMAIL = os.environ.get("FROM_EMAIL", "noreply@tgparsersender.me")
+FROM_NAME = os.environ.get("FROM_NAME", "TG Parser Sender")
 
-          <td>
-            {% if r.user_email %}
-              {% for email in r.user_email.split(', ') %}
-                <div style="font-size:11px;color:#667eea;font-weight:600;margin-bottom:2px;">{{ email }}</div>
-              {% endfor %}
-            {% else %}
-              <span class="no-user">—</span>
-            {% endif %}
-          </td>
+# =========================
+# OPENAI
+# =========================
+_openai_client = None
 
-          <td>
-            {% if r.hwid %}
-              <div class="hwid-cell" title="{{ r.hwid }}">{{ r.hwid[:32] }}{% if r.hwid|length > 32 %}…{% endif %}</div>
-              <button class="btn-reset-hwid" onclick="resetHwid('{{ r.key }}')" title="Сбросить HWID — позволит зайти с другого устройства">🔓 Сбросить</button>
-            {% else %}
-              <span class="hwid-none">Не привязан</span>
-            {% endif %}
-          </td>
+def get_openai_client():
+    global _openai_client
+    if _openai_client is None:
+        key = os.environ.get("OPENAI_API_KEY", "").strip()
+        if not key:
+            raise RuntimeError("OPENAI_API_KEY not set")
+        _openai_client = OpenAI(api_key=key)
+    return _openai_client
 
-          <td style="font-weight:600; color:#4a5568;">{{ r.plan or 'custom' }}</td>
+# =========================
+# ---
+# =========================
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=ADMIN_PANEL_SECRET,
+    https_only=True,
+    same_site="lax",
+)
 
-          <td>
-            <form method="post" action="/admin/api/set-devices" style="display:flex;gap:4px;align-items:center;">
-              <input type="hidden" name="key" value="{{ r.key }}">
-              <input type="number" name="max_devices" min="1" max="50"
-                value="{{ r.max_devices or 1 }}"
-                class="dev-input"
-                title="Лимит устройств"
-              />
-              <button type="submit" class="btn-save" title="Сохранить">💾</button>
-            </form>
-          </td>
+templates = Jinja2Templates(directory="templates")
 
-          <td class="expires-cell" id="cell-{{ loop.index }}">
-            <div class="expires-row">
-              <span class="expires-date">
-                {{ r.expires_at.strftime('%d.%m.%Y') if r.expires_at else '—' }}
-              </span>
-              <div class="day-btns">
-                <form method="post" action="/admin/add_days" style="display:inline;">
-                  <input type="hidden" name="key" value="{{ r.key }}">
-                  <input type="hidden" name="add" value="-30">
-                  <button class="day-btn minus" type="submit" title="−30 дней">−30д</button>
-                </form>
-                <form method="post" action="/admin/add_days" style="display:inline;">
-                  <input type="hidden" name="key" value="{{ r.key }}">
-                  <input type="hidden" name="add" value="-7">
-                  <button class="day-btn minus" type="submit" title="−7 дней">−7д</button>
-                </form>
-                <form method="post" action="/admin/add_days" style="display:inline;">
-                  <input type="hidden" name="key" value="{{ r.key }}">
-                  <input type="hidden" name="add" value="-1">
-                  <button class="day-btn minus" type="submit" title="−1 день">−1д</button>
-                </form>
-                <form method="post" action="/admin/add_days" style="display:inline;">
-                  <input type="hidden" name="key" value="{{ r.key }}">
-                  <input type="hidden" name="add" value="1">
-                  <button class="day-btn plus" type="submit" title="+1 день">+1д</button>
-                </form>
-                <form method="post" action="/admin/add_days" style="display:inline;">
-                  <input type="hidden" name="key" value="{{ r.key }}">
-                  <input type="hidden" name="add" value="7">
-                  <button class="day-btn plus" type="submit" title="+7 дней">+7д</button>
-                </form>
-                <form method="post" action="/admin/add_days" style="display:inline;">
-                  <input type="hidden" name="key" value="{{ r.key }}">
-                  <input type="hidden" name="add" value="30">
-                  <button class="day-btn plus" type="submit" title="+30 дней">+30д</button>
-                </form>
-                <button class="day-btn set" type="button"
-                  onclick="toggleDatePicker('{{ loop.index }}', '{{ r.expires_at.strftime('%Y-%m-%d') if r.expires_at else '' }}')"
-                  title="Установить точную дату">📅</button>
-              </div>
-            </div>
-            <div class="date-pick-row" id="datepick-{{ loop.index }}" style="display:none;">
-              <form method="post" action="/admin/set_expires" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                <input type="hidden" name="key" value="{{ r.key }}">
-                <input type="date" name="expires_date" id="dateInput-{{ loop.index }}"
-                  value="{{ r.expires_at.strftime('%Y-%m-%d') if r.expires_at else '' }}">
-                <button class="btn-set" type="submit">Сохранить</button>
-                <button class="btn-cancel" type="button"
-                  onclick="toggleDatePicker('{{ loop.index }}', '')">Отмена</button>
-              </form>
-            </div>
-          </td>
+# =========================
+# ---
+# =========================
+def now():
+    return datetime.now(timezone.utc)
 
-          <td>
-            {% if r.revoked %}
-              <span class="days-left" style="color:#a0aec0;">—</span>
-            {% elif r.expires_at and r.expires_at > now %}
-              <span class="days-left {% if days_left <= 3 %}days-bad{% elif days_left <= 14 %}days-warn{% else %}days-ok{% endif %}">
-                {{ days_left }} дн.
-              </span>
-            {% else %}
-              <span class="days-left days-bad">Истекла</span>
-            {% endif %}
-          </td>
+def is_admin(request: Request):
+    if request.session.get("is_admin"):
+        return True
+    # Also accept token via header for AJAX calls
+    token = request.headers.get("X-Admin-Token", "")
+    if token and ADMIN_TOKEN and token == ADMIN_TOKEN:
+        return True
+    return False
 
-          <td class="note-cell" title="{{ r.note or '' }}">{{ r.note or '—' }}</td>
+def hash_password(password: str) -> str:
+    salt = secrets.token_hex(16)
+    return salt + ':' + hashlib.sha256((salt + password).encode()).hexdigest()
 
-          <td>
-            <div class="action-btns">
-              {% if r.revoked %}
-              <form method="post" action="/admin/unrevoke" style="display:inline;">
-                <input type="hidden" name="key" value="{{ r.key }}">
-                <button class="btn-sm btn-unrevoke" type="submit">✅ Восстановить</button>
-              </form>
-              {% else %}
-              <form method="post" action="/admin/revoke" style="display:inline;"
-                onsubmit="return confirm('Отозвать ключ {{ r.key }}?')">
-                <input type="hidden" name="key" value="{{ r.key }}">
-                <button class="btn-sm btn-revoke" type="submit">🚫 Отозвать</button>
-              </form>
-              {% endif %}
-              <form method="post" action="/admin/delete" style="display:inline;"
-                onsubmit="return confirm('Удалить ключ {{ r.key }}? Необратимо!')">
-                <input type="hidden" name="key" value="{{ r.key }}">
-                <button class="btn-sm btn-delete" type="submit">🗑</button>
-              </form>
-            </div>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-    <div class="empty">
-      <div style="font-size:48px; opacity:0.3; margin-bottom:12px;">🔑</div>
-      <div>Лицензий нет. Создайте первую выше.</div>
-    </div>
-    {% endif %}
-  </div>
+def verify_password(password: str, password_hash: str) -> bool:
+    try:
+        salt, hash_val = password_hash.split(':')
+        return hash_val == hashlib.sha256((salt + password).encode()).hexdigest()
+    except:
+        return False
 
-</div>
-<div class="copy-toast" id="copyToast">✅ Ключ скопирован</div>
-<script>
-  function generateKey() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    const part = (n) => Array.from({length: n}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-    document.getElementById('keyInput').value = 'BEN-' + part(4) + '-' + part(4) + '-' + part(4);
-  }
+def generate_token() -> str:
+    return secrets.token_urlsafe(32)
 
-  function copyKey(key) {
-    navigator.clipboard.writeText(key).then(() => {
-      const t = document.getElementById('copyToast');
-      t.classList.add('show');
-      setTimeout(() => t.classList.remove('show'), 2000);
-    });
-  }
+# =========================
+# ---
+# =========================
+def db():
+    if not DATABASE_URL:
+        raise RuntimeError("DATABASE_URL not set")
+    return psycopg2.connect(DATABASE_URL)
 
-  function toggleDatePicker(idx, currentDate) {
-    const dp  = document.getElementById('datepick-' + idx);
-    const inp = document.getElementById('dateInput-' + idx);
-    const isHidden = dp.style.display === 'none';
-    dp.style.display = isHidden ? 'flex' : 'none';
-    if (isHidden && currentDate) inp.value = currentDate;
-  }
+def init_db():
+    """???????????????? ???????? ????????????"""
+    pass  # log
+    con = db()
+    cur = con.cursor()
+    
+    try:
+        # ---
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS licenses (
+            key TEXT PRIMARY KEY,
+            hwid TEXT,
+            expires_at TIMESTAMPTZ NOT NULL,
+            revoked BOOLEAN NOT NULL DEFAULT FALSE,
+            note TEXT DEFAULT '',
+            plan TEXT DEFAULT 'custom',
+            max_devices INTEGER DEFAULT 1,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW(),
+            last_check_at TIMESTAMPTZ,
+            check_count BIGINT DEFAULT 0
+        );
+        """)
+        pass  # log
+        
+        # ---
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id BIGSERIAL PRIMARY KEY,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            license_key TEXT REFERENCES licenses(key) ON DELETE CASCADE,
+            balance DECIMAL(10,2) DEFAULT 0.00,
+            currency TEXT DEFAULT 'USD',
+            email_confirmed BOOLEAN DEFAULT FALSE,
+            email_confirmed_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            last_login TIMESTAMPTZ,
+            is_active BOOLEAN DEFAULT TRUE,
+            total_spent DECIMAL(10,2) DEFAULT 0.00
+        );
+        """)
+        pass  # log
+        
+        # ---
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS user_devices (
+            id BIGSERIAL PRIMARY KEY,
+            user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+            device_fingerprint TEXT NOT NULL,
+            device_name TEXT,
+            last_ip INET,
+            last_login TIMESTAMPTZ DEFAULT NOW(),
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            UNIQUE(user_id, device_fingerprint)
+        );
+        """)
+        pass  # log
+        
+        # ---
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS user_sessions (
+            id BIGSERIAL PRIMARY KEY,
+            user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+            session_token TEXT UNIQUE NOT NULL,
+            device_id BIGINT REFERENCES user_devices(id),
+            expires_at TIMESTAMPTZ NOT NULL,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            last_active TIMESTAMPTZ DEFAULT NOW()
+        );
+        """)
+        pass  # log
+        
+        # ---
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS email_confirmations (
+            id BIGSERIAL PRIMARY KEY,
+            user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+            token TEXT UNIQUE NOT NULL,
+            expires_at TIMESTAMPTZ NOT NULL,
+            confirmed_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        """)
+        pass  # log
+        
+        # ---
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS password_resets (
+            id BIGSERIAL PRIMARY KEY,
+            user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+            token TEXT UNIQUE NOT NULL,
+            expires_at TIMESTAMPTZ NOT NULL,
+            used BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        """)
+        pass  # log
+        
+        # ---
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS transactions (
+            id BIGSERIAL PRIMARY KEY,
+            user_id BIGINT REFERENCES users(id),
+            license_key TEXT REFERENCES licenses(key),
+            amount DECIMAL(10,2) NOT NULL,
+            type TEXT NOT NULL,
+            description TEXT,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            metadata JSONB DEFAULT '{}'
+        );
+        """)
+        pass  # log
+        
+        # ---
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS pricing (
+            id SERIAL PRIMARY KEY,
+            operation_type TEXT UNIQUE NOT NULL,
+            base_price DECIMAL(10,4) NOT NULL,
+            final_price DECIMAL(10,4) NOT NULL,
+            min_units INTEGER DEFAULT 1,
+            description TEXT
+        );
+        """)
+        
+        cur.execute("""
+        INSERT INTO pricing (operation_type, base_price, final_price, min_units, description)
+        VALUES 
+            ('parse',    0.0005, 0.0005, 100, 'Parsing one message'),
+            ('ai_parse', 0.0002, 0.0004,   1, 'AI analysis per person (x2 markup)'),
+            ('sender',   0.001,  0.001,   50, 'Sending one message'),
+            ('invite',   0.002,  0.002,   20, 'Inviting one user'),
+            ('ai_leads', 0.0002, 0.0004,   1, 'AI chat per message TG Leads (x2 markup)')
+        ON CONFLICT (operation_type) DO UPDATE SET
+            base_price  = EXCLUDED.base_price,
+            final_price = EXCLUDED.final_price,
+            min_units   = EXCLUDED.min_units,
+            description = EXCLUDED.description;
+        
+        -- Force update ai_parse pricing to correct values regardless of what was in DB
+        UPDATE pricing SET
+            base_price  = 0.0002,
+            final_price = 0.0004,
+            min_units   = 1,
+            description = 'AI analysis per person (x2 markup)'
+        WHERE operation_type = 'ai_parse';
+        """)
+        pass  # log
+        
+        # ---
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS usage_logs (
+            id BIGSERIAL PRIMARY KEY,
+            user_id BIGINT REFERENCES users(id),
+            license_key TEXT REFERENCES licenses(key),
+            operation_type TEXT NOT NULL,
+            units_used INTEGER NOT NULL,
+            cost DECIMAL(10,2) NOT NULL,
+            details JSONB DEFAULT '{}',
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        """)
+        pass  # log
+        
+        # ---
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS payment_requests (
+            id BIGSERIAL PRIMARY KEY,
+            user_id BIGINT REFERENCES users(id),
+            license_key TEXT REFERENCES licenses(key),
+            amount DECIMAL(10,2) NOT NULL,
+            payment_id TEXT UNIQUE,
+            status TEXT DEFAULT 'pending',
+            payment_url TEXT,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            completed_at TIMESTAMPTZ
+        );
+        """)
+        pass  # log
+        
+        # ---
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS admin_audit (
+            id BIGSERIAL PRIMARY KEY,
+            ts TIMESTAMPTZ DEFAULT NOW(),
+            action TEXT,
+            key TEXT,
+            hwid TEXT,
+            info TEXT DEFAULT ''
+        );
+        """)
+        pass  # log
 
-  async function updateLimit(key, val, el) {
-    const max_devices = parseInt(val);
-    if (!max_devices || max_devices < 1) return;
-    try {
-      const res  = await fetch('/admin/api/update-limit', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({key, max_devices})
-      });
-      const data = await res.json();
-      el.classList.toggle('saved', data.success);
-      if (data.success) setTimeout(() => el.classList.remove('saved'), 1800);
-      else el.style.borderColor = '#fc8181';
-    } catch { el.style.borderColor = '#fc8181'; }
-  }
+        # --- App releases table (for auto-update system)
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS app_releases (
+            id BIGSERIAL PRIMARY KEY,
+            version TEXT NOT NULL,
+            channel TEXT NOT NULL DEFAULT 'stable',
+            release_notes TEXT DEFAULT '',
+            file_name TEXT NOT NULL,
+            file_size BIGINT DEFAULT 0,
+            download_url TEXT DEFAULT '',
+            sha256 TEXT DEFAULT '',
+            is_mandatory BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            created_by TEXT DEFAULT 'admin'
+        );
+        """)
+        # Migrate: add download_url if missing in existing DB
+        try:
+            cur.execute("ALTER TABLE app_releases ADD COLUMN IF NOT EXISTS download_url TEXT DEFAULT '';")
+        except Exception:
+            pass
+        pass  # log
+        
+        # ---
+        pass  # log
+        
+        # ---
+        cur.execute("""
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name='users' AND column_name='last_login';
+        """)
+        if not cur.fetchone():
+            pass  # log
+            cur.execute("""
+                ALTER TABLE users 
+                ADD COLUMN last_login TIMESTAMPTZ;
+            """)
+            pass  # log
+        else:
+            pass  # log
+        
+                # Migration: add telegram column to users
+        cur.execute("""
+            SELECT column_name FROM information_schema.columns
+            WHERE table_name='users' AND column_name='telegram';
+        """)
+        if not cur.fetchone():
+            cur.execute("ALTER TABLE users ADD COLUMN telegram TEXT DEFAULT '';")
+            print('telegram column added')
 
-  function filterTable() {
-    const q = document.getElementById('searchInput').value.toLowerCase();
-    document.querySelectorAll('#licTable tbody tr').forEach(row => {
-      row.style.display = (row.dataset.search || '').includes(q) ? '' : 'none';
-    });
-  }
+        # Migration: increase amount precision in transactions (DECIMAL(10,2) → DECIMAL(18,8))
+        cur.execute("""
+            SELECT numeric_precision, numeric_scale
+            FROM information_schema.columns
+            WHERE table_name='transactions' AND column_name='amount';
+        """)
+        prec_row = cur.fetchone()
+        if prec_row and (prec_row[0] != 18 or prec_row[1] != 8):
+            cur.execute("ALTER TABLE transactions ALTER COLUMN amount TYPE DECIMAL(18,8);")
+            print('[MIGRATION] transactions.amount upgraded to DECIMAL(18,8)')
 
-  async function resetHwid(key) {
-    if (!confirm('Сбросить HWID для ключа ' + key + '?\n\nПользователь сможет войти с нового устройства.')) return;
-    try {
-      const res = await fetch('/admin/api/reset-hwid', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({key})
-      });
-      const data = await res.json();
-      if (data.success) {
-        location.reload();
-      } else {
-        alert('Ошибка: ' + (data.detail || 'неизвестная ошибка'));
-      }
-    } catch(e) { alert('Ошибка сети: ' + e); }
-  }
-</script>
-</body>
-</html>
+        # Migration: add max_accounts column to licenses
+        cur.execute("""
+            SELECT column_name FROM information_schema.columns
+            WHERE table_name='licenses' AND column_name='max_accounts';
+        """)
+        if not cur.fetchone():
+            cur.execute("ALTER TABLE licenses ADD COLUMN max_accounts INTEGER DEFAULT 1;")
+            print('[MIGRATION] licenses.max_accounts added')
+
+        con.commit()
+        pass  # log
+        
+    except Exception as e:
+        print(f"[INFO] e={e}")
+        con.rollback()
+        raise
+    finally:
+        cur.close()
+        con.close()
+
+@app.on_event("startup")
+def startup():
+    init_db()
+
+# =========================
+# ---
+# =========================
+class CheckReq(BaseModel):
+    key: str
+    hwid: str
+
+@app.post("/api/check")
+def check(req: CheckReq):
+    """
+    ???????????????? ???????????????? ?????? ??????????????????.
+    ????????????:
+    - ???????? ???????????? ????????????????????????, ???????? ???? revoked ?? ???? expired
+    - HWID "??????????????????????????" ?????? ???????????? ???????????????? ????????????????, ???????? ?? ???????????????? HWID ????????????/temporary
+    - ?????????? ???????????????? HWID ???????????? ?????????????????? (???????????? ???? ?????????????? ????????????)
+    """
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute(
+            "SELECT hwid, expires_at, revoked FROM licenses WHERE key=%s",
+            (req.key,)
+        )
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=401, detail="key_not_found")
+
+        lic_hwid, expires_at, revoked = row
+
+        # ---
+        if revoked:
+            raise HTTPException(status_code=403, detail="revoked")
+        if now() > expires_at:
+            raise HTTPException(status_code=403, detail="expired")
+
+        # ---
+        incoming_hwid = (req.hwid or "").strip().upper()
+        stored_hwid = (lic_hwid or "").strip().upper()
+
+        # ---
+        if not stored_hwid or stored_hwid in {"TEMP", "NONE", "NULL", "-"}:
+            if incoming_hwid:
+                cur.execute(
+                    "UPDATE licenses SET hwid=%s WHERE key=%s",
+                    (incoming_hwid, req.key)
+                )
+                stored_hwid = incoming_hwid
+        else:
+            # ---
+            if incoming_hwid and incoming_hwid != stored_hwid:
+                raise HTTPException(status_code=403, detail="hwid_mismatch")
+
+        # ---
+        cur.execute("""
+            UPDATE licenses
+            SET last_check_at=NOW(), check_count=check_count+1
+            WHERE key=%s
+        """, (req.key,))
+        con.commit()
+
+        return {"ok": True, "expires_at": expires_at.isoformat(), "hwid": stored_hwid}
+    finally:
+        cur.close()
+        con.close()
+
+# =========================
+# ---
+# =========================
+class RegisterReq(BaseModel):
+    email: str
+    password: str
+    license_key: str
+    device_fingerprint: str
+    device_name: str = "My Computer"
+    telegram: str = ""
+
+@app.post("/api/auth/register")
+def register(req: RegisterReq, background_tasks: BackgroundTasks, request: Request):
+    pass  # log
+    pass  # log
+    req.email = req.email.strip().lower()  # ✅ normalize email
+    
+    con = db()
+    cur = con.cursor()
+    
+    try:
+        # --- Проверяем ключ (только что он существует, не истёк, не отозван)
+        pass  # log
+        cur.execute("SELECT key, expires_at, revoked FROM licenses WHERE key = %s", (req.license_key,))
+        license = cur.fetchone()
+        if not license:
+            raise HTTPException(status_code=404, detail="license_not_found")
+        key, expires_at, revoked = license
+        if revoked:
+            raise HTTPException(status_code=403, detail="license_revoked")
+        if now() > expires_at:
+            raise HTTPException(status_code=403, detail="license_expired")
+
+        # --- Проверяем email
+        pass  # log
+        cur.execute("SELECT id FROM users WHERE email = %s", (req.email,))
+        if cur.fetchone():
+            pass  # log
+            raise HTTPException(status_code=400, detail="email_already_registered")
+        
+        # ---
+        pass  # log
+        password_hash = hash_password(req.password)
+        cur.execute("""
+            INSERT INTO users (email, password_hash, license_key, telegram, balance, total_spent)
+            VALUES (%s, %s, %s, %s, 0.00, 0.00)
+            RETURNING id
+        """, (req.email, password_hash, req.license_key, req.telegram))
+        
+        user_id = cur.fetchone()[0]
+        print(f"[INFO] user_id={user_id}")
+        
+        # ---
+        pass  # log
+        client_ip = request.client.host if request.client else "0.0.0.0"
+        cur.execute("""
+            INSERT INTO user_devices (user_id, device_fingerprint, device_name, last_ip)
+            VALUES (%s, %s, %s, %s)
+            RETURNING id
+        """, (user_id, req.device_fingerprint, req.device_name, client_ip))
+        
+        device_id = cur.fetchone()[0]
+        print(f"[INFO] device_id={device_id}")
+        
+        # ---
+        pass  # log
+        session_token = generate_token()
+        expires_at_session = now() + timedelta(days=30)
+        
+        cur.execute("""
+            INSERT INTO user_sessions (user_id, session_token, device_id, expires_at)
+            VALUES (%s, %s, %s, %s)
+        """, (user_id, session_token, device_id, expires_at_session))
+        pass  # log
+        
+        # ---
+        pass  # log
+        confirm_token = generate_token()
+        confirm_expires = now() + timedelta(hours=24)
+        
+        cur.execute("""
+            INSERT INTO email_confirmations (user_id, token, expires_at)
+            VALUES (%s, %s, %s)
+        """, (user_id, confirm_token, confirm_expires))
+        pass  # log
+        
+        con.commit()
+        pass  # log
+        
+        # ---
+        pass  # log
+        background_tasks.add_task(
+            send_confirmation_email,
+            req.email,
+            confirm_token
+        )
+        pass  # log
+        
+        return {
+            "success": True,
+            "session_token": session_token,
+            "user_id": user_id,
+            "email": req.email,
+            "need_confirmation": True
+        }
+        
+    except HTTPException:
+        pass  # log
+        con.rollback()
+        raise
+    except Exception as e:
+        pass  # log
+        pass  # log
+        import traceback
+        traceback.print_exc()
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+        pass  # log
+
+# =========================
+# ---
+# =========================
+class LoginReq(BaseModel):
+    email: str
+    password: str
+    device_fingerprint: str
+    device_name: str = "?????? ??????????????????"
+
+@app.post("/api/auth/login")
+def login(req: LoginReq, request: Request):
+    pass  # log
+    req.email = req.email.strip().lower()  # ✅ normalize email
+    
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    
+    try:
+        cur.execute("""
+            SELECT u.*, COALESCE(l.max_devices, 1) as max_devices
+            FROM users u
+            LEFT JOIN licenses l ON u.license_key = l.key
+            WHERE u.email = %s
+        """, (req.email,))
+        
+        user = cur.fetchone()
+        if not user:
+            pass  # log
+            raise HTTPException(status_code=401, detail="invalid_credentials")
+        
+        pass  # log
+        
+        if not verify_password(req.password, user['password_hash']):
+            pass  # log
+            raise HTTPException(status_code=401, detail="invalid_credentials")
+        
+        pass  # log
+        
+        pass  # log
+        
+        if not user['email_confirmed']:
+            pass  # log
+            confirm_token = generate_token()
+            confirm_expires = now() + timedelta(hours=24)
+            
+            cur.execute("""
+                INSERT INTO email_confirmations (user_id, token, expires_at)
+                VALUES (%s, %s, %s)
+            """, (user['id'], confirm_token, confirm_expires))
+            con.commit()
+            
+            raise HTTPException(
+                status_code=403, 
+                detail={
+                    "error": "email_not_confirmed",
+                    "email": user['email'],
+                    "message": "Email not confirmed. A new confirmation link has been sent to your email."
+                }
+            )
+        
+        pass  # log
+        cur.execute("""
+            SELECT * FROM user_devices 
+            WHERE user_id = %s AND device_fingerprint = %s
+        """, (user['id'], req.device_fingerprint))
+        
+        device = cur.fetchone()
+        client_ip = request.client.host if request.client else "0.0.0.0"
+        
+        if device:
+            pass  # log
+            device_id = device['id']
+            cur.execute("""
+                UPDATE user_devices 
+                SET last_login = NOW(), last_ip = %s
+                WHERE id = %s
+            """, (client_ip, device_id))
+        else:
+            pass  # log
+            cur.execute("""
+                SELECT COUNT(*) FROM user_devices 
+                WHERE user_id = %s AND is_active = TRUE
+            """, (user['id'],))
+            device_count = cur.fetchone()['count']
+            
+            print(f"Active devices: {device_count}, max: {user['max_devices']}")
+            
+            if device_count >= user['max_devices']:
+                pass  # log
+                cur.execute("""
+                    SELECT * FROM user_devices 
+                    WHERE user_id = %s
+                    ORDER BY last_login DESC
+                """, (user['id'],))
+                devices = cur.fetchall()
+                
+                raise HTTPException(
+                    status_code=403,
+                    detail={
+                        "error": "device_limit_exceeded",
+                        "max_devices": user['max_devices'],
+                        "current_devices": device_count,
+                        "devices": [
+                            {
+                                "id": d['id'],
+                                "name": d['device_name'],
+                                "last_login": d['last_login'].isoformat() if d['last_login'] else None
+                            }
+                            for d in devices
+                        ]
+                    }
+                )
+            
+            pass  # log
+            cur.execute("""
+                INSERT INTO user_devices (user_id, device_fingerprint, device_name, last_ip)
+                VALUES (%s, %s, %s, %s)
+                RETURNING id
+            """, (user['id'], req.device_fingerprint, req.device_name, client_ip))
+            
+            device_id = cur.fetchone()['id']
+            print(f"[INFO] device_id={device_id}")
+        
+        pass  # log
+        session_token = generate_token()
+        expires_at_session = now() + timedelta(days=30)
+        
+        cur.execute("""
+            INSERT INTO user_sessions (user_id, session_token, device_id, expires_at)
+            VALUES (%s, %s, %s, %s)
+        """, (user['id'], session_token, device_id, expires_at_session))
+        
+        cur.execute("""
+            UPDATE users SET last_login = NOW() WHERE id = %s
+        """, (user['id'],))
+        
+        con.commit()
+        pass  # log
+        
+        cur.execute("""
+            SELECT * FROM user_devices 
+            WHERE user_id = %s AND is_active = TRUE
+            ORDER BY last_login DESC
+        """, (user['id'],))
+        devices = cur.fetchall()
+        
+        return {
+            "success": True,
+            "session_token": session_token,
+            "user": {
+                "id": user['id'],
+                "email": user['email'],
+                "license_key": user['license_key'],
+                "balance": float(user['balance']),
+                "email_confirmed": user['email_confirmed']
+            },
+            "devices": [
+                {
+                    "id": d['id'],
+                    "name": d['device_name'],
+                    "fingerprint": d['device_fingerprint'],
+                    "last_login": d['last_login'].isoformat() if d['last_login'] else None,
+                    "is_current": d['device_fingerprint'] == req.device_fingerprint
+                }
+                for d in devices
+            ]
+        }
+        
+    except HTTPException:
+        con.rollback()
+        raise
+    except Exception as e:
+        pass  # log
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+# =========================
+# ---
+# =========================
+class LoginWithKeyReq(BaseModel):
+    email: str
+    password: str
+    license_key: str
+    device_fingerprint: str
+    device_name: str = "?????? ??????????????????"
+
+@app.post("/api/auth/login_with_key")
+def login_with_key(req: LoginWithKeyReq, background_tasks: BackgroundTasks, request: Request):
+    """
+    ???????? ?? ????????????:
+    - ?????????????????? ????????????
+    - ??????????????????/?????????????????????? ???????? ?? ???????????????????????? (1 ???????? = 1 ????????????????????????)
+    - ???????????????????????? ???????????????????? ?? ?????????????? max_devices (???? licenses)
+    - ???????? email ???? ??????????????????????: ?????????????? ?????????? ??????????????????????????, ???????????????????? ????????????, ???? ?????? ?????????? ???????????????????? session_token
+    """
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    try:
+        # ---
+        req.email = (req.email or "").strip().lower()  # ✅ normalize email
+        cur.execute("SELECT * FROM users WHERE email=%s", (req.email,))
+        user = cur.fetchone()
+        if not user:
+            raise HTTPException(status_code=401, detail="invalid_credentials")
+
+        if not verify_password(req.password, user["password_hash"]):
+            raise HTTPException(status_code=401, detail="invalid_credentials")
+
+        # ---
+        cur.execute("SELECT key, expires_at, revoked, max_devices FROM licenses WHERE key=%s", (req.license_key,))
+        lic = cur.fetchone()
+        if not lic:
+            raise HTTPException(status_code=404, detail="license_not_found")
+        if lic["revoked"]:
+            raise HTTPException(status_code=403, detail="license_revoked")
+        if now() > lic["expires_at"]:
+            raise HTTPException(status_code=403, detail="license_expired")
+
+        # ---
+        current_key = (user.get("license_key") or "").strip()
+        incoming_key = (req.license_key or "").strip()
+        if current_key and current_key != incoming_key:
+            raise HTTPException(status_code=403, detail="license_key_mismatch")
+
+        if not current_key:
+            # --- Check max_accounts limit
+            cur.execute("SELECT COUNT(*) FROM users WHERE license_key=%s", (incoming_key,))
+            account_count = int(cur.fetchone()["count"] or 0)
+            cur.execute("SELECT max_accounts FROM licenses WHERE key=%s", (incoming_key,))
+            max_acc_row = cur.fetchone()
+            max_acc = int((max_acc_row["max_accounts"] if max_acc_row else None) or 1)
+            if account_count >= max_acc:
+                raise HTTPException(status_code=403, detail="license_accounts_limit_exceeded")
+
+            cur.execute("UPDATE users SET license_key=%s WHERE id=%s", (incoming_key, user["id"]))
+            user["license_key"] = incoming_key
+
+        # ---
+        client_ip = request.client.host if request.client else "0.0.0.0"
+        max_devices = int(lic["max_devices"] or 1)
+
+        cur.execute("""
+            SELECT * FROM user_devices
+            WHERE user_id=%s AND device_fingerprint=%s
+        """, (user["id"], req.device_fingerprint))
+        device = cur.fetchone()
+
+        if device:
+            device_id = device["id"]
+            cur.execute("""
+                UPDATE user_devices
+                SET last_login=NOW(), last_ip=%s, device_name=%s, is_active=TRUE
+                WHERE id=%s
+            """, (client_ip, req.device_name, device_id))
+        else:
+            cur.execute("""
+                SELECT COUNT(*) AS cnt FROM user_devices
+                WHERE user_id=%s AND is_active=TRUE
+            """, (user["id"],))
+            cnt = int(cur.fetchone()["cnt"] or 0)
+            if cnt >= max_devices:
+                raise HTTPException(status_code=403, detail={"error": "device_limit_exceeded", "max_devices": max_devices, "current_devices": cnt})
+
+            cur.execute("""
+                INSERT INTO user_devices (user_id, device_fingerprint, device_name, last_ip, last_login)
+                VALUES (%s, %s, %s, %s, NOW())
+                RETURNING id
+            """, (user["id"], req.device_fingerprint, req.device_name, client_ip))
+            device_id = cur.fetchone()["id"]
+
+        # ---
+        session_token = generate_token()
+        expires_at_session = now() + timedelta(days=30)
+
+        cur.execute("""
+            INSERT INTO user_sessions (user_id, session_token, device_id, expires_at)
+            VALUES (%s, %s, %s, %s)
+        """, (user["id"], session_token, device_id, expires_at_session))
+        cur.execute("UPDATE users SET last_login=NOW() WHERE id=%s", (user["id"],))
+
+        # ---
+        need_confirmation = not bool(user.get("email_confirmed"))
+        if need_confirmation:
+            confirm_token = generate_token()
+            confirm_expires = now() + timedelta(hours=24)
+            cur.execute("""
+                INSERT INTO email_confirmations (user_id, token, expires_at)
+                VALUES (%s, %s, %s)
+            """, (user["id"], confirm_token, confirm_expires))
+            # ---
+            background_tasks.add_task(send_confirmation_email, user["email"], confirm_token)
+
+        con.commit()
+
+        return {
+            "success": True,
+            "session_token": session_token,
+            "need_confirmation": need_confirmation,
+            "user": {
+                "id": user["id"],
+                "email": user["email"],
+                "license_key": user.get("license_key"),
+                "balance": float(user.get("balance") or 0),
+                "email_confirmed": bool(user.get("email_confirmed")),
+            }
+        }
+
+    except HTTPException:
+        con.rollback()
+        raise
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+
+# =========================
+# ---
+# =========================
+def _get_session_user(cur, session_token: str):
+    cur.execute("""
+        SELECT s.user_id, s.expires_at, u.email, u.license_key, u.balance, u.currency, u.email_confirmed, u.total_spent
+        FROM user_sessions s
+        JOIN users u ON u.id = s.user_id
+        WHERE s.session_token=%s
+    """, (session_token,))
+    return cur.fetchone()
+
+@app.get("/api/auth/me")
+def auth_me(authorization: str = Header(None)):
+    """
+    Authorization: Bearer <token>
+    """
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="missing_token")
+    token = authorization.split(" ", 1)[1].strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="missing_token")
+
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    try:
+        row = _get_session_user(cur, token)
+        if not row:
+            raise HTTPException(status_code=401, detail="invalid_session")
+        if now() > row["expires_at"]:
+            raise HTTPException(status_code=401, detail="session_expired")
+
+        # ---
+        lic = None
+        if row.get("license_key"):
+            cur.execute("SELECT key, expires_at, revoked, max_devices, plan FROM licenses WHERE key=%s", (row["license_key"],))
+            lic = cur.fetchone()
+
+        return {
+            "success": True,
+            "user": {
+                "id": row["user_id"],
+                "email": row["email"],
+                "license_key": row.get("license_key"),
+                "balance": float(row.get("balance") or 0),
+                "currency": row.get("currency") or "USD",
+                "email_confirmed": bool(row.get("email_confirmed")),
+                "total_spent": float(row.get("total_spent") or 0),
+            },
+            "license": {
+                "key": lic.get("key") if lic else None,
+                "expires_at": lic.get("expires_at").isoformat() if lic and lic.get("expires_at") else None,
+                "revoked": bool(lic.get("revoked")) if lic else None,
+                "max_devices": int(lic.get("max_devices") or 1) if lic else None,
+                "plan": lic.get("plan") if lic else None,
+            } if lic else None
+        }
+
+    finally:
+        cur.close()
+        con.close()
+
+
+# =========================
+# ---
+# =========================
+class ResendConfirmReq(BaseModel):
+    email: str
+
+@app.post("/api/auth/resend-confirmation")
+def resend_confirmation(req: ResendConfirmReq, background_tasks: BackgroundTasks):
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    try:
+        req.email = req.email.strip().lower()  # ✅ normalize email
+        cur.execute("SELECT id, email, email_confirmed FROM users WHERE email=%s", (req.email,))
+        u = cur.fetchone()
+        if not u:
+            # ---
+            return {"success": True}
+        if u["email_confirmed"]:
+            return {"success": True}
+
+        confirm_token = generate_token()
+        confirm_expires = now() + timedelta(hours=24)
+        cur.execute("""
+            INSERT INTO email_confirmations (user_id, token, expires_at)
+            VALUES (%s, %s, %s)
+        """, (u["id"], confirm_token, confirm_expires))
+        con.commit()
+
+        background_tasks.add_task(send_confirmation_email, u["email"], confirm_token)
+        return {"success": True}
+    finally:
+        cur.close()
+        con.close()
+
+@app.post("/api/auth/logout")
+def logout(session_token: str = Form(...)):
+    con = db()
+    cur = con.cursor()
+    try:
+        # Находим device_id перед удалением сессии
+        cur.execute("SELECT device_id FROM user_sessions WHERE session_token = %s", (session_token,))
+        row = cur.fetchone()
+        device_id = row[0] if row else None
+
+        # Удаляем сессию
+        cur.execute("DELETE FROM user_sessions WHERE session_token = %s", (session_token,))
+
+        # Деактивируем устройство чтобы при следующем входе не было "лимит устройств"
+        if device_id:
+            cur.execute("UPDATE user_devices SET is_active = FALSE WHERE id = %s", (device_id,))
+
+        con.commit()
+        return {"success": True}
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+@app.get("/api/auth/confirm")
+def confirm_email(request: Request, token: str):
+    con = db()
+    cur = con.cursor()
+
+    try:
+        cur.execute("""
+            SELECT user_id, expires_at 
+            FROM email_confirmations 
+            WHERE token = %s AND confirmed_at IS NULL
+        """, (token,))
+
+        row = cur.fetchone()
+        if not row:
+            return templates.TemplateResponse("confirm_email.html", {
+                "request": request,
+                "status": "invalid",
+                "message": "This confirmation link is invalid or has already been used. Please request a new one."
+            })
+
+        user_id, expires_at = row
+
+        if now() > expires_at:
+            return templates.TemplateResponse("confirm_email.html", {
+                "request": request,
+                "status": "expired",
+                "message": "This confirmation link has expired. Please register again or request a new confirmation email."
+            })
+
+        cur.execute("""
+            UPDATE users 
+            SET email_confirmed = TRUE, email_confirmed_at = NOW()
+            WHERE id = %s
+        """, (user_id,))
+
+        cur.execute("""
+            UPDATE email_confirmations 
+            SET confirmed_at = NOW()
+            WHERE token = %s
+        """, (token,))
+
+        con.commit()
+
+        return templates.TemplateResponse("confirm_email.html", {
+            "request": request,
+            "status": "ok",
+            "message": "Your email has been successfully confirmed. You can now log in to the application and click \"Login\"."
+        })
+
+    except Exception as e:
+        return templates.TemplateResponse("confirm_email.html", {
+            "request": request,
+            "status": "error",
+            "message": f"An unexpected error occurred. Please try again later. ({str(e)})"
+        })
+    finally:
+        cur.close()
+        con.close()
+
+# =========================
+# Forgot Password / Reset Password (public pages)
+# =========================
+
+@app.get("/forgot-password", response_class=HTMLResponse)
+def forgot_password_page(request: Request):
+    return templates.TemplateResponse("forgot_password.html", {
+        "request": request,
+        "error": "",
+        "sent": False
+    })
+
+@app.post("/forgot-password", response_class=HTMLResponse)
+def forgot_password_submit(request: Request, background_tasks: BackgroundTasks, email: str = Form(...)):
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("SELECT id, email FROM users WHERE email = %s", (email.strip().lower(),))  # ✅ normalize
+        user = cur.fetchone()
+        if user:
+            reset_token = generate_token()
+            expires_at = now() + timedelta(hours=1)
+            cur.execute("""
+                INSERT INTO password_resets (user_id, token, expires_at)
+                VALUES (%s, %s, %s)
+            """, (user["id"], reset_token, expires_at))
+            con.commit()
+            background_tasks.add_task(send_password_reset_email, user["email"], reset_token)
+        # Always show success (security: don't reveal if email exists)
+        return templates.TemplateResponse("forgot_password.html", {
+            "request": request,
+            "error": "",
+            "sent": True
+        })
+    except Exception as e:
+        con.rollback()
+        print(f"[ERROR] forgot_password_submit: {e}")
+        return templates.TemplateResponse("forgot_password.html", {
+            "request": request,
+            "error": "Something went wrong. Please try again.",
+            "sent": False
+        })
+    finally:
+        cur.close()
+        con.close()
+
+@app.get("/reset-password", response_class=HTMLResponse)
+def reset_password_page(request: Request, token: str = ""):
+    if not token:
+        return templates.TemplateResponse("forgot_password.html", {
+            "request": request,
+            "error": "Invalid or missing reset token.",
+            "sent": False
+        })
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT id, expires_at, used FROM password_resets WHERE token = %s
+        """, (token,))
+        row = cur.fetchone()
+        if not row:
+            return templates.TemplateResponse("forgot_password.html", {
+                "request": request,
+                "error": "This reset link is invalid. Please request a new one.",
+                "sent": False
+            })
+        if row["used"]:
+            return templates.TemplateResponse("forgot_password.html", {
+                "request": request,
+                "error": "This reset link has already been used. Please request a new one.",
+                "sent": False
+            })
+        if now() > row["expires_at"]:
+            return templates.TemplateResponse("forgot_password.html", {
+                "request": request,
+                "error": "This reset link has expired. Please request a new one.",
+                "sent": False
+            })
+        return templates.TemplateResponse("reset_password.html", {
+            "request": request,
+            "token": token
+        })
+    finally:
+        cur.close()
+        con.close()
+
+class ResetPasswordPublicReq(BaseModel):
+    token: str
+    new_password: str
+
+@app.post("/api/auth/reset-password")
+def reset_password_api(req: ResetPasswordPublicReq):
+    if len(req.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters.")
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT id, user_id, expires_at, used FROM password_resets WHERE token = %s
+        """, (req.token,))
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=400, detail="Invalid reset token.")
+        if row["used"]:
+            raise HTTPException(status_code=400, detail="This reset link has already been used.")
+        if now() > row["expires_at"]:
+            raise HTTPException(status_code=400, detail="This reset link has expired.")
+
+        new_hash = hash_password(req.new_password)
+        cur.execute("UPDATE users SET password_hash = %s WHERE id = %s", (new_hash, row["user_id"]))
+        cur.execute("UPDATE password_resets SET used = TRUE WHERE id = %s", (row["id"],))
+        con.commit()
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+# =========================
+# ---
+# =========================
+class ChangePasswordReq(BaseModel):
+    session_token: str
+    old_password: str
+    new_password: str
+
+@app.post("/api/auth/change-password")
+def change_password_api(req: ChangePasswordReq):
+    if len(req.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters.")
+    if not req.old_password:
+        raise HTTPException(status_code=400, detail="Current password is required.")
+
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    try:
+        # Validate session
+        row = _get_session_user(cur, req.session_token)
+        if not row:
+            raise HTTPException(status_code=401, detail="invalid_session")
+        if now() > row["expires_at"]:
+            raise HTTPException(status_code=401, detail="session_expired")
+
+        # Get current password hash
+        cur.execute("SELECT password_hash FROM users WHERE id = %s", (row["user_id"],))
+        user = cur.fetchone()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found.")
+
+        # Verify old password
+        if not verify_password(req.old_password, user["password_hash"]):
+            raise HTTPException(status_code=400, detail="wrong_password")
+
+        # Set new password
+        new_hash = hash_password(req.new_password)
+        cur.execute("UPDATE users SET password_hash = %s WHERE id = %s", (new_hash, row["user_id"]))
+        con.commit()
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+
+# =========================
+# ---
+# =========================
+def send_confirmation_email(email: str, token: str):
+    """Send email confirmation letter."""
+    confirm_url = f"https://api.tgleads.ai/api/auth/confirm?token={token}"
+
+    if not SENDGRID_API_KEY:
+        print(f"[INFO] NO SENDGRID_API_KEY — confirm_url={confirm_url}")
+        return
+
+    html_content = (
+        "<!DOCTYPE html><html lang=\"en\"><head>"
+        "<meta charset=\"UTF-8\">"
+        "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+        "<title>Confirm your email — TG Leads AI</title>"
+        "</head>"
+        "<body style=\"margin:0;padding:0;font-family:'Helvetica Neue',Arial,sans-serif;background:#f0f4ff;\">"
+        "<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">"
+        "<tr><td align=\"center\" style=\"padding:48px 16px;\">"
+        "<table width=\"600\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:600px;width:100%;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 8px 32px rgba(79,70,229,0.12);\">"
+        # Header
+        "<tr><td style=\"background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);padding:40px 48px;text-align:center;\">"
+        "<div style=\"width:56px;height:56px;background:rgba(255,255,255,0.2);border-radius:16px;margin:0 auto 16px;display:block;text-align:center;line-height:56px;\">"
+        "<span style=\"font-size:28px;line-height:56px;\">&#9993;</span></div>"
+        "<h1 style=\"color:#ffffff;margin:0;font-size:26px;font-weight:700;letter-spacing:-0.5px;\">TG Leads AI</h1>"
+        "<p style=\"color:rgba(255,255,255,0.75);margin:6px 0 0;font-size:13px;letter-spacing:0.5px;text-transform:uppercase;\">Email Confirmation</p>"
+        "</td></tr>"
+        # Body
+        "<tr><td style=\"padding:48px;\">"
+        "<h2 style=\"color:#0f172a;margin:0 0 16px;font-size:22px;font-weight:700;\">Confirm your email address</h2>"
+        "<p style=\"color:#475569;line-height:1.8;margin:0 0 12px;font-size:15px;\">Hello!</p>"
+        "<p style=\"color:#475569;line-height:1.8;margin:0 0 32px;font-size:15px;\">"
+        "Thank you for registering with <strong style=\"color:#4f46e5;\">TG Leads AI</strong>. "
+        "To complete your registration and activate your account, please confirm your email address by clicking the button below."
+        "</p>"
+        # Button
+        "<table cellpadding=\"0\" cellspacing=\"0\" style=\"margin:0 auto 32px;\">"
+        "<tr><td style=\"background:linear-gradient(135deg,#22c55e 0%,#16a34a 100%);border-radius:50px;\">"
+        f"<a href=\"{confirm_url}\" style=\"display:inline-block;padding:16px 48px;color:#ffffff;text-decoration:none;font-size:16px;font-weight:700;letter-spacing:0.2px;\">&#10003;&nbsp; Confirm Email</a>"
+        "</td></tr></table>"
+        # Fallback link
+        "<div style=\"background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px;margin-bottom:32px;\">"
+        "<p style=\"color:#64748b;font-size:12px;margin:0 0 8px;\">Or copy and paste this link into your browser:</p>"
+        f"<a href=\"{confirm_url}\" style=\"color:#4f46e5;font-size:12px;word-break:break-all;text-decoration:none;\">{confirm_url}</a>"
+        "</div>"
+        # Warning
+        "<div style=\"border-top:1px solid #f1f5f9;padding-top:24px;\">"
+        "<p style=\"color:#94a3b8;font-size:12px;line-height:1.7;margin:0;\">"
+        "<strong>&#128274; This link expires in 24 hours.</strong><br>"
+        "If you did not create an account with TG Leads AI, you can safely ignore this email."
+        "</p>"
+        "</div>"
+        "</td></tr>"
+        # Footer
+        "<tr><td style=\"background:#f8fafc;padding:24px 48px;text-align:center;border-top:1px solid #f1f5f9;\">"
+        "<p style=\"color:#64748b;margin:0 0 6px;font-size:13px;font-weight:600;\">TG Leads AI Team</p>"
+        "<p style=\"color:#94a3b8;margin:0;font-size:12px;\">support@tgleads.ai &nbsp;|&nbsp; @Ben_bell97</p>"
+        "</td></tr>"
+        "</table>"
+        "</td></tr></table>"
+        "</body></html>"
+    )
+
+    message = Mail(
+        from_email=Email(FROM_EMAIL, FROM_NAME),
+        to_emails=To(email),
+        subject="Confirm your email — TG Leads AI",
+        html_content=Content("text/html", html_content)
+    )
+    try:
+        sg = sendgrid.SendGridAPIClient(api_key=SENDGRID_API_KEY)
+        response = sg.send(message)
+        print(f"[INFO] Confirmation email sent to {email}, status={response.status_code}")
+    except Exception as e:
+        print(f"[ERROR] send_confirmation_email failed for {email}: {e}")
+
+
+def send_password_reset_email(email: str, token: str):
+    """Send password reset letter."""
+    reset_url = f"https://api.tgleads.ai/reset-password?token={token}"
+
+    if not SENDGRID_API_KEY:
+        print(f"[INFO] NO SENDGRID_API_KEY — reset_url={reset_url}")
+        return
+
+    html_content = (
+        "<!DOCTYPE html><html lang=\"en\"><head>"
+        "<meta charset=\"UTF-8\">"
+        "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+        "<title>Password Reset — TG Leads AI</title>"
+        "</head>"
+        "<body style=\"margin:0;padding:0;font-family:'Helvetica Neue',Arial,sans-serif;background:#f0f4ff;\">"
+        "<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">"
+        "<tr><td align=\"center\" style=\"padding:48px 16px;\">"
+        "<table width=\"600\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:600px;width:100%;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 8px 32px rgba(239,68,68,0.12);\">"
+        # Header
+        "<tr><td style=\"background:linear-gradient(135deg,#ef4444 0%,#f97316 100%);padding:40px 48px;text-align:center;\">"
+        "<div style=\"width:56px;height:56px;background:rgba(255,255,255,0.2);border-radius:16px;margin:0 auto 16px;display:block;text-align:center;line-height:56px;\">"
+        "<span style=\"font-size:28px;line-height:56px;\">&#128274;</span></div>"
+        "<h1 style=\"color:#ffffff;margin:0;font-size:26px;font-weight:700;letter-spacing:-0.5px;\">TG Leads AI</h1>"
+        "<p style=\"color:rgba(255,255,255,0.75);margin:6px 0 0;font-size:13px;letter-spacing:0.5px;text-transform:uppercase;\">Account Security</p>"
+        "</td></tr>"
+        # Body
+        "<tr><td style=\"padding:48px;\">"
+        "<h2 style=\"color:#0f172a;margin:0 0 16px;font-size:22px;font-weight:700;\">Reset your password</h2>"
+        "<p style=\"color:#475569;line-height:1.8;margin:0 0 12px;font-size:15px;\">Hello!</p>"
+        "<p style=\"color:#475569;line-height:1.8;margin:0 0 32px;font-size:15px;\">"
+        "We received a request to reset the password for your <strong style=\"color:#ef4444;\">TG Leads AI</strong> account. "
+        "Click the button below to create a new password."
+        "</p>"
+        # Button
+        "<table cellpadding=\"0\" cellspacing=\"0\" style=\"margin:0 auto 32px;\">"
+        "<tr><td style=\"background:linear-gradient(135deg,#3b82f6 0%,#4f46e5 100%);border-radius:50px;\">"
+        f"<a href=\"{reset_url}\" style=\"display:inline-block;padding:16px 48px;color:#ffffff;text-decoration:none;font-size:16px;font-weight:700;letter-spacing:0.2px;\">&#128274;&nbsp; Reset Password</a>"
+        "</td></tr></table>"
+        # Fallback link
+        "<div style=\"background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px;margin-bottom:32px;\">"
+        "<p style=\"color:#64748b;font-size:12px;margin:0 0 8px;\">Or copy and paste this link into your browser:</p>"
+        f"<a href=\"{reset_url}\" style=\"color:#3b82f6;font-size:12px;word-break:break-all;text-decoration:none;\">{reset_url}</a>"
+        "</div>"
+        # Warning
+        "<div style=\"background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:16px 20px;margin-bottom:24px;\">"
+        "<p style=\"color:#9a3412;font-size:13px;line-height:1.7;margin:0;\">"
+        "<strong>&#9888; Didn't request a password reset?</strong><br>"
+        "If you didn't make this request, please ignore this email. Your password will remain unchanged."
+        "</p>"
+        "</div>"
+        "<div style=\"border-top:1px solid #f1f5f9;padding-top:24px;\">"
+        "<p style=\"color:#94a3b8;font-size:12px;line-height:1.7;margin:0;\">"
+        "&#128274; This link is valid for <strong>1 hour</strong> and can only be used once."
+        "</p>"
+        "</div>"
+        "</td></tr>"
+        # Footer
+        "<tr><td style=\"background:#f8fafc;padding:24px 48px;text-align:center;border-top:1px solid #f1f5f9;\">"
+        "<p style=\"color:#64748b;margin:0 0 6px;font-size:13px;font-weight:600;\">TG Leads AI Team</p>"
+        "<p style=\"color:#94a3b8;margin:0;font-size:12px;\">support@tgleads.ai &nbsp;|&nbsp; @Ben_bell97</p>"
+        "</td></tr>"
+        "</table>"
+        "</td></tr></table>"
+        "</body></html>"
+    )
+
+    message = Mail(
+        from_email=Email(FROM_EMAIL, FROM_NAME),
+        to_emails=To(email),
+        subject="Reset your password — TG Leads AI",
+        html_content=Content("text/html", html_content)
+    )
+    try:
+        sg = sendgrid.SendGridAPIClient(api_key=SENDGRID_API_KEY)
+        response = sg.send(message)
+        print(f"[INFO] Reset email sent to {email}, status={response.status_code}")
+    except Exception as e:
+        print(f"[ERROR] send_password_reset_email failed for {email}: {e}")
+
+
+@app.get("/admin/login", response_class=HTMLResponse)
+def login_page(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request, "error": ""})
+
+@app.post("/admin/login")
+def login(request: Request, token: str = Form(...)):
+    if token != ADMIN_TOKEN:
+        return templates.TemplateResponse(
+            "login.html",
+            {"request": request, "error": "???????????????? ??????????"}
+        )
+    
+    request.session["is_admin"] = True
+    return RedirectResponse("/admin", status_code=303)
+
+@app.post("/admin/logout")
+def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse("/admin/login", status_code=303)
+
+@app.get("/admin", response_class=HTMLResponse)
+def admin_dashboard(request: Request):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+    
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    
+    try:
+        cur.execute("SELECT * FROM licenses ORDER BY updated_at DESC LIMIT 500")
+        rows = cur.fetchall()
+        
+        now_ts = now()
+        active = 0
+        expired = 0
+        revoked = 0
+        
+        for row in rows:
+            if row['revoked']:
+                revoked += 1
+            elif row['expires_at'] > now_ts:
+                active += 1
+            else:
+                expired += 1
+        
+        try:
+            cur.execute("SELECT COUNT(*) as count FROM users")
+            total_users = cur.fetchone()['count'] or 0
+        except:
+            total_users = 0
+            
+        try:
+            cur.execute("SELECT COUNT(*) as count FROM users WHERE email_confirmed = TRUE")
+            confirmed_users = cur.fetchone()['count'] or 0
+        except:
+            confirmed_users = 0
+            
+        try:
+            cur.execute("SELECT COALESCE(SUM(balance), 0) as total FROM users")
+            total_balance = float(cur.fetchone()['total'] or 0)
+        except:
+            total_balance = 0
+            
+        try:
+            cur.execute("SELECT COALESCE(SUM(total_spent), 0) as total FROM users")
+            total_revenue = float(cur.fetchone()['total'] or 0)
+        except:
+            total_revenue = 0
+            
+        try:
+            cur.execute("SELECT COUNT(*) as count FROM user_devices WHERE is_active = TRUE")
+            total_devices = cur.fetchone()['count'] or 0
+        except:
+            total_devices = 0
+            
+        try:
+            cur.execute("SELECT COUNT(DISTINCT user_id) as count FROM user_devices WHERE is_active = TRUE")
+            users_with_devices = cur.fetchone()['count'] or 0
+        except:
+            users_with_devices = 0
+        
+        stats = {
+            "total": len(rows),
+            "active": active,
+            "expired": expired,
+            "revoked": revoked,
+            "total_users": total_users,
+            "confirmed_users": confirmed_users,
+            "total_balance": total_balance,
+            "total_revenue": total_revenue,
+            "total_devices": total_devices,
+            "users_with_devices": users_with_devices
+        }
+        
+    except Exception as e:
+        print(f"[INFO] e={e}")
+        rows = []
+        stats = {
+            "total": 0, "active": 0, "expired": 0, "revoked": 0,
+            "total_users": 0, "confirmed_users": 0,
+            "total_balance": 0, "total_revenue": 0,
+            "total_devices": 0, "users_with_devices": 0
+        }
+        
+    finally:
+        cur.close()
+        con.close()
+    
+    return templates.TemplateResponse(
+        "admin_dashboard.html",
+        {
+            "request": request,
+            "rows": rows,
+            "stats": stats,
+            "now": now_ts,
+            "active_tab": "dashboard"
+        }
+    )
+
+# =========================
+# ---
+# =========================
+
+class DepositRequest(BaseModel):
+    user_id: int
+    amount: float
+    method: str
+    note: str = ""
+
+@app.post("/admin/api/deposit")
+def admin_deposit(request: Request, data: DepositRequest):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    con = db()
+    cur = con.cursor()
+    
+    try:
+        cur.execute("BEGIN")
+        
+        cur.execute("SELECT license_key FROM users WHERE id = %s", (data.user_id,))
+        user = cur.fetchone()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        license_key = user[0]
+        
+        cur.execute("""
+            UPDATE users 
+            SET balance = balance + %s 
+            WHERE id = %s
+            RETURNING balance
+        """, (data.amount, data.user_id))
+        
+        new_balance = cur.fetchone()[0]
+        
+        cur.execute("""
+            INSERT INTO transactions 
+            (user_id, license_key, amount, type, description, metadata)
+            VALUES (%s, %s, %s, 'deposit', %s, %s)
+        """, (
+            data.user_id, 
+            license_key, 
+            data.amount, 
+            f"Admin deposit: {data.note}" if data.note else "Admin deposit",
+            json.dumps({"method": data.method, "admin": True})
+        ))
+        
+        con.commit()
+        
+        return {"success": True, "new_balance": float(new_balance)}
+        
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+class ResetPasswordRequest(BaseModel):
+    user_id: int
+    email: str
+
+@app.post("/admin/api/reset-password")
+def admin_reset_password(request: Request, data: ResetPasswordRequest):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    reset_token = generate_token()
+    expires_at = now() + timedelta(hours=24)
+    
+    con = db()
+    cur = con.cursor()
+    
+    try:
+        cur.execute("""
+            INSERT INTO password_resets (user_id, token, expires_at)
+            VALUES (%s, %s, %s)
+        """, (data.user_id, reset_token, expires_at))
+        con.commit()
+        
+        send_password_reset_email(data.email, reset_token)
+        
+        return {"success": True}
+        
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+class UnlinkDevicesRequest(BaseModel):
+    user_id: int
+
+@app.post("/admin/api/unlink-devices")
+def admin_unlink_devices(request: Request, data: UnlinkDevicesRequest):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    con = db()
+    cur = con.cursor()
+    
+    try:
+        cur.execute("""
+            SELECT id FROM user_devices 
+            WHERE user_id = %s AND is_active = TRUE
+        """, (data.user_id,))
+        devices = cur.fetchall()
+        
+        count = len(devices)
+        
+        cur.execute("""
+            UPDATE user_devices 
+            SET is_active = FALSE 
+            WHERE user_id = %s
+        """, (data.user_id,))
+        
+        cur.execute("""
+            DELETE FROM user_sessions 
+            WHERE user_id = %s
+        """, (data.user_id,))
+        
+        con.commit()
+        
+        return {"success": True, "count": count}
+        
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+class UnlinkSingleDeviceRequest(BaseModel):
+    device_id: int
+
+@app.post("/admin/api/unlink-device")
+def admin_unlink_device(request: Request, data: UnlinkSingleDeviceRequest):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    con = db()
+    cur = con.cursor()
+    
+    try:
+        cur.execute("""
+            UPDATE user_devices 
+            SET is_active = FALSE 
+            WHERE id = %s
+        """, (data.device_id,))
+        
+        cur.execute("""
+            DELETE FROM user_sessions 
+            WHERE device_id = %s
+        """, (data.device_id,))
+        
+        con.commit()
+        
+        return {"success": True}
+        
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+class UnlinkAccountRequest(BaseModel):
+    email: str
+    key: str
+
+@app.post("/admin/api/unlink-account")
+def admin_unlink_account(request: Request, data: UnlinkAccountRequest):
+    """Отвязать аккаунт (email) от лицензионного ключа."""
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        # Verify this user actually has this key
+        cur.execute("SELECT id FROM users WHERE email=%s AND license_key=%s", (data.email, data.key))
+        user = cur.fetchone()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found or key mismatch")
+        user_id = user[0]
+
+        # Remove all sessions
+        cur.execute("DELETE FROM user_sessions WHERE user_id=%s", (user_id,))
+        # Deactivate all devices
+        cur.execute("UPDATE user_devices SET is_active=FALSE WHERE user_id=%s", (user_id,))
+        # Unlink license key from user
+        cur.execute("UPDATE users SET license_key=NULL WHERE id=%s", (user_id,))
+        con.commit()
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+@app.post("/admin/api/unlink-account-form")
+def admin_unlink_account_form(request: Request, key: str = Form(...), email: str = Form(...)):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("SELECT id FROM users WHERE email=%s AND license_key=%s", (email, key))
+        user = cur.fetchone()
+        if user:
+            user_id = user[0]
+            cur.execute("DELETE FROM user_sessions WHERE user_id=%s", (user_id,))
+            cur.execute("UPDATE user_devices SET is_active=FALSE WHERE user_id=%s", (user_id,))
+            cur.execute("UPDATE users SET license_key=NULL WHERE id=%s", (user_id,))
+            con.commit()
+    except Exception as e:
+        con.rollback()
+    finally:
+        cur.close()
+        con.close()
+    return RedirectResponse("/admin/licenses", status_code=303)
+
+@app.post("/admin/api/set-devices")
+def admin_set_devices(request: Request, key: str = Form(...), max_devices: int = Form(...)):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("UPDATE licenses SET max_devices=%s WHERE key=%s", (max_devices, key))
+        con.commit()
+    except Exception as e:
+        con.rollback()
+    finally:
+        cur.close()
+        con.close()
+    return RedirectResponse("/admin/licenses", status_code=303)
+
+@app.post("/admin/api/set-accounts")
+def admin_set_accounts(request: Request, key: str = Form(...), max_accounts: int = Form(...)):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("UPDATE licenses SET max_accounts=%s WHERE key=%s", (max_accounts, key))
+        con.commit()
+    except Exception as e:
+        con.rollback()
+    finally:
+        cur.close()
+        con.close()
+    return RedirectResponse("/admin/licenses", status_code=303)
+
+class UpdateLimitRequest(BaseModel):
+    key: str
+    max_devices: int
+
+@app.post("/admin/api/update-limit")
+def admin_update_limit(request: Request, data: UpdateLimitRequest):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    con = db()
+    cur = con.cursor()
+    
+    try:
+        cur.execute("""
+            UPDATE licenses 
+            SET max_devices = %s 
+            WHERE key = %s
+        """, (data.max_devices, data.key))
+        con.commit()
+        
+        return {"success": True}
+        
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+# =========================
+# ---
+# =========================
+
+class UpdateAccountsRequest(BaseModel):
+    key: str
+    max_accounts: int
+
+@app.post("/admin/api/update-accounts")
+def admin_update_accounts(request: Request, data: UpdateAccountsRequest):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("""
+            UPDATE licenses 
+            SET max_accounts = %s 
+            WHERE key = %s
+        """, (data.max_accounts, data.key))
+        con.commit()
+        return {"success": True}
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+# =========================
+# ---
+# =========================
+
+
+
+
+# --- delete user ---
+class DeleteUserReq(BaseModel):
+    user_id: int
+
+@app.post("/admin/api/delete-user")
+def admin_delete_user(request: Request, data: DeleteUserReq):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        # Manually nullify FK in tables without CASCADE to avoid constraint errors
+        cur.execute("UPDATE transactions SET user_id = NULL WHERE user_id = %s", (data.user_id,))
+        cur.execute("UPDATE usage_logs SET user_id = NULL WHERE user_id = %s", (data.user_id,))
+        cur.execute("UPDATE payment_requests SET user_id = NULL WHERE user_id = %s", (data.user_id,))
+        # DELETE user - cascades to user_devices, user_sessions, email_confirmations, password_resets
+        cur.execute("DELETE FROM users WHERE id = %s RETURNING email", (data.user_id,))
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="User not found")
+        con.commit()
+        return {"success": True, "deleted_email": row[0]}
+    except HTTPException:
+        con.rollback()
+        raise
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
+
+# =========================
+# USER DETAIL PAGE
+# =========================
+@app.get("/admin/users/{user_id}", response_class=HTMLResponse)
+def admin_user_detail(user_id: int, request: Request):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT u.*,
+                   l.expires_at AS license_expires,
+                   l.revoked    AS license_revoked,
+                   l.plan       AS license_plan,
+                   l.max_devices
+            FROM users u
+            LEFT JOIN licenses l ON u.license_key = l.key
+            WHERE u.id = %s
+        """, (user_id,))
+        user = cur.fetchone()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        cur.execute("""
+            SELECT * FROM user_devices WHERE user_id = %s ORDER BY last_login DESC
+        """, (user_id,))
+        devices = cur.fetchall()
+
+        cur.execute("""
+            SELECT * FROM transactions WHERE user_id = %s ORDER BY created_at DESC LIMIT 50
+        """, (user_id,))
+        transactions = cur.fetchall()
+    finally:
+        cur.close()
+        con.close()
+
+    return templates.TemplateResponse("admin_user_detail.html", {
+        "request": request,
+        "user": user,
+        "devices": devices,
+        "transactions": transactions,
+        "now": now(),
+        "active_tab": "users",
+    })
+
+
+# --- update email ---
+class UpdateEmailReq(BaseModel):
+    user_id: int
+    email: str
+
+@app.post("/admin/api/update-email")
+def admin_update_email(request: Request, data: UpdateEmailReq):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("UPDATE users SET email = %s WHERE id = %s", (data.email.strip().lower(), data.user_id))  # ✅ normalize
+        con.commit()
+        return {"success": True}
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
+
+
+# --- update telegram ---
+class UpdateTelegramReq(BaseModel):
+    user_id: int
+    telegram: str
+
+@app.post("/admin/api/update-telegram")
+def admin_update_telegram(request: Request, data: UpdateTelegramReq):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("UPDATE users SET telegram = %s WHERE id = %s", (data.telegram, data.user_id))
+        con.commit()
+        return {"success": True}
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
+
+
+# --- confirm email ---
+class ConfirmEmailReq(BaseModel):
+    user_id: int
+
+@app.post("/admin/api/confirm-email")
+def admin_confirm_email(request: Request, data: ConfirmEmailReq):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("""
+            UPDATE users SET email_confirmed = TRUE, email_confirmed_at = %s WHERE id = %s
+        """, (now(), data.user_id))
+        con.commit()
+        return {"success": True}
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
+
+
+# --- extend license ---
+class ExtendLicenseReq(BaseModel):
+    user_id: int
+    days: int
+
+@app.post("/admin/api/extend-license")
+def admin_extend_license(request: Request, data: ExtendLicenseReq):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("SELECT license_key FROM users WHERE id = %s", (data.user_id,))
+        row = cur.fetchone()
+        if not row or not row[0]:
+            raise HTTPException(status_code=404, detail="License not found")
+        key = row[0]
+        cur.execute("""
+            UPDATE licenses
+            SET expires_at = GREATEST(expires_at, NOW()) + INTERVAL '%s days'
+            WHERE key = %s
+        """, (data.days, key))
+        con.commit()
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
+
+
+# --- revoke/unrevoke license ---
+class RevokeLicenseReq(BaseModel):
+    user_id: int
+    revoked: bool
+
+@app.post("/admin/api/revoke-license")
+def admin_revoke_license(request: Request, data: RevokeLicenseReq):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("SELECT license_key FROM users WHERE id = %s", (data.user_id,))
+        row = cur.fetchone()
+        if not row or not row[0]:
+            raise HTTPException(status_code=404, detail="License not found")
+        key = row[0]
+        cur.execute("UPDATE licenses SET revoked = %s WHERE key = %s", (data.revoked, key))
+        con.commit()
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
+
+
+# --- add transaction (generic) ---
+class AddTransactionReq(BaseModel):
+    user_id: int
+    amount: float
+    type: str
+    description: str = ""
+
+@app.post("/admin/api/add-transaction")
+def admin_add_transaction(request: Request, data: AddTransactionReq):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("SELECT license_key FROM users WHERE id = %s", (data.user_id,))
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="User not found")
+        key = row[0]
+        cur.execute("""
+            UPDATE users SET balance = balance + %s WHERE id = %s RETURNING balance
+        """, (data.amount, data.user_id))
+        new_balance = float(cur.fetchone()[0])
+        cur.execute("""
+            INSERT INTO transactions (user_id, license_key, amount, type, description)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (data.user_id, key, data.amount, data.type, data.description or data.type))
+        con.commit()
+        return {"success": True, "new_balance": new_balance}
+    except HTTPException:
+        raise
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
+
+@app.get("/admin/licenses", response_class=HTMLResponse)
+def admin_licenses(request: Request):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+    
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    
+    try:
+        cur.execute("""
+            SELECT 
+                l.*,
+                COUNT(u.id) as account_count,
+                MIN(u.id) as user_id,
+                STRING_AGG(u.email, ', ' ORDER BY u.id) as user_email
+            FROM licenses l
+            LEFT JOIN users u ON u.license_key = l.key
+            GROUP BY l.key, l.hwid, l.expires_at, l.revoked, l.note, l.plan, 
+                     l.max_devices, l.max_accounts, l.created_at, l.updated_at,
+                     l.last_check_at, l.check_count
+            ORDER BY l.updated_at DESC LIMIT 500
+        """)
+        rows = cur.fetchall()
+    except:
+        rows = []
+    finally:
+        cur.close()
+        con.close()
+    
+    return templates.TemplateResponse(
+        "admin_licenses.html",
+        {
+            "request": request,
+            "rows": rows,
+            "now": now(),
+            "active_tab": "licenses",
+            "admin_token": ADMIN_TOKEN,
+        }
+    )
+
+# =========================
+# ---
+# =========================
+@app.get("/admin/users", response_class=HTMLResponse)
+def admin_users(request: Request):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+    
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    
+    try:
+        cur.execute("""
+            SELECT u.*, l.plan, l.expires_at as license_expires 
+            FROM users u
+            LEFT JOIN licenses l ON u.license_key = l.key
+            ORDER BY u.created_at DESC
+            LIMIT 500
+        """)
+        users = cur.fetchall()
+    except:
+        users = []
+    finally:
+        cur.close()
+        con.close()
+    
+    return templates.TemplateResponse(
+        "admin_users.html",
+        {
+            "request": request,
+            "users": users,
+            "now": now(),
+            "active_tab": "users"
+        }
+    )
+
+@app.get("/admin/users/{user_id}", response_class=HTMLResponse)
+def admin_user_detail(user_id: int, request: Request):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    try:
+        # User + license info
+        cur.execute("""
+            SELECT u.*, l.plan, l.expires_at as license_expires, l.revoked as license_revoked,
+                   l.max_devices, l.check_count
+            FROM users u
+            LEFT JOIN licenses l ON u.license_key = l.key
+            WHERE u.id = %s
+        """, (user_id,))
+        user = cur.fetchone()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Devices
+        cur.execute("""
+            SELECT * FROM user_devices WHERE user_id = %s ORDER BY last_login DESC
+        """, (user_id,))
+        devices = cur.fetchall()
+
+        # Transactions
+        cur.execute("""
+            SELECT * FROM transactions WHERE user_id = %s ORDER BY created_at DESC LIMIT 100
+        """, (user_id,))
+        transactions = cur.fetchall()
+
+        # Days left on license
+        days = None
+        if user.get("license_expires"):
+            delta = user["license_expires"] - now()
+            days = max(0, delta.days)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+    return templates.TemplateResponse(
+        "admin_user_detail.html",
+        {
+            "request": request,
+            "user": user,
+            "devices": devices,
+            "transactions": transactions,
+            "days": days,
+            "now": now(),
+            "active_tab": "users"
+        }
+    )
+
+# =========================
+# ---
+# =========================
+@app.get("/admin/devices", response_class=HTMLResponse)
+def admin_devices(request: Request):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+    
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    
+    try:
+        cur.execute("""
+            SELECT d.*, u.email, u.license_key
+            FROM user_devices d
+            JOIN users u ON d.user_id = u.id
+            WHERE d.is_active = TRUE
+            ORDER BY d.last_login DESC
+            LIMIT 500
+        """)
+        devices = cur.fetchall()
+    except:
+        devices = []
+    finally:
+        cur.close()
+        con.close()
+    
+    return templates.TemplateResponse(
+        "admin_devices.html",
+        {
+            "request": request,
+            "devices": devices,
+            "now": now(),
+            "active_tab": "devices"
+        }
+    )
+
+# =========================
+# ---
+# =========================
+@app.get("/admin/transactions", response_class=HTMLResponse)
+def admin_transactions(request: Request):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+    
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    
+    try:
+        cur.execute("""
+            SELECT t.*, u.email
+            FROM transactions t
+            JOIN users u ON t.user_id = u.id
+            ORDER BY t.created_at DESC
+            LIMIT 500
+        """)
+        transactions = cur.fetchall()
+    except:
+        transactions = []
+    finally:
+        cur.close()
+        con.close()
+    
+    return templates.TemplateResponse(
+        "admin_transactions.html",
+        {
+            "request": request,
+            "transactions": transactions,
+            "now": now(),
+            "active_tab": "transactions"
+        }
+    )
+
+# =========================
+# ---
+# =========================
+@app.get("/admin/settings", response_class=HTMLResponse)
+def admin_settings(request: Request):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+    
+    return templates.TemplateResponse(
+        "admin_settings.html",
+        {
+            "request": request,
+            "now": now(),
+            "active_tab": "settings"
+        }
+    )
+
+# =========================
+# ---
+# =========================
+class DeviceReq(BaseModel):
+    session_token: str
+    device_fingerprint: str
+
+@app.post("/api/devices/list")
+def list_devices(req: DeviceReq):
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    
+    try:
+        cur.execute("""
+            SELECT d.* 
+            FROM user_devices d
+            JOIN user_sessions s ON d.user_id = s.user_id
+            WHERE s.session_token = %s AND d.is_active = TRUE
+            ORDER BY d.last_login DESC
+        """, (req.session_token,))
+        
+        devices = cur.fetchall()
+        
+        return {
+            "devices": [
+                {
+                    "id": d['id'],
+                    "name": d['device_name'],
+                    "fingerprint": d['device_fingerprint'],
+                    "last_login": d['last_login'].isoformat() if d['last_login'] else None,
+                    "is_current": d['device_fingerprint'] == req.device_fingerprint
+                }
+                for d in devices
+            ]
+        }
+        
+    finally:
+        cur.close()
+        con.close()
+
+@app.post("/api/devices/rename")
+def rename_device(device_id: int, new_name: str, session_token: str):
+    con = db()
+    cur = con.cursor()
+    
+    try:
+        cur.execute("""
+            UPDATE user_devices 
+            SET device_name = %s
+            WHERE id = %s AND user_id = (
+                SELECT user_id FROM user_sessions WHERE session_token = %s
+            )
+        """, (new_name, device_id, session_token))
+        
+        con.commit()
+        return {"success": True}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+@app.post("/api/devices/remove")
+def remove_device(device_id: int, session_token: str):
+    con = db()
+    cur = con.cursor()
+    
+    try:
+        cur.execute("""
+            SELECT d.id 
+            FROM user_devices d
+            JOIN user_sessions s ON d.user_id = s.user_id
+            WHERE s.session_token = %s AND d.id = %s AND d.device_fingerprint != (
+                SELECT device_fingerprint FROM user_devices WHERE id = (
+                    SELECT device_id FROM user_sessions WHERE session_token = %s
+                )
+            )
+        """, (session_token, device_id, session_token))
+        
+        if not cur.fetchone():
+            raise HTTPException(status_code=403, detail="cannot_remove_current_device")
+        
+        cur.execute("""
+            UPDATE user_devices 
+            SET is_active = FALSE
+            WHERE id = %s
+        """, (device_id,))
+        
+        cur.execute("""
+            DELETE FROM user_sessions 
+            WHERE device_id = %s
+        """, (device_id,))
+        
+        con.commit()
+        return {"success": True}
+        
+    except HTTPException:
+        con.rollback()
+        raise
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+# =========================
+# ---
+# =========================
+class BalanceReq(BaseModel):
+    session_token: str
+
+@app.post("/api/balance/get")
+def get_balance(req: BalanceReq):
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    
+    try:
+        cur.execute("""
+            SELECT u.balance, u.total_spent, u.currency
+            FROM users u
+            JOIN user_sessions s ON u.id = s.user_id
+            WHERE s.session_token = %s
+        """, (req.session_token,))
+        
+        user = cur.fetchone()
+        if not user:
+            raise HTTPException(status_code=401, detail="invalid_session")
+        
+        return {
+            "balance": float(user['balance']),
+            "total_spent": float(user['total_spent']),
+            "currency": user['currency']
+        }
+        
+    finally:
+        cur.close()
+        con.close()
+
+class EstimateReq(BaseModel):
+    session_token: str
+    operation: str
+    units: int
+
+@app.post("/api/balance/estimate")
+def estimate_cost(req: EstimateReq):
+    con = db()
+    cur = con.cursor()
+    
+    try:
+        cur.execute("""
+            SELECT final_price, min_units 
+            FROM pricing 
+            WHERE operation_type = %s
+        """, (req.operation,))
+        
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="operation_not_found")
+        
+        final_price, min_units = row
+        units = max(req.units, min_units)
+        total_cost = final_price * units
+        
+        cur.execute("""
+            SELECT u.balance 
+            FROM users u
+            JOIN user_sessions s ON u.id = s.user_id
+            WHERE s.session_token = %s
+        """, (req.session_token,))
+        
+        balance = cur.fetchone()[0]
+        
+        return {
+            "total_cost": float(total_cost),
+            "current_balance": float(balance),
+            "sufficient": balance >= total_cost
+        }
+        
+    finally:
+        cur.close()
+        con.close()
+
+class ChargeReq(BaseModel):
+    session_token: str
+    operation: str
+    units: int
+    description: str = ""
+
+# ── Transaction history for BalanceDialog ──────────────────────────────────
+class TransactionsReq(BaseModel):
+    session_token: str
+    limit: int = 100
+
+@app.post("/api/balance/transactions")
+def get_balance_transactions(req: TransactionsReq):
+    """Return transaction history for the logged-in user (used by Balance AI dialog)."""
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT u.id AS user_id
+            FROM users u
+            JOIN user_sessions s ON u.id = s.user_id
+            WHERE s.session_token = %s AND s.expires_at > NOW()
+        """, (req.session_token,))
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=401, detail="invalid_session")
+
+        limit = max(1, min(int(req.limit), 500))
+        cur.execute("""
+            SELECT id, amount, type, description, created_at, metadata
+            FROM transactions
+            WHERE user_id = %s
+            ORDER BY created_at DESC
+            LIMIT %s
+        """, (row["user_id"], limit))
+        rows = cur.fetchall()
+
+        result = []
+        for r in rows:
+            result.append({
+                "id":          r["id"],
+                "amount":      float(r["amount"]),
+                "type":        r["type"],
+                "description": r["description"] or "",
+                "created_at":  r["created_at"].isoformat() if r["created_at"] else None,
+                "metadata":    r["metadata"] or {},
+            })
+        return {"transactions": result}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+@app.post("/api/balance/charge")
+def charge(req: ChargeReq):
+    con = db()
+    cur = con.cursor()
+    
+    try:
+        cur.execute("BEGIN")
+        
+        cur.execute("""
+            SELECT final_price, min_units 
+            FROM pricing 
+            WHERE operation_type = %s
+        """, (req.operation,))
+        
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="operation_not_found")
+        
+        final_price, min_units = row
+        units = max(req.units, min_units)
+        total_cost = final_price * units
+        
+        cur.execute("""
+            SELECT u.id, u.balance, u.license_key
+            FROM users u
+            JOIN user_sessions s ON u.id = s.user_id
+            WHERE s.session_token = %s
+              AND s.expires_at > NOW()
+            FOR UPDATE
+        """, (req.session_token,))
+        
+        user = cur.fetchone()
+        if not user:
+            raise HTTPException(status_code=401, detail="invalid_session")
+        
+        user_id, balance, license_key = user
+        
+        if balance < total_cost:
+            raise HTTPException(status_code=403, detail="insufficient_funds")
+        
+        cur.execute("""
+            UPDATE users 
+            SET balance = balance - %s, total_spent = total_spent + %s
+            WHERE id = %s
+            RETURNING balance
+        """, (total_cost, total_cost, user_id))
+        
+        new_balance = cur.fetchone()[0]
+        
+        cur.execute("""
+            INSERT INTO usage_logs 
+            (user_id, license_key, operation_type, units_used, cost, details)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (user_id, license_key, req.operation, units, total_cost,
+              json.dumps({"description": req.description})))
+
+        # Write to transactions so it appears in admin history and AI balance widget
+        op_labels = {
+            "ai_parse":    "AI — Telegram Parser",
+            "ai_comments": "AI — Commentators Parser",
+            "ai_leads":    "AI — TG Leads",
+        }
+        desc_label = req.description or op_labels.get(req.operation, f"AI — {req.operation}")
+        cur.execute("""
+            INSERT INTO transactions (user_id, license_key, amount, type, description, metadata)
+            VALUES (%s, %s, %s, 'charge', %s, %s)
+        """, (user_id, license_key, -total_cost, desc_label,
+              json.dumps({"operation": req.operation, "units": units, "unit_price": float(final_price)})))
+
+        cur.execute("COMMIT")
+
+        return {
+            "success": True,
+            "charged": float(total_cost),
+            "new_balance": float(new_balance)
+        }
+        
+    except HTTPException:
+        cur.execute("ROLLBACK")
+        raise
+    except Exception as e:
+        cur.execute("ROLLBACK")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+# =========================
+# AI API
+# =========================
+class AIItem(BaseModel):
+    id: str
+    text: str
+
+class AIScoreReq(BaseModel):
+    session_token: str
+    prompt: str
+    items: List[AIItem]
+    min_score: int = 70
+    lang: str = "ru"
+
+def _extract_json(text: str) -> Dict[str, Any]:
+    text = (text or "").strip()
+    try:
+        return json.loads(text)
+    except Exception:
+        pass
+    m = re.search(r"\{.*\}", text, flags=re.S)
+    if not m:
+        raise ValueError("No JSON object found")
+    return json.loads(m.group(0))
+
+@app.post("/api/ai/score")
+def ai_score(req: AIScoreReq) -> Dict[str, Any]:
+    try:
+        # Require active session to use AI endpoint (prevents free OpenAI usage without balance)
+        con = db()
+        cur = con.cursor()
+        try:
+            cur.execute(
+                "SELECT 1 FROM user_sessions WHERE session_token = %s AND expires_at > NOW()",
+                (req.session_token,)
+            )
+            if not cur.fetchone():
+                raise HTTPException(status_code=401, detail="invalid_session")
+        finally:
+            try:
+                cur.close()
+                con.close()
+            except Exception:
+                pass
+
+        client = get_openai_client()
+        items = [{"id": str(it.id), "text": (it.text or "")[:1200]} for it in req.items]
+
+        system_prompt = (
+            "You analyze Telegram user profiles to find matches for a search query.\n"
+            "I will give you a prompt (who we are looking for) and a list of user data objects.\n"
+            "Return ONLY valid JSON, no markdown, no explanation, strictly in this format:\n"
+            '{ "results": [ {"id":"...","score":0-100,"pass":true/false,"reason":"short reason in Russian 5-12 words","flags":["bot_like|spam_like|toxic|low_quality"...]}, ... ] }\n'
+            "Rule: pass=true only if score >= min_score AND no bot_like/spam_like/toxic flags.\n"
+            "Reason field must be in Russian."
+        )
+
+        payload = {
+            "prompt": req.prompt,
+            "min_score": req.min_score,
+            "items": items
+        }
+
+        resp = client.chat.completions.create(
+            model="gpt-4.1-mini",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": json.dumps(payload, ensure_ascii=False)}
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.1,
+        )
+
+        out_text = resp.choices[0].message.content or ""
+        data = _extract_json(out_text)
+
+        if not isinstance(data, dict) or "results" not in data:
+            raise ValueError(f"bad_ai_response: {out_text[:200]}")
+
+        return data
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI error: {type(e).__name__}: {e}")
+
+# =========================
+# AI CHAT — conversational AI for TG Leads full-AI mode
+# =========================
+class AIChatMessage(BaseModel):
+    role: str   # "user" | "assistant"
+    text: str
+
+class AIChatReq(BaseModel):
+    session_token: str
+    goal: str = ""
+    system_context: str = ""
+    history: List[AIChatMessage] = []
+    message: str
+    ai_score_threshold: int = 60
+    username: str = ""
+    project_name: str = ""
+    model: str = "gpt-4.1-mini"
+
+# Token prices per 1M tokens (USD) — x2 markup applied later
+_MODEL_PRICES = {
+    "gpt-4.1-mini": {"input": 0.40 / 1_000_000, "output": 1.60 / 1_000_000},
+    "gpt-4.1":      {"input": 2.00 / 1_000_000, "output": 8.00 / 1_000_000},
+    "gpt-5":        {"input": 1.75 / 1_000_000, "output": 14.0 / 1_000_000},
+}
+_DEFAULT_MODEL = "gpt-4.1-mini"
+# Legacy aliases
+_GPT41_MINI_INPUT_PER_TOKEN  = 0.40 / 1_000_000
+_GPT41_MINI_OUTPUT_PER_TOKEN = 1.60 / 1_000_000
+
+def _get_model_prices(model: str) -> dict:
+    return _MODEL_PRICES.get(model, _MODEL_PRICES[_DEFAULT_MODEL])
+
+def _validate_model(model: str) -> str:
+    """Validate and return safe model name."""
+    allowed = set(_MODEL_PRICES.keys())
+    return model if model in allowed else _DEFAULT_MODEL
+
+@app.post("/api/ai/chat")
+def ai_chat(req: AIChatReq) -> Dict[str, Any]:
+    """
+    Conversational AI endpoint for TG Leads full-AI mode.
+    Charges user balance based on real token usage and records transaction.
+    Response: {"reply": str, "intent": "hot|cold|neutral", "score": 0-100,
+               "goal_achieved": bool, "charged": float,
+               "prompt_tokens": int, "completion_tokens": int}
+    """
+    try:
+        # ── 1. Validate session & get user ────────────────────────────────
+        con = db()
+        cur = con.cursor(cursor_factory=RealDictCursor)
+        try:
+            cur.execute("""
+                SELECT u.id, u.balance, u.license_key
+                FROM users u
+                JOIN user_sessions s ON u.id = s.user_id
+                WHERE s.session_token = %s AND s.expires_at > NOW()
+                FOR UPDATE
+            """, (req.session_token,))
+            user = cur.fetchone()
+            if not user:
+                raise HTTPException(status_code=401, detail="invalid_session")
+            user_id    = user["id"]
+            balance    = float(user["balance"] or 0)
+            license_key = user["license_key"]
+
+            if balance <= 0:
+                raise HTTPException(status_code=403, detail="insufficient_funds")
+        finally:
+            try:
+                cur.close()
+                con.close()
+            except Exception:
+                pass
+
+        # ── 2. Call OpenAI ────────────────────────────────────────────────
+        client = get_openai_client()
+
+        system_parts = [
+            "Ты профессиональный менеджер по продажам в Telegram.",
+            f"Цель: {req.goal}" if req.goal else "Цель: продать продукт или услугу.",
+        ]
+        if req.system_context:
+            system_parts.append(f"Контекст: {req.system_context}")
+        system_parts += [
+            "",
+            "Правила:",
+            "1. Веди живой, естественный диалог на русском языке.",
+            "2. Отвечай кратко и по делу — не пиши длинных монологов.",
+            "3. Выявляй потребности и двигай лида к цели.",
+            "4. Когда цель достигнута (договорились о сделке/встрече/демо) — сообщи об этом.",
+            "5. Если лид явно отказывается и не идёт на контакт — сообщи об этом.",
+            "",
+            "ВАЖНО: Отвечай ТОЛЬКО валидным JSON (без markdown-блоков), строго в формате:",
+            '{"reply": "<текст ответа лиду>", "intent": "hot|cold|neutral", '
+            '"score": <0-100>, "goal_achieved": <true|false>}',
+            "intent hot = лид очень заинтересован / готов к сделке",
+            "intent cold = лид отказывается, не заинтересован",
+            "intent neutral = диалог продолжается",
+            "goal_achieved = true только когда цель полностью достигнута",
+        ]
+        system_prompt = "\n".join(system_parts)
+
+        messages = [{"role": "system", "content": system_prompt}]
+        for h in (req.history or []):
+            role = "user" if h.role == "user" else "assistant"
+            messages.append({"role": role, "content": (h.text or "")[:1000]})
+        messages.append({"role": "user", "content": (req.message or "")[:1000]})
+
+        _model = _validate_model(getattr(req, "model", _DEFAULT_MODEL))
+        _prices = _get_model_prices(_model)
+        resp = client.chat.completions.create(
+            model=_model,
+            messages=messages,
+            response_format={"type": "json_object"},
+            temperature=0.7,
+            max_tokens=500,
+        )
+
+        prompt_tokens     = resp.usage.prompt_tokens     if resp.usage else 0
+        completion_tokens = resp.usage.completion_tokens if resp.usage else 0
+        total_cost = (
+            prompt_tokens     * _prices["input"] +
+            completion_tokens * _prices["output"]
+        )
+        # Apply 2x markup
+        total_cost = round(total_cost * 2, 8)
+
+        out_text = resp.choices[0].message.content or ""
+        try:
+            data = _extract_json(out_text)
+        except Exception:
+            data = {}
+
+        # ── 3. Charge balance & record transaction ────────────────────────
+        charged = 0.0
+        new_balance = balance
+        if total_cost > 0:
+            con2 = db()
+            cur2 = con2.cursor(cursor_factory=RealDictCursor)
+            try:
+                cur2.execute("BEGIN")
+
+                cur2.execute("""
+                    UPDATE users
+                    SET balance = GREATEST(0, balance - %s),
+                        total_spent = total_spent + %s
+                    WHERE id = %s
+                    RETURNING balance
+                """, (total_cost, total_cost, user_id))
+                row = cur2.fetchone()
+                new_balance = float(row["balance"]) if row else max(0.0, balance - total_cost)
+                charged = total_cost
+
+                # Usage log
+                cur2.execute("""
+                    INSERT INTO usage_logs
+                    (user_id, license_key, operation_type, units_used, cost, details)
+                    VALUES (%s, %s, 'ai_leads', %s, %s, %s)
+                """, (
+                    user_id, license_key,
+                    prompt_tokens + completion_tokens,
+                    total_cost,
+                    json.dumps({
+                        "model": _model,
+                        "prompt_tokens": prompt_tokens,
+                        "completion_tokens": completion_tokens,
+                        "username": req.username,
+                        "project": req.project_name,
+                    })
+                ))
+
+                # Transaction (visible in admin + Balance AI dialog)
+                uname_label = f"@{req.username}" if req.username else "lead"
+                proj_label  = f" [{req.project_name}]" if req.project_name else ""
+                desc = f"AI — TG Leads{proj_label}: {uname_label} [{_model}]"
+                cur2.execute("""
+                    INSERT INTO transactions
+                    (user_id, license_key, amount, type, description, metadata)
+                    VALUES (%s, %s, %s, 'charge', %s, %s)
+                """, (
+                    user_id, license_key, -total_cost, desc,
+                    json.dumps({
+                        "operation": "ai_leads",
+                        "model": _model,
+                        "prompt_tokens": prompt_tokens,
+                        "completion_tokens": completion_tokens,
+                        "username": req.username,
+                        "project": req.project_name,
+                    })
+                ))
+
+                cur2.execute("COMMIT")
+            except Exception as charge_err:
+                try: cur2.execute("ROLLBACK")
+                except Exception: pass
+                print(f"[ERROR] ai_chat charge failed: {charge_err}")
+            finally:
+                try:
+                    cur2.close()
+                    con2.close()
+                except Exception:
+                    pass
+
+        return {
+            "reply":             str(data.get("reply") or ""),
+            "intent":            str(data.get("intent") or "neutral").lower(),
+            "score":             int(data.get("score") or 50),
+            "goal_achieved":     bool(data.get("goal_achieved", False)),
+            "charged":           charged,
+            "new_balance":       new_balance,
+            "prompt_tokens":     prompt_tokens,
+            "completion_tokens": completion_tokens,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI chat error: {type(e).__name__}: {e}")
+
+# =========================
+# ---
+# =========================
+@app.post("/admin/upsert")
+def upsert_license(
+    request: Request,
+    key: str = Form(...),
+    hwid: str = Form(""),
+    days: int = Form(...),
+    note: str = Form(""),
+    max_devices: int = Form(1),
+    max_accounts: int = Form(1),
+    plan: str = Form("custom"),
+):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+
+    expires = now() + timedelta(days=int(days))
+
+    con = db()
+    cur = con.cursor()
+    
+    hwid_value = hwid.strip() if hwid.strip() else "temp"
+    
+    cur.execute("""
+        INSERT INTO licenses(key, hwid, expires_at, revoked, note, max_devices, max_accounts, plan, updated_at)
+        VALUES (%s,%s,%s,FALSE,%s,%s,%s,%s,NOW())
+        ON CONFLICT (key) DO UPDATE SET
+            hwid=EXCLUDED.hwid,
+            expires_at=EXCLUDED.expires_at,
+            revoked=FALSE,
+            note=EXCLUDED.note,
+            max_devices=EXCLUDED.max_devices,
+            max_accounts=EXCLUDED.max_accounts,
+            plan=EXCLUDED.plan,
+            updated_at=NOW()
+    """, (key.strip(), hwid_value, expires, note.strip(), max_devices, max_accounts, plan))
+    con.commit()
+    cur.close()
+    con.close()
+
+    return RedirectResponse("/admin/licenses", status_code=303)
+
+@app.post("/admin/add_days")
+def add_days(request: Request, key: str = Form(...), add: int = Form(...)):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+
+    con = db()
+    cur = con.cursor()
+    cur.execute("""
+        UPDATE licenses
+        SET expires_at = expires_at + (%s || ' days')::interval,
+            revoked = FALSE,
+            updated_at = NOW()
+        WHERE key=%s
+    """, (add, key))
+    con.commit()
+    cur.close()
+    con.close()
+
+    return RedirectResponse("/admin/licenses", status_code=303)
+
+@app.post("/admin/set_expires")
+def set_expires(request: Request, key: str = Form(...), expires_date: str = Form(...)):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+    try:
+        from datetime import datetime as _dt
+        new_date = _dt.strptime(expires_date.strip(), "%Y-%m-%d")
+    except ValueError:
+        return RedirectResponse("/admin/licenses?err=Bad date format", status_code=303)
+    con = db(); cur = con.cursor()
+    cur.execute("UPDATE licenses SET expires_at=%s, revoked=FALSE, updated_at=NOW() WHERE key=%s", (new_date, key))
+    con.commit(); cur.close(); con.close()
+    return RedirectResponse("/admin/licenses?ok=Date updated", status_code=303)
+
+@app.post("/admin/revoke")
+def revoke(request: Request, key: str = Form(...)):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+
+    con = db()
+    cur = con.cursor()
+    cur.execute("UPDATE licenses SET revoked=TRUE WHERE key=%s", (key,))
+    con.commit()
+    cur.close()
+    con.close()
+
+    return RedirectResponse("/admin/licenses", status_code=303)
+
+@app.post("/admin/unrevoke")
+def unrevoke(request: Request, key: str = Form(...)):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+
+    con = db()
+    cur = con.cursor()
+    cur.execute("UPDATE licenses SET revoked=FALSE WHERE key=%s", (key,))
+    con.commit()
+    cur.close()
+    con.close()
+
+    return RedirectResponse("/admin/licenses", status_code=303)
+
+@app.post("/admin/delete")
+def delete(request: Request, key: str = Form(...)):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+
+    con = db()
+    cur = con.cursor()
+    try:
+        # Delete dependent rows first to avoid FK violations
+        cur.execute("DELETE FROM transactions WHERE license_key=%s", (key,))
+        cur.execute("DELETE FROM usage_logs WHERE license_key=%s", (key,))
+        cur.execute("DELETE FROM payment_requests WHERE license_key=%s", (key,))
+        cur.execute("UPDATE users SET license_key=NULL WHERE license_key=%s", (key,))
+        cur.execute("DELETE FROM licenses WHERE key=%s", (key,))
+        con.commit()
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close()
+        con.close()
+
+    return RedirectResponse("/admin/licenses", status_code=303)
+
+@app.get("/admin/export")
+def export_csv(request: Request):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+
+    con = db()
+    cur = con.cursor(cursor_factory=RealDictCursor)
+    cur.execute("SELECT * FROM licenses ORDER BY updated_at DESC")
+    rows = cur.fetchall()
+    cur.close()
+    con.close()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    if rows:
+        writer.writerow(rows[0].keys())
+        for row in rows:
+            writer.writerow(row.values())
+
+    output.seek(0)
+
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=licenses.csv"}
+    )
+
+@app.post("/admin/generate_key")
+def generate_key(request: Request, prefix: str = Form("")):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+    
+    import random
+    import string
+    suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+    key = f"{prefix}-{suffix}" if prefix else suffix
+    
+    return templates.TemplateResponse(
+        "admin_licenses.html",
+        {"request": request, "generated_key": key}
+    )
+
+
+# =========================
+# ADMIN USER DETAIL APIs
+# =========================
+
+class UpdateEmailRequest(BaseModel):
+    user_id: int
+    email: str
+
+@app.post("/admin/api/update-email")
+def admin_update_email(request: Request, data: UpdateEmailRequest):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("UPDATE users SET email=%s WHERE id=%s", (data.email.strip().lower(), data.user_id))  # ✅ normalize
+        con.commit()
+        return {"success": True}
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
+
+class UpdateTelegramRequest(BaseModel):
+    user_id: int
+    telegram: str
+
+@app.post("/admin/api/update-telegram")
+def admin_update_telegram(request: Request, data: UpdateTelegramRequest):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("UPDATE users SET telegram=%s WHERE id=%s", (data.telegram, data.user_id))
+        con.commit()
+        return {"success": True}
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
+
+class ConfirmEmailRequest(BaseModel):
+    user_id: int
+
+@app.post("/admin/api/confirm-email")
+def admin_confirm_email(request: Request, data: ConfirmEmailRequest):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute(
+            "UPDATE users SET email_confirmed=TRUE, email_confirmed_at=%s WHERE id=%s",
+            (now(), data.user_id)
+        )
+        con.commit()
+        return {"success": True}
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
+
+class ExtendLicenseRequest(BaseModel):
+    user_id: int
+    days: int
+
+@app.post("/admin/api/extend-license")
+def admin_extend_license(request: Request, data: ExtendLicenseRequest):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("SELECT license_key FROM users WHERE id=%s", (data.user_id,))
+        row = cur.fetchone()
+        if not row or not row[0]:
+            raise HTTPException(status_code=404, detail="No license found for user")
+        key = row[0]
+        cur.execute(
+            "UPDATE licenses SET expires_at = expires_at + (%s || ' days')::interval, revoked=FALSE, updated_at=NOW() WHERE key=%s",
+            (data.days, key)
+        )
+        con.commit()
+        return {"success": True, "key": key}
+    except HTTPException:
+        raise
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
+
+class RevokeLicenseRequest(BaseModel):
+    user_id: int
+    revoked: bool
+
+@app.post("/admin/api/revoke-license")
+def admin_revoke_license(request: Request, data: RevokeLicenseRequest):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("SELECT license_key FROM users WHERE id=%s", (data.user_id,))
+        row = cur.fetchone()
+        if not row or not row[0]:
+            raise HTTPException(status_code=404, detail="No license found for user")
+        key = row[0]
+        cur.execute("UPDATE licenses SET revoked=%s, updated_at=NOW() WHERE key=%s", (data.revoked, key))
+        con.commit()
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
+
+class AddTransactionRequest(BaseModel):
+    user_id: int
+    amount: float
+    type: str = "deposit"
+    description: str = ""
+
+@app.post("/admin/api/add-transaction")
+def admin_add_transaction(request: Request, data: AddTransactionRequest):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("SELECT license_key FROM users WHERE id=%s", (data.user_id,))
+        row = cur.fetchone()
+        license_key = row[0] if row else None
+
+        cur.execute(
+            "UPDATE users SET balance = balance + %s WHERE id=%s RETURNING balance",
+            (data.amount, data.user_id)
+        )
+        new_balance = cur.fetchone()[0]
+
+        cur.execute(
+            "INSERT INTO transactions (user_id, license_key, amount, type, description, metadata) VALUES (%s,%s,%s,%s,%s,%s)",
+            (data.user_id, license_key, data.amount, data.type, data.description, json.dumps({"admin": True}))
+        )
+        con.commit()
+        return {"success": True, "new_balance": float(new_balance)}
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
+
+# =========================
+# AUTO-UPDATE SYSTEM
+# =========================
+import hashlib as _hashlib
+
+@app.get("/api/version")
+def api_get_latest_version(channel: str = "stable"):
+    """
+    Public endpoint — called by the app on startup to check for updates.
+    Returns latest release info with direct GitHub download_url.
+    """
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("""
+            SELECT id, version, channel, release_notes, file_name, file_size, download_url, sha256, is_mandatory, created_at
+            FROM app_releases
+            WHERE channel = %s
+            ORDER BY created_at DESC
+            LIMIT 1
+        """, (channel,))
+        row = cur.fetchone()
+        if not row:
+            return {"latest_version": None, "has_update": False}
+        rid, version, ch, notes, fname, fsize, dl_url, sha256, mandatory, created_at = row
+        return {
+            "latest_version": version,
+            "channel": ch,
+            "release_notes": notes or "",
+            "file_name": fname,
+            "file_size": fsize or 0,
+            "sha256": sha256 or "",
+            "is_mandatory": bool(mandatory),
+            "released_at": created_at.isoformat() if created_at else None,
+            "download_url": dl_url or "",
+        }
+    finally:
+        cur.close(); con.close()
+
+
+@app.get("/api/download/{release_id}")
+def api_download_release(release_id: int, request: Request):
+    """
+    Returns the GitHub direct download URL for the release.
+    Protected: requires valid license key in header X-License-Key.
+    The app downloads directly from GitHub using this URL.
+    """
+    license_key = request.headers.get("X-License-Key", "").strip()
+    if not license_key:
+        raise HTTPException(status_code=401, detail="X-License-Key header required")
+    con = db()
+    cur = con.cursor()
+    try:
+        # Validate the key is active
+        cur.execute("SELECT revoked, expires_at FROM licenses WHERE key=%s", (license_key,))
+        lic = cur.fetchone()
+        if not lic:
+            raise HTTPException(status_code=401, detail="Invalid license key")
+        if lic[0]:
+            raise HTTPException(status_code=403, detail="License revoked")
+        if now() > lic[1]:
+            raise HTTPException(status_code=403, detail="License expired")
+
+        cur.execute("SELECT file_name, download_url, file_size FROM app_releases WHERE id=%s", (release_id,))
+        row = cur.fetchone()
+        if not row or not row[1]:
+            raise HTTPException(status_code=404, detail="Release not found or no download URL")
+        fname, dl_url, fsize = row
+        # Return JSON with the direct download URL - app downloads from GitHub directly
+        return {"download_url": dl_url, "file_name": fname, "file_size": fsize or 0}
+    finally:
+        cur.close(); con.close()
+
+
+# --- Admin: list all releases
+@app.get("/admin/releases")
+def admin_releases_page(request: Request):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=302)
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("""
+            SELECT id, version, channel, release_notes, file_name, file_size, download_url, sha256, is_mandatory, created_at
+            FROM app_releases ORDER BY created_at DESC LIMIT 50
+        """)
+        cols = [d[0] for d in cur.description]
+        releases = [dict(zip(cols, r)) for r in cur.fetchall()]
+        # Format sizes nicely
+        for r in releases:
+            sz = r.get("file_size") or 0
+            if sz > 1_048_576:
+                r["size_str"] = f"{sz/1_048_576:.1f} MB"
+            elif sz > 1024:
+                r["size_str"] = f"{sz/1024:.1f} KB"
+            else:
+                r["size_str"] = f"{sz} B"
+        return templates.TemplateResponse("admin_releases.html", {
+            "request": request,
+            "releases": releases,
+            "now": now(),
+        })
+    finally:
+        cur.close(); con.close()
+
+
+# --- Admin: publish new release (GitHub URL, no file upload)
+@app.post("/admin/releases/upload")
+async def admin_upload_release(
+    request: Request,
+    version: str = Form(...),
+    channel: str = Form("stable"),
+    release_notes: str = Form(""),
+    is_mandatory: bool = Form(False),
+    download_url: str = Form(...),
+    file_name: str = Form(""),
+    file_size: int = Form(0),
+):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    dl_url = download_url.strip()
+    if not dl_url:
+        raise HTTPException(status_code=400, detail="Download URL is required")
+
+    # Auto-detect file name from URL if not provided
+    fname = file_name.strip()
+    if not fname and "/" in dl_url:
+        fname = dl_url.rstrip("/").split("/")[-1]
+    if not fname:
+        fname = f"TGLeadsAI_Setup_v{version.strip()}.exe"
+
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("""
+            INSERT INTO app_releases
+                (version, channel, release_notes, file_name, file_size, download_url, sha256, is_mandatory)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+        """, (
+            version.strip(),
+            channel.strip(),
+            release_notes.strip(),
+            fname,
+            file_size,
+            dl_url,
+            "",
+            is_mandatory,
+        ))
+        new_id = cur.fetchone()[0]
+        con.commit()
+        return RedirectResponse(f"/admin/releases?uploaded={new_id}", status_code=303)
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
+
+
+# --- Admin: delete a release
+@app.post("/admin/releases/delete/{release_id}")
+def admin_delete_release(release_id: int, request: Request):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("DELETE FROM app_releases WHERE id=%s", (release_id,))
+        con.commit()
+        return RedirectResponse("/admin/releases", status_code=303)
+    finally:
+        cur.close(); con.close()
+
+
+# --- Admin: mark release as mandatory / not
+@app.post("/admin/api/releases/{release_id}/toggle-mandatory")
+def admin_toggle_mandatory(release_id: int, request: Request):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("""
+            UPDATE app_releases SET is_mandatory = NOT is_mandatory WHERE id=%s
+            RETURNING is_mandatory
+        """, (release_id,))
+        row = cur.fetchone()
+        con.commit()
+        return {"is_mandatory": row[0] if row else False}
+    finally:
+        cur.close(); con.close()
+
+
+# =========================
+# ---
+# =========================
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
