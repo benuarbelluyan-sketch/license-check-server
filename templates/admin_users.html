@@ -2,54 +2,107 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Пользователи · TG Parser Admin</title>
+  <title>Лицензии · TG Parser Admin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #1a202c; line-height: 1.6; min-height: 100vh; }
-    .container { max-width: 1400px; margin: 0 auto; padding: 40px 24px; }
+    body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+    .container { max-width: 1500px; margin: 0 auto; padding: 40px 24px; }
     .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; }
     .logo { display: flex; align-items: center; gap: 12px; }
     .logo-icon { width: 48px; height: 48px; background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; border: 1px solid rgba(255,255,255,0.3); }
     .logo-text { font-size: 20px; font-weight: 700; color: #fff; }
-    .logout-btn { background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3); border-radius: 12px; padding: 10px 20px; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+    .logout-btn { background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.3); border-radius: 12px; padding: 10px 20px; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; }
     .logout-btn:hover { background: rgba(255,255,255,0.3); }
     .nav { background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); border-radius: 16px; padding: 8px; display: flex; gap: 4px; margin-bottom: 32px; overflow-x: auto; }
     .nav-item { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 10px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s; white-space: nowrap; }
     .nav-item:hover { background: rgba(255,255,255,0.15); color: #fff; }
     .nav-item.active { background: #fff; color: #667eea; box-shadow: 0 4px 14px rgba(0,0,0,0.1); }
+    .create-card { background: #fff; border-radius: 20px; padding: 28px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 24px; }
+    .create-title { font-size: 16px; font-weight: 700; color: #1a202c; margin-bottom: 20px; }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 20px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-label { font-size: 11px; font-weight: 600; color: #718096; text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-input { padding: 10px 14px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-size: 13px; font-family: 'Inter', sans-serif; color: #2d3748; background: #f7fafc; transition: border-color 0.2s; outline: none; }
+    .form-input:focus { border-color: #667eea; background: #fff; }
+    .form-input::placeholder { color: #a0aec0; }
+    .key-row { display: flex; gap: 8px; }
+    .key-row .form-input { flex: 1; font-family: monospace; }
+    .btn-gen { padding: 10px 14px; background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+    .btn-gen:hover { opacity: 0.85; }
+    .form-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .btn-create { padding: 11px 28px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; border: none; border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer; }
+    .btn-create:hover { opacity: 0.9; }
+    .form-hint { font-size: 12px; color: #a0aec0; }
     .table-card { background: #fff; border-radius: 20px; padding: 28px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-    .table-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .table-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; gap: 16px; flex-wrap: wrap; }
     .table-title { font-size: 18px; font-weight: 700; color: #1a202c; }
-    .search-box { flex: 1; max-width: 400px; margin-left: 20px; }
-    .search-input { width: 100%; background: #f7fafc; border: 2px solid #e2e8f0; border-radius: 12px; padding: 10px 16px; font-size: 14px; transition: all 0.3s; }
-    .search-input:focus { outline: none; border-color: #667eea; background: #fff; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
-    .table-wrap { overflow-x: auto; margin: 0 -28px; padding: 0 28px; }
+    .search-box { flex: 1; max-width: 340px; }
+    .search-box input { width: 100%; padding: 9px 14px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-size: 13px; font-family: 'Inter'; outline: none; background: #f7fafc; }
+    .search-box input:focus { border-color: #667eea; background: #fff; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
     thead { background: #f7fafc; }
-    th { padding: 12px 16px; text-align: left; color: #718096; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
-    td { padding: 16px; border-top: 1px solid #f7fafc; vertical-align: middle; }
-    tr:hover td { background: #f7fafc; }
-    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-    .badge-verified { background: #c6f6d5; color: #22543d; }
-    .badge-unverified { background: #feebc8; color: #7c2d12; }
-    .badge-active { background: #c6f6d5; color: #22543d; }
+    th { padding: 11px 12px; text-align: left; color: #718096; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap; }
+    td { padding: 0 12px; border-top: 1px solid #f0f4f8; vertical-align: middle; }
+    tr:hover td { background: #fafbff; }
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+    .badge-active  { background: #c6f6d5; color: #22543d; }
     .badge-expired { background: #fed7d7; color: #742a2a; }
-    .badge-nokey { background: #e2e8f0; color: #4a5568; }
-    .key-text { font-family: monospace; font-size: 11px; color: #718096; }
-    .btn-view { display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; border-radius: 8px; padding: 8px 16px; font-size: 12px; font-weight: 600; color: #fff; text-decoration: none; transition: all 0.3s; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3); }
-    .btn-view:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); }
+    .badge-revoked { background: #e2e8f0; color: #4a5568; }
+    .badge-warn    { background: #fefcbf; color: #744210; }
+    .key-text { font-family: monospace; font-size: 12px; color: #4a5568; font-weight: 600; cursor: pointer; }
+    .key-text:hover { color: #667eea; }
+    .user-link { color: #667eea; text-decoration: none; font-weight: 500; font-size: 12px; }
+    .user-link:hover { text-decoration: underline; }
+    .no-user { color: #cbd5e0; font-size: 12px; font-style: italic; }
+    .days-left { font-size: 12px; font-weight: 700; white-space: nowrap; }
+    .days-ok  { color: #276749; }
+    .days-warn { color: #744210; }
+    .days-bad  { color: #742a2a; }
+    .expires-cell { min-width: 280px; }
+    .expires-row { display: flex; align-items: center; gap: 5px; padding: 8px 0; flex-wrap: wrap; }
+    .expires-date { font-size: 13px; font-weight: 600; color: #2d3748; white-space: nowrap; min-width: 72px; }
+    .day-btns { display: flex; gap: 2px; flex-wrap: wrap; }
+    .day-btn { padding: 3px 7px; border-radius: 7px; font-size: 11px; font-weight: 700; cursor: pointer; border: none; white-space: nowrap; }
+    .day-btn:hover { opacity: 0.75; }
+    .day-btn.plus  { background: #ebf8ff; color: #2b6cb0; }
+    .day-btn.minus { background: #fff5f5; color: #c53030; }
+    .day-btn.set   { background: #f0fff4; color: #276749; }
+    .date-pick-row { display: flex; align-items: center; gap: 6px; margin-top: 5px; flex-wrap: wrap; }
+    .date-pick-row input[type=date] { padding: 4px 8px; border: 1.5px solid #667eea; border-radius: 8px; font-size: 12px; font-family: 'Inter'; outline: none; color: #2d3748; }
+    .btn-set    { padding: 4px 12px; background: #667eea; color: #fff; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .btn-cancel { padding: 4px 8px; background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 12px; cursor: pointer; color: #718096; }
+    .dev-input { width: 54px; padding: 3px 6px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; color: #4a5568; text-align: center; outline: none; transition: border-color .2s; }
+    .dev-input:focus { border-color: #667eea; }
+    .dev-input.saved { border-color: #48bb78; }
+    .action-btns { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; padding: 8px 0; }
+    .btn-sm { padding: 5px 12px; border-radius: 8px; font-size: 11px; font-weight: 600; cursor: pointer; border: none; white-space: nowrap; }
+    .btn-sm:hover { opacity: 0.8; }
+    .btn-revoke   { background: #fff5f5; color: #c53030; }
+    .btn-unrevoke { background: #f0fff4; color: #276749; }
+    .btn-delete   { background: #fff5f5; color: #c53030; }
     .empty { text-align: center; padding: 60px; color: #a0aec0; }
-    .empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.3; }
-    @media (max-width: 768px) { .table-header { flex-direction: column; align-items: flex-start; gap: 16px; } .search-box { width: 100%; max-width: none; margin-left: 0; } }
+    .flash { padding: 12px 20px; border-radius: 12px; margin-bottom: 20px; font-size: 13px; font-weight: 500; }
+    .flash-ok  { background: #c6f6d5; color: #22543d; }
+    .flash-err { background: #fed7d7; color: #742a2a; }
+    .copy-toast { position: fixed; bottom: 24px; right: 24px; background: #2d3748; color: #fff; padding: 10px 18px; border-radius: 12px; font-size: 13px; font-weight: 600; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 999; }
+    .copy-toast.show { opacity: 1; }
+    .note-cell { max-width: 130px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #718096; font-size: 12px; }
+    .hwid-cell { font-family: monospace; font-size: 10px; color: #718096; max-width: 160px; word-break: break-all; }
+    .hwid-none { color: #cbd5e0; font-size: 11px; font-style: italic; }
+    .btn-reset-hwid { padding: 3px 8px; background: #fff5f5; color: #c53030; border: 1px solid #fed7d7; border-radius: 6px; font-size: 10px; font-weight: 600; cursor: pointer; margin-top: 3px; }
+    .btn-reset-hwid:hover { background: #fed7d7; }
+    .btn-save { padding: 4px 8px; background: #ebf8ff; color: #2b6cb0; border: 1px solid #bee3f8; border-radius: 6px; font-size: 12px; cursor: pointer; }
+    .btn-save:hover { background: #bee3f8; }
   </style>
 </head>
 <body>
 <div class="container">
+
   <div class="header">
     <div class="logo">
-      <div class="logo-icon">👥</div>
+      <div class="logo-icon">🔑</div>
       <div class="logo-text">TG Parser Admin</div>
     </div>
     <form method="post" action="/admin/logout" style="margin:0;">
@@ -59,91 +112,312 @@
 
   <nav class="nav">
     <a href="/admin" class="nav-item">📊 Дашборд</a>
-    <a href="/admin/users" class="nav-item active">👥 Пользователи</a>
-    <a href="/admin/licenses" class="nav-item">🔑 Лицензии</a>
+    <a href="/admin/users" class="nav-item">👥 Пользователи</a>
+    <a href="/admin/licenses" class="nav-item active">🔑 Лицензии</a>
     <a href="/admin/devices" class="nav-item">💻 Устройства</a>
     <a href="/admin/transactions" class="nav-item">💳 Транзакции</a>
     <a href="/admin/releases"     class="nav-item">🚀 Обновления</a>
     <a href="/admin/settings" class="nav-item">⚙️ Настройки</a>
   </nav>
 
+  {% if request.query_params.get('ok') %}
+  <div class="flash flash-ok">✅ {{ request.query_params.get('ok') }}</div>
+  {% endif %}
+  {% if request.query_params.get('err') %}
+  <div class="flash flash-err">❌ {{ request.query_params.get('err') }}</div>
+  {% endif %}
+
+  <div class="create-card">
+    <div class="create-title">✨ Создать новую лицензию</div>
+    <form method="post" action="/admin/upsert">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Ключ лицензии *</label>
+          <div class="key-row">
+            <input class="form-input" name="key" id="keyInput" placeholder="BEN-XXXX-XXXX-XXXX" required>
+            <button type="button" class="btn-gen" onclick="generateKey()">🎲 Авто</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">HWID устройства</label>
+          <input class="form-input" name="hwid" value="" placeholder="Пусто = привяжется при входе">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Срок действия (дней)</label>
+          <input class="form-input" name="days" type="number" value="30" min="1" max="3650" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Лимит устройств</label>
+          <input class="form-input" name="max_devices" type="number" value="1" min="1" max="50">
+        </div>
+        <div class="form-group">
+          <label class="form-label">План</label>
+          <select class="form-input" name="plan">
+            <option value="custom">custom</option>
+            <option value="m1">m1 — 1 мес</option>
+            <option value="m3">m3 — 3 мес</option>
+            <option value="m6">m6 — 6 мес</option>
+            <option value="y1">y1 — 1 год</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Примечание</label>
+          <input class="form-input" name="note" placeholder="Иван, тест, VIP...">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-create" type="submit">💾 Создать лицензию</button>
+        <span class="form-hint">💡 Пустой HWID — привяжется при первой активации</span>
+      </div>
+    </form>
+  </div>
+
   <div class="table-card">
     <div class="table-header">
-      <div class="table-title">Пользователи ({{ users | length }})</div>
-      <form method="get" action="/admin/users" class="search-box" style="margin:0;">
-        <input type="text" name="q" class="search-input" value="{{ q or '' }}" placeholder="🔍 Поиск по email, telegram или ключу..." />
-      </form>
+      <div class="table-title">🔑 Лицензии ({{ rows | length }})</div>
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="🔍 Поиск по ключу, email, плану..." oninput="filterTable()">
+      </div>
     </div>
 
-    <div class="table-wrap">
-      {% if users %}
-      <table>
-        <thead>
-          <tr>
-            <th>#ID</th>
-            <th>Email / Telegram</th>
-            <th>Лицензия</th>
-            <th>Баланс</th>
-            <th>Устройства</th>
-            <th>Регистрация</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for u in users %}
-          {% if u.license_expires %}
-            {% set diff = (u.license_expires - now).total_seconds() %}
-            {% set days = (diff / 86400) | int %}
-          {% else %}
-            {% set days = -1 %}
-          {% endif %}
-          <tr>
-            <td style="font-weight:600; color:#718096;">#{{ u.id }}</td>
-            <td>
-              <div style="font-weight:500; margin-bottom:4px;">{{ u.email }}</div>
-              {% if u.telegram %}
-                <div style="font-size:11px; color:#718096; margin-bottom:4px;">📱 {{ u.telegram }}</div>
-              {% endif %}
-              {% if u.email_confirmed %}
-                <span class="badge badge-verified">✓ подтверждён</span>
+    {% if rows %}
+    <table id="licTable">
+      <thead>
+        <tr>
+          <th>Ключ</th>
+          <th>Статус</th>
+          <th>Пользователь</th>
+          <th>HWID (привязка)</th>
+          <th>План</th>
+          <th>Устройства</th>
+          <th>Срок действия</th>
+          <th>Осталось</th>
+          <th>Примечание</th>
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        {% set days_left = ((r.expires_at - now).days) if r.expires_at and not r.revoked and r.expires_at > now else 0 %}
+        <tr data-search="{{ r.key|lower }} {{ (r.user_email or '')|lower }} {{ (r.plan or '')|lower }} {{ (r.note or '')|lower }} {{ (r.hwid or '')|lower }}">
+
+          <td>
+            <div class="key-text" onclick="copyKey('{{ r.key }}')" title="Нажмите чтобы скопировать">
+              {{ r.key }}
+            </div>
+          </td>
+
+          <td>
+            {% if r.revoked %}
+              <span class="badge badge-revoked">🚫 Отозвана</span>
+            {% elif r.expires_at and r.expires_at > now %}
+              {% if days_left <= 7 %}
+                <span class="badge badge-warn">⚠️ Скоро истечёт</span>
               {% else %}
-                <span class="badge badge-unverified">⚠ не подтверждён</span>
+                <span class="badge badge-active">✅ Активна</span>
               {% endif %}
-            </td>
-            <td>
-              {% if u.license_key %}
-                <div class="key-text" style="margin-bottom:4px;">{{ u.license_key }}</div>
-                {% if u.license_revoked %}
-                  <span class="badge badge-expired">🚫 отозвана</span>
-                {% elif days > 0 %}
-                  <span class="badge badge-active">✅ {{ days }}д</span>
-                {% else %}
-                  <span class="badge badge-expired">❌ истекла</span>
-                {% endif %}
+            {% else %}
+              <span class="badge badge-expired">❌ Истекла</span>
+            {% endif %}
+          </td>
+
+          <td>
+            {% if r.user_email %}
+              {% for email in r.user_email.split(', ') %}
+                <div style="font-size:11px;color:#667eea;font-weight:600;margin-bottom:2px;">{{ email }}</div>
+              {% endfor %}
+            {% else %}
+              <span class="no-user">—</span>
+            {% endif %}
+          </td>
+
+          <td>
+            {% if r.hwid %}
+              <div class="hwid-cell" title="{{ r.hwid }}">{{ r.hwid[:32] }}{% if r.hwid|length > 32 %}…{% endif %}</div>
+              <button class="btn-reset-hwid" onclick="resetHwid('{{ r.key }}')" title="Сбросить HWID — позволит зайти с другого устройства">🔓 Сбросить</button>
+            {% else %}
+              <span class="hwid-none">Не привязан</span>
+            {% endif %}
+          </td>
+
+          <td style="font-weight:600; color:#4a5568;">{{ r.plan or 'custom' }}</td>
+
+          <td>
+            <form method="post" action="/admin/api/set-devices" style="display:flex;gap:4px;align-items:center;">
+              <input type="hidden" name="key" value="{{ r.key }}">
+              <input type="number" name="max_devices" min="1" max="50"
+                value="{{ r.max_devices or 1 }}"
+                class="dev-input"
+                title="Лимит устройств"
+              />
+              <button type="submit" class="btn-save" title="Сохранить">💾</button>
+            </form>
+          </td>
+
+          <td class="expires-cell" id="cell-{{ loop.index }}">
+            <div class="expires-row">
+              <span class="expires-date">
+                {{ r.expires_at.strftime('%d.%m.%Y') if r.expires_at else '—' }}
+              </span>
+              <div class="day-btns">
+                <form method="post" action="/admin/add_days" style="display:inline;">
+                  <input type="hidden" name="key" value="{{ r.key }}">
+                  <input type="hidden" name="add" value="-30">
+                  <button class="day-btn minus" type="submit" title="−30 дней">−30д</button>
+                </form>
+                <form method="post" action="/admin/add_days" style="display:inline;">
+                  <input type="hidden" name="key" value="{{ r.key }}">
+                  <input type="hidden" name="add" value="-7">
+                  <button class="day-btn minus" type="submit" title="−7 дней">−7д</button>
+                </form>
+                <form method="post" action="/admin/add_days" style="display:inline;">
+                  <input type="hidden" name="key" value="{{ r.key }}">
+                  <input type="hidden" name="add" value="-1">
+                  <button class="day-btn minus" type="submit" title="−1 день">−1д</button>
+                </form>
+                <form method="post" action="/admin/add_days" style="display:inline;">
+                  <input type="hidden" name="key" value="{{ r.key }}">
+                  <input type="hidden" name="add" value="1">
+                  <button class="day-btn plus" type="submit" title="+1 день">+1д</button>
+                </form>
+                <form method="post" action="/admin/add_days" style="display:inline;">
+                  <input type="hidden" name="key" value="{{ r.key }}">
+                  <input type="hidden" name="add" value="7">
+                  <button class="day-btn plus" type="submit" title="+7 дней">+7д</button>
+                </form>
+                <form method="post" action="/admin/add_days" style="display:inline;">
+                  <input type="hidden" name="key" value="{{ r.key }}">
+                  <input type="hidden" name="add" value="30">
+                  <button class="day-btn plus" type="submit" title="+30 дней">+30д</button>
+                </form>
+                <button class="day-btn set" type="button"
+                  onclick="toggleDatePicker('{{ loop.index }}', '{{ r.expires_at.strftime('%Y-%m-%d') if r.expires_at else '' }}')"
+                  title="Установить точную дату">📅</button>
+              </div>
+            </div>
+            <div class="date-pick-row" id="datepick-{{ loop.index }}" style="display:none;">
+              <form method="post" action="/admin/set_expires" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                <input type="hidden" name="key" value="{{ r.key }}">
+                <input type="date" name="expires_date" id="dateInput-{{ loop.index }}"
+                  value="{{ r.expires_at.strftime('%Y-%m-%d') if r.expires_at else '' }}">
+                <button class="btn-set" type="submit">Сохранить</button>
+                <button class="btn-cancel" type="button"
+                  onclick="toggleDatePicker('{{ loop.index }}', '')">Отмена</button>
+              </form>
+            </div>
+          </td>
+
+          <td>
+            {% if r.revoked %}
+              <span class="days-left" style="color:#a0aec0;">—</span>
+            {% elif r.expires_at and r.expires_at > now %}
+              <span class="days-left {% if days_left <= 3 %}days-bad{% elif days_left <= 14 %}days-warn{% else %}days-ok{% endif %}">
+                {{ days_left }} дн.
+              </span>
+            {% else %}
+              <span class="days-left days-bad">Истекла</span>
+            {% endif %}
+          </td>
+
+          <td class="note-cell" title="{{ r.note or '' }}">{{ r.note or '—' }}</td>
+
+          <td>
+            <div class="action-btns">
+              {% if r.revoked %}
+              <form method="post" action="/admin/unrevoke" style="display:inline;">
+                <input type="hidden" name="key" value="{{ r.key }}">
+                <button class="btn-sm btn-unrevoke" type="submit">✅ Восстановить</button>
+              </form>
               {% else %}
-                <span class="badge badge-nokey">нет ключа</span>
+              <form method="post" action="/admin/revoke" style="display:inline;"
+                onsubmit="return confirm('Отозвать ключ {{ r.key }}?')">
+                <input type="hidden" name="key" value="{{ r.key }}">
+                <button class="btn-sm btn-revoke" type="submit">🚫 Отозвать</button>
+              </form>
               {% endif %}
-            </td>
-            <td style="font-weight:600; color:#48bb78;">${{ "%.2f" | format(u.balance | default(0) | float) }}</td>
-            <td style="color:#718096;">{{ u.active_devices or 0 }}{% if u.max_devices %}/{{ u.max_devices }}{% endif %}</td>
-            <td style="color:#a0aec0; font-size:12px;">
-              {% if u.created_at %}{{ u.created_at.strftime('%d.%m.%Y') }}{% endif %}
-            </td>
-            <td>
-              <a href="/admin/users/{{ u.id }}" class="btn-view">Открыть →</a>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% else %}
-      <div class="empty">
-        <div class="empty-icon">👥</div>
-        <div>Пользователи не найдены</div>
-      </div>
-      {% endif %}
+              <form method="post" action="/admin/delete" style="display:inline;"
+                onsubmit="return confirm('Удалить ключ {{ r.key }}? Необратимо!')">
+                <input type="hidden" name="key" value="{{ r.key }}">
+                <button class="btn-sm btn-delete" type="submit">🗑</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">
+      <div style="font-size:48px; opacity:0.3; margin-bottom:12px;">🔑</div>
+      <div>Лицензий нет. Создайте первую выше.</div>
     </div>
+    {% endif %}
   </div>
+
 </div>
+<div class="copy-toast" id="copyToast">✅ Ключ скопирован</div>
+<script>
+  function generateKey() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const part = (n) => Array.from({length: n}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    document.getElementById('keyInput').value = 'BEN-' + part(4) + '-' + part(4) + '-' + part(4);
+  }
+
+  function copyKey(key) {
+    navigator.clipboard.writeText(key).then(() => {
+      const t = document.getElementById('copyToast');
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2000);
+    });
+  }
+
+  function toggleDatePicker(idx, currentDate) {
+    const dp  = document.getElementById('datepick-' + idx);
+    const inp = document.getElementById('dateInput-' + idx);
+    const isHidden = dp.style.display === 'none';
+    dp.style.display = isHidden ? 'flex' : 'none';
+    if (isHidden && currentDate) inp.value = currentDate;
+  }
+
+  async function updateLimit(key, val, el) {
+    const max_devices = parseInt(val);
+    if (!max_devices || max_devices < 1) return;
+    try {
+      const res  = await fetch('/admin/api/update-limit', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({key, max_devices})
+      });
+      const data = await res.json();
+      el.classList.toggle('saved', data.success);
+      if (data.success) setTimeout(() => el.classList.remove('saved'), 1800);
+      else el.style.borderColor = '#fc8181';
+    } catch { el.style.borderColor = '#fc8181'; }
+  }
+
+  function filterTable() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    document.querySelectorAll('#licTable tbody tr').forEach(row => {
+      row.style.display = (row.dataset.search || '').includes(q) ? '' : 'none';
+    });
+  }
+
+  async function resetHwid(key) {
+    if (!confirm('Сбросить HWID для ключа ' + key + '?\n\nПользователь сможет войти с нового устройства.')) return;
+    try {
+      const res = await fetch('/admin/api/reset-hwid', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({key})
+      });
+      const data = await res.json();
+      if (data.success) {
+        location.reload();
+      } else {
+        alert('Ошибка: ' + (data.detail || 'неизвестная ошибка'));
+      }
+    } catch(e) { alert('Ошибка сети: ' + e); }
+  }
+</script>
 </body>
 </html>
