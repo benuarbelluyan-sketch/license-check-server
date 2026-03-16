@@ -2914,6 +2914,8 @@ def ai_chat(req: AIChatReq) -> Dict[str, Any]:
     except HTTPException:
         raise
     except Exception as e:
+        print(f"[ERROR] ai_chat exception: {type(e).__name__}: {e}")
+        import traceback; traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"AI chat error: {type(e).__name__}: {e}")
 
 # =========================
