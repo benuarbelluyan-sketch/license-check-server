@@ -1000,18 +1000,8 @@ def logout(session_token: str = Form(...)):
     con = db()
     cur = con.cursor()
     try:
-        # Находим device_id перед удалением сессии
-        cur.execute("SELECT device_id FROM user_sessions WHERE session_token = %s", (session_token,))
-        row = cur.fetchone()
-        device_id = row[0] if row else None
-
-        # Удаляем сессию
+        # Только удаляем сессию — устройство остаётся активным (жёсткая привязка к девайсу)
         cur.execute("DELETE FROM user_sessions WHERE session_token = %s", (session_token,))
-
-        # Деактивируем устройство чтобы при следующем входе не было "лимит устройств"
-        if device_id:
-            cur.execute("UPDATE user_devices SET is_active = FALSE WHERE id = %s", (device_id,))
-
         con.commit()
         return {"success": True}
     except Exception as e:
