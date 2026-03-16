@@ -1754,6 +1754,28 @@ def admin_unlink_account(request: Request, data: UnlinkAccountRequest):
         cur.close()
         con.close()
 
+@app.post("/admin/api/unlink-account-form")
+def admin_unlink_account_form(request: Request, key: str = Form(...), email: str = Form(...)):
+    if not is_admin(request):
+        return RedirectResponse("/admin/login", status_code=303)
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("SELECT id FROM users WHERE email=%s AND license_key=%s", (email, key))
+        user = cur.fetchone()
+        if user:
+            user_id = user[0]
+            cur.execute("DELETE FROM user_sessions WHERE user_id=%s", (user_id,))
+            cur.execute("UPDATE user_devices SET is_active=FALSE WHERE user_id=%s", (user_id,))
+            cur.execute("UPDATE users SET license_key=NULL WHERE id=%s", (user_id,))
+            con.commit()
+    except Exception as e:
+        con.rollback()
+    finally:
+        cur.close()
+        con.close()
+    return RedirectResponse("/admin/licenses", status_code=303)
+
 @app.post("/admin/api/set-devices")
 def admin_set_devices(request: Request, key: str = Form(...), max_devices: int = Form(...)):
     if not is_admin(request):
