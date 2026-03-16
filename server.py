@@ -488,39 +488,19 @@ def register(req: RegisterReq, background_tasks: BackgroundTasks, request: Reque
     cur = con.cursor()
     
     try:
-        # ---
+        # --- Проверяем ключ (только что он существует, не истёк, не отозван)
         pass  # log
-        cur.execute("""
-            SELECT key, max_devices, max_accounts, expires_at, revoked 
-            FROM licenses 
-            WHERE key = %s
-        """, (req.license_key,))
-        
+        cur.execute("SELECT key, expires_at, revoked FROM licenses WHERE key = %s", (req.license_key,))
         license = cur.fetchone()
         if not license:
-            pass  # log
             raise HTTPException(status_code=404, detail="license_not_found")
-        
-        key, max_devices, max_accounts, expires_at, revoked = license
-        max_accounts = int(max_accounts or 1)
-        print(f"[INFO] key={key} expires_at={expires_at} revoked={revoked} max_devices={max_devices} max_accounts={max_accounts}")
-        
+        key, expires_at, revoked = license
         if revoked:
-            pass  # log
             raise HTTPException(status_code=403, detail="license_revoked")
-        
         if now() > expires_at:
-            pass  # log
             raise HTTPException(status_code=403, detail="license_expired")
-        
-        # --- Check max_accounts limit
-        pass  # log
-        cur.execute("SELECT COUNT(*) FROM users WHERE license_key = %s", (req.license_key,))
-        account_count = cur.fetchone()[0]
-        if account_count >= max_accounts:
-            raise HTTPException(status_code=403, detail="license_accounts_limit_exceeded")
 
-        # ---
+        # --- Проверяем email
         pass  # log
         cur.execute("SELECT id FROM users WHERE email = %s", (req.email,))
         if cur.fetchone():
@@ -646,10 +626,6 @@ def login(req: LoginReq, request: Request):
             raise HTTPException(status_code=401, detail="invalid_credentials")
         
         pass  # log
-        
-        # Если license_key=NULL — аккаунт отвязан, не пускаем
-        if not user.get('license_key'):
-            raise HTTPException(status_code=403, detail="license_not_linked")
         
         pass  # log
         
@@ -1035,12 +1011,23 @@ def resend_confirmation(req: ResendConfirmReq, background_tasks: BackgroundTasks
 def logout(session_token: str = Form(...)):
     con = db()
     cur = con.cursor()
-    
     try:
+        # Находим device_id перед удалением сессии
+        cur.execute("SELECT device_id FROM user_sessions WHERE session_token = %s", (session_token,))
+        row = cur.fetchone()
+        device_id = row[0] if row else None
+
+        # Удаляем сессию
         cur.execute("DELETE FROM user_sessions WHERE session_token = %s", (session_token,))
+
+        # Деактивируем устройство чтобы при следующем входе не было "лимит устройств"
+        if device_id:
+            cur.execute("UPDATE user_devices SET is_active = FALSE WHERE id = %s", (device_id,))
+
         con.commit()
         return {"success": True}
     except Exception as e:
+        con.rollback()
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         cur.close()
