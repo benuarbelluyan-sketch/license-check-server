@@ -84,7 +84,7 @@
             <th>Email / Telegram</th>
             <th>Лицензия</th>
             <th>Баланс</th>
-            <th>Устройства</th>
+            <th>Устройства (по ключу)</th>
             <th>Регистрация</th>
             <th></th>
           </tr>
@@ -125,7 +125,10 @@
               {% endif %}
             </td>
             <td style="font-weight:600; color:#48bb78;">${{ "%.2f" | format(u.balance | default(0) | float) }}</td>
-            <td style="color:#718096;">{{ u.active_devices or 0 }}{% if u.max_devices %}/{{ u.max_devices }}{% endif %}</td>
+            <td style="color:#718096;">
+              {{ u.active_devices or 0 }}/{{ u.max_devices or 1 }}
+              <div style="font-size:10px;color:#a0aec0;">по ключу</div>
+            </td>
             <td style="color:#a0aec0; font-size:12px;">
               {% if u.created_at %}{{ u.created_at.strftime('%d.%m.%Y') }}{% endif %}
             </td>
