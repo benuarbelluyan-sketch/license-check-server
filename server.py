@@ -2813,7 +2813,7 @@ def ai_chat(req: AIChatReq) -> Dict[str, Any]:
             model=_model,
             messages=messages,
             response_format={"type": "json_object"},
-            max_completion_tokens=500,
+            max_completion_tokens=1000,
         )
         if not _is_gpt5:
             _create_kwargs["temperature"] = 0.7
