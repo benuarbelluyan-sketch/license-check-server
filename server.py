@@ -2023,7 +2023,16 @@ def admin_reset_hwid(request: Request, data: ResetHwidReq):
             raise HTTPException(status_code=404, detail="License not found")
         # Сбрасываем HWID — ставим пустую строку (колонка NOT NULL)
         cur.execute("UPDATE licenses SET hwid = '' WHERE key = %s", (data.key,))
-        # Удаляем все привязанные устройства пользователя (снимает ошибку лимита)
+        # Сначала удаляем сессии (они ссылаются на устройства через FK)
+        cur.execute("""
+            DELETE FROM user_sessions
+            WHERE device_id IN (
+                SELECT ud.id FROM user_devices ud
+                JOIN users u ON ud.user_id = u.id
+                WHERE u.license_key = %s
+            )
+        """, (data.key,))
+        # Потом удаляем устройства
         cur.execute("""
             DELETE FROM user_devices
             WHERE user_id IN (
