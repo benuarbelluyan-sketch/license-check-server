@@ -2007,6 +2007,40 @@ def admin_revoke_license(request: Request, data: RevokeLicenseReq):
         cur.close(); con.close()
 
 
+# --- reset HWID (allows user to activate on a new device) ---
+class ResetHwidReq(BaseModel):
+    key: str
+
+@app.post("/admin/api/reset-hwid")
+def admin_reset_hwid(request: Request, data: ResetHwidReq):
+    if not is_admin(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    con = db()
+    cur = con.cursor()
+    try:
+        cur.execute("SELECT key FROM licenses WHERE key = %s", (data.key,))
+        if not cur.fetchone():
+            raise HTTPException(status_code=404, detail="License not found")
+        # Сбрасываем HWID в лицензии
+        cur.execute("UPDATE licenses SET hwid = NULL WHERE key = %s", (data.key,))
+        # Удаляем все привязанные устройства пользователя (снимает ошибку лимита)
+        cur.execute("""
+            DELETE FROM user_devices
+            WHERE user_id IN (
+                SELECT id FROM users WHERE license_key = %s
+            )
+        """, (data.key,))
+        con.commit()
+        return {"success": True, "message": "HWID и устройства сброшены. Пользователь может войти с нового устройства."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        con.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cur.close(); con.close()
+
+
 # --- add transaction (generic) ---
 class AddTransactionReq(BaseModel):
     user_id: int
